@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { NavLink, Route, Routes } from 'react-router-dom'
-import { Home, SprayCan, Boxes, MapPinned, CalendarDays, ShieldCheck, LogOut, Database, History, Settings } from 'lucide-react'
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { Home, SprayCan, Boxes, MapPinned, CalendarDays, ShieldCheck, LogOut, Database, History, Settings, Menu, X, ChevronRight } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import DashboardPage from './pages/DashboardPage'
 import InventoryPage from './pages/InventoryPage'
@@ -56,15 +56,77 @@ function AuthScreen() {
 
 function AppShell({session}:{session:Session}) {
   const [role, setRole] = useState('')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const location = useLocation()
+
   useEffect(() => {
     void supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle().then(({data}) => setRole(data?.role || ''))
   }, [session.user.id])
 
-  return <div className="app-shell"><aside className="sidebar"><div className="brand"><ShieldCheck size={28}/><div><b>五代目八木一兵衛</b><span>茶園防除管理</span></div></div><nav>
-    <NavLink to="/" end><Home size={20}/>ダッシュボード</NavLink><NavLink to="/sprays"><SprayCan size={20}/>散布</NavLink><NavLink to="/spray-history"><History size={20}/>散布履歴</NavLink><NavLink to="/inventory"><Boxes size={20}/>在庫</NavLink><NavLink to="/pesticides"><Database size={20}/>農薬検索</NavLink><NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink><NavLink to="/plans"><CalendarDays size={20}/>年間計画</NavLink>{role==='admin'&&<NavLink to="/settings"><Settings size={20}/>設定・監査</NavLink>}
-  </nav><div className="sidebar-user"><span>{session.user.email}</span><button onClick={()=>void supabase.auth.signOut()}><LogOut size={17}/>ログアウト</button></div></aside><main><Routes>
-    <Route path="/" element={<DashboardPage/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/spray-history" element={<SprayHistoryPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/pesticides" element={<PesticideCatalogPage/>}/><Route path="/fields" element={<FieldsPage/>}/><Route path="/plans" element={<PlansPage/>}/><Route path="/settings" element={<SettingsPage/>}/>
-  </Routes></main></div>
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileMenuOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previous
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [mobileMenuOpen])
+
+  const menuRouteActive = ['/spray-history','/pesticides','/plans','/settings'].some((path) => location.pathname.startsWith(path))
+
+  return <div className="app-shell">
+    <aside className="sidebar desktop-sidebar">
+      <div className="brand"><ShieldCheck size={28}/><div><b>五代目八木一兵衛</b><span>茶園防除管理</span></div></div>
+      <nav>
+        <NavLink to="/" end><Home size={20}/>ダッシュボード</NavLink>
+        <NavLink to="/sprays"><SprayCan size={20}/>散布</NavLink>
+        <NavLink to="/spray-history"><History size={20}/>散布履歴</NavLink>
+        <NavLink to="/inventory"><Boxes size={20}/>在庫</NavLink>
+        <NavLink to="/pesticides"><Database size={20}/>農薬検索</NavLink>
+        <NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink>
+        <NavLink to="/plans"><CalendarDays size={20}/>年間計画</NavLink>
+        {role==='admin'&&<NavLink to="/settings"><Settings size={20}/>設定・監査</NavLink>}
+      </nav>
+      <div className="sidebar-user"><span>{session.user.email}</span><button onClick={()=>void supabase.auth.signOut()}><LogOut size={17}/>ログアウト</button></div>
+    </aside>
+
+    <header className="mobile-topbar">
+      <div className="mobile-brand"><ShieldCheck size={22}/><div><b>五代目八木一兵衛</b><span>茶園防除管理</span></div></div>
+      <button type="button" className="mobile-menu-trigger" aria-label="メニューを開く" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={22}/></button>
+    </header>
+
+    <main><Routes>
+      <Route path="/" element={<DashboardPage/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/spray-history" element={<SprayHistoryPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/pesticides" element={<PesticideCatalogPage/>}/><Route path="/fields" element={<FieldsPage/>}/><Route path="/plans" element={<PlansPage/>}/><Route path="/settings" element={<SettingsPage/>}/>
+    </Routes></main>
+
+    <nav className="mobile-bottom-nav" aria-label="主要メニュー">
+      <NavLink to="/" end><Home size={21}/><span>ホーム</span></NavLink>
+      <NavLink to="/sprays"><SprayCan size={21}/><span>散布</span></NavLink>
+      <NavLink to="/inventory"><Boxes size={21}/><span>在庫</span></NavLink>
+      <NavLink to="/fields"><MapPinned size={21}/><span>圃場</span></NavLink>
+      <button type="button" className={menuRouteActive ? 'active' : ''} onClick={()=>setMobileMenuOpen(true)}><Menu size={21}/><span>メニュー</span></button>
+    </nav>
+
+    {mobileMenuOpen && <div className="mobile-more-backdrop" role="presentation" onMouseDown={(e)=>{if(e.target===e.currentTarget)setMobileMenuOpen(false)}}>
+      <section className="mobile-more-sheet" role="dialog" aria-modal="true" aria-label="その他のメニュー">
+        <div className="mobile-more-head"><div><b>メニュー</b><span>{session.user.email}</span></div><button type="button" aria-label="閉じる" onClick={()=>setMobileMenuOpen(false)}><X size={21}/></button></div>
+        <div className="mobile-more-links">
+          <NavLink to="/spray-history"><span><History size={20}/>散布履歴</span><ChevronRight size={18}/></NavLink>
+          <NavLink to="/pesticides"><span><Database size={20}/>農薬検索</span><ChevronRight size={18}/></NavLink>
+          <NavLink to="/plans"><span><CalendarDays size={20}/>年間計画</span><ChevronRight size={18}/></NavLink>
+          {role==='admin'&&<NavLink to="/settings"><span><Settings size={20}/>設定・監査</span><ChevronRight size={18}/></NavLink>}
+        </div>
+        <button className="mobile-logout" type="button" onClick={()=>void supabase.auth.signOut()}><LogOut size={18}/>ログアウト</button>
+      </section>
+    </div>}
+  </div>
 }
 
 export default function App(){const[session,setSession]=useState<Session|null|undefined>(undefined);useEffect(()=>{void supabase.auth.getSession().then(({data})=>setSession(data.session));const{data}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s));return()=>data.subscription.unsubscribe()},[]);if(session===undefined)return <div className="boot-screen"><ShieldCheck size={36}/><span>読み込み中…</span></div>;return session?<AppShell session={session}/>:<AuthScreen/>}
