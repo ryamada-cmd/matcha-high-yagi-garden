@@ -19,6 +19,7 @@ export type SprayField = {
   areaM2: number
   rate: number
   standardL: number
+  harvestDate: string
 }
 
 export type SprayHistoryRow = {
@@ -28,6 +29,47 @@ export type SprayHistoryRow = {
   preparedL: number
   operator: string
   target: string
+}
+
+export type SprayOfficialGuidanceRow = {
+  registration_no: string
+  pesticide_name: string
+  company_name: string
+  target_pest: string
+  use_purpose: string
+  dilution_or_rate: string
+  use_timing: string
+  spray_volume: string
+  product_use_count: string
+  total_use_count: string
+  application_method: string
+  active_ingredient: string
+}
+
+export type SprayGuidelineRow = {
+  target_pest_or_use: string
+  dilution: string
+  spray_volume_or_rate: string
+  use_timing: string
+  use_count: string
+  frac_irac: string
+  toxicity: string
+  covering_exception: string
+  note: string
+  source_page: string
+}
+
+export type SprayPesticideGuidance = {
+  pesticide_id: string
+  pesticide_name: string
+  registration_no: string
+  master_frac_irac: string
+  official_match_mode: 'registration' | 'name_candidate'
+  official_source_date: string
+  official: SprayOfficialGuidanceRow[]
+  guidelines: SprayGuidelineRow[]
+  recorded_year_use_count: number
+  last_recorded_spray_date: string | null
 }
 
 export type SprayBatchDetail = {
@@ -85,7 +127,7 @@ export async function loadSprayFormData(): Promise<{ lots: SprayLot[]; fields: S
   const [lotsRes, balancesRes, fieldsRes, historyRes, profileRes] = await Promise.all([
     supabase.from('inventory_lots').select('id,legacy_id,pesticide_id,content_unit,expiry_date,pesticides(name)'),
     supabase.from('inventory_balances').select('inventory_lot_id,balance'),
-    supabase.from('fields').select('id,legacy_id,name,location,area_m2,standard_spray_l_per_10a,status').eq('status','active').order('location').order('legacy_id'),
+    supabase.from('fields').select('id,legacy_id,name,location,area_m2,standard_spray_l_per_10a,harvest_planned_date,status').eq('status','active').order('location').order('legacy_id'),
     supabase.from('spray_batches').select('id,legacy_id,spray_date,prepared_volume_l,operator_name_snapshot,target').is('deleted_at',null).order('spray_date',{ascending:false}).order('created_at',{ascending:false}).limit(20),
     supabase.from('profiles').select('role').single(),
   ])
@@ -121,6 +163,7 @@ export async function loadSprayFormData(): Promise<{ lots: SprayLot[]; fields: S
       areaM2: area,
       rate,
       standardL: Math.round((area / 1000 * rate) * 100) / 100,
+      harvestDate: f.harvest_planned_date || '',
     }
   })
 
@@ -134,6 +177,21 @@ export async function loadSprayFormData(): Promise<{ lots: SprayLot[]; fields: S
   }))
 
   return { lots, fields, history, role: profileRes.data?.role || '' }
+}
+
+export async function loadSprayPesticideGuidance(
+  pesticideIds: string[],
+  sprayDate: string,
+  excludeBatchId?: string,
+): Promise<SprayPesticideGuidance[]> {
+  if (!pesticideIds.length) return []
+  const { data, error } = await supabase.rpc('get_spray_pesticide_guidance', {
+    p_pesticide_ids: [...new Set(pesticideIds)],
+    p_spray_date: sprayDate || null,
+    p_exclude_batch_id: excludeBatchId || null,
+  })
+  if (error) throw error
+  return (Array.isArray(data) ? data : []) as SprayPesticideGuidance[]
 }
 
 export async function loadSprayBatchDetail(batchId: string): Promise<SprayBatchDetail> {
