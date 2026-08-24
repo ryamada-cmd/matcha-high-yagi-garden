@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CircleAlert, ClipboardCheck, Database, RefreshCw, ShieldAlert, SprayCan } from 'lucide-react'
 import { loadDashboard, type DashboardAlert, type DashboardData } from '../lib/dashboard'
+import WeatherPanel from '../components/WeatherPanel'
 
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
 
@@ -43,6 +44,8 @@ export default function DashboardPage() {
     <div className="metrics operations-metrics">
       {cards.map(([label, value, note]) => <article className="metric" key={label}><span>{label}</span><strong>{loading && !data ? '…' : value}</strong><small>{note}</small></article>)}
     </div>
+
+    <WeatherPanel/>
 
     <section className="panel attention-panel">
       <div className="panel-title attention-title"><div><h2>今日の確認事項</h2><p>重要度の高いものから表示しています。</p></div>{data && <span className={data.criticalCount ? 'attention-badge critical' : data.warningCount ? 'attention-badge warning' : 'attention-badge ok'}>{data.criticalCount ? `重要 ${data.criticalCount}` : data.warningCount ? `注意 ${data.warningCount}` : '問題なし'}</span>}</div>
