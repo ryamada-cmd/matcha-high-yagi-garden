@@ -85,10 +85,13 @@ const n = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const settingNumber = (value: unknown, fallback: number) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 const norm = (value: unknown) => String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toLowerCase()
-
 const localToday = () => new Intl.DateTimeFormat('sv-SE').format(new Date())
-
 const dayNumber = (date: string) => Math.floor(Date.parse(`${date}T00:00:00Z`) / 86400000)
 const daysBetween = (from: string, to: string) => dayNumber(to) - dayNumber(from)
 
@@ -157,6 +160,15 @@ export async function loadDashboard(): Promise<DashboardData> {
   const year = Number(today.slice(0, 4))
   const yearStart = `${year}-01-01`
 
+  const { data: settingsRaw, error: settingsError } = await supabase.rpc('get_app_settings')
+  if (settingsError) throw settingsError
+  const settings = {
+    lowStockPercent: settingNumber((settingsRaw as any)?.low_stock_threshold_percent, 20),
+    expiryDays: settingNumber((settingsRaw as any)?.expiry_warning_days, 90),
+    planDays: settingNumber((settingsRaw as any)?.upcoming_plan_warning_days, 14),
+    harvestDays: settingNumber((settingsRaw as any)?.upcoming_harvest_warning_days, 30),
+  }
+
   const [lotsRes, balancesRes, fieldsRes, plansRes, yearSpraysRes, lastSprayRes] = await Promise.all([
     supabase.from('inventory_lots').select('id,legacy_id,pesticide_id,purchase_unit_price,package_size,purchased_content_qty,content_unit,expiry_date,pesticides(name)'),
     supabase.from('inventory_balances').select('inventory_lot_id,pesticide_id,content_unit,balance'),
@@ -175,7 +187,6 @@ export async function loadDashboard(): Promise<DashboardData> {
   const plans = (plansRes.data || []) as any[]
   const yearSprays = (yearSpraysRes.data || []) as any[]
   const latest = lastSprayRes.data?.[0] as any | undefined
-  const lotById = new Map(lots.map((lot) => [lot.id, lot]))
   const balanceByLot = new Map(balances.map((b) => [b.inventory_lot_id, n(b.balance)]))
 
   let stockValue = 0
@@ -305,9 +316,9 @@ export async function loadDashboard(): Promise<DashboardData> {
     href: '/inventory', action: '在庫を確認',
   })
 
-  const expiring = activeLots.filter((lot) => lot.expiry_date && String(lot.expiry_date) >= today && daysBetween(today, String(lot.expiry_date)) <= 90)
+  const expiring = activeLots.filter((lot) => lot.expiry_date && String(lot.expiry_date) >= today && daysBetween(today, String(lot.expiry_date)) <= settings.expiryDays)
   if (expiring.length) alerts.push({
-    id: 'expiring-stock', severity: 'warning', title: `90日以内に使用期限を迎える在庫が${expiring.length}ロットあります`,
+    id: 'expiring-stock', severity: 'warning', title: `${settings.expiryDays}日以内に使用期限を迎える在庫が${expiring.length}ロットあります`,
     detail: `${expiring[0].pesticideName}：${expiring[0].expiry_date}${expiring.length > 1 ? ` ほか${expiring.length - 1}ロット` : ''}`,
     href: '/inventory', action: '在庫を確認',
   })
@@ -327,9 +338,10 @@ export async function loadDashboard(): Promise<DashboardData> {
     old.original += n(lot.purchased_content_qty)
     pesticideStock.set(key, old)
   }
-  const lowStock = [...pesticideStock.values()].filter((x) => x.original > 0 && x.balance / x.original <= 0.2)
+  const lowStockRatio = settings.lowStockPercent / 100
+  const lowStock = [...pesticideStock.values()].filter((x) => x.original > 0 && x.balance / x.original <= lowStockRatio)
   if (lowStock.length) alerts.push({
-    id: 'low-stock', severity: 'warning', title: `購入時数量の20%以下になった農薬が${lowStock.length}種あります`,
+    id: 'low-stock', severity: 'warning', title: `購入時数量の${settings.lowStockPercent}%以下になった農薬が${lowStock.length}種あります`,
     detail: `${lowStock[0].name}：${lowStock[0].balance.toLocaleString()}${lowStock[0].unit}${lowStock.length > 1 ? ` ほか${lowStock.length - 1}種` : ''}`,
     href: '/inventory', action: '残量を確認',
   })
@@ -343,7 +355,7 @@ export async function loadDashboard(): Promise<DashboardData> {
     })
   }
 
-  if (nextPlan && nextPlan.days <= 14) alerts.push({
+  if (nextPlan && nextPlan.days <= settings.planDays) alerts.push({
     id: 'next-plan', severity: 'info', title: `次の防除予定は${nextPlan.days === 0 ? '今日' : `${nextPlan.days}日後`}です`,
     detail: `${nextPlan.label}｜${nextPlan.target}${nextPlan.pesticide !== '未指定' ? `｜${nextPlan.pesticide}` : ''}`,
     href: '/plans', action: '予定を確認',
@@ -404,7 +416,7 @@ export async function loadDashboard(): Promise<DashboardData> {
     }
   }
 
-  if (futureHarvests.length && futureHarvests[0].days <= 14) alerts.push({
+  if (futureHarvests.length && futureHarvests[0].days <= settings.harvestDays) alerts.push({
     id: 'near-harvest', severity: 'info', title: `最も近い摘採予定は${futureHarvests[0].days === 0 ? '今日' : `${futureHarvests[0].days}日後`}です`,
     detail: `${futureHarvests[0].legacyId} ${futureHarvests[0].name}｜${futureHarvests[0].date}`,
     href: '/fields', action: '圃場を確認',
