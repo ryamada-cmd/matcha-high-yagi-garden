@@ -1,11 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const defaultUrl = 'https://mdbtngousidfanmrjybt.supabase.co'
+const defaultPublishableKey = 'sb_publishable_f9P6hsToK8BbDUFJjLvIHg_-vEUW2h_'
 
-export const supabase = url && anonKey ? createClient(url, anonKey) : null
+const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || defaultUrl
+const publishableKey =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+  defaultPublishableKey
 
-export function requireSupabase() {
-  if (!supabase) throw new Error('Supabase環境変数が未設定です。')
-  return supabase
-}
+export const supabase = createClient(url, publishableKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+})
