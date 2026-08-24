@@ -9,6 +9,7 @@ import './master.css'
 import './pesticide-catalog.css'
 import './inventory-admin.css'
 import './spray-guidance.css'
+import './spray-history.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
