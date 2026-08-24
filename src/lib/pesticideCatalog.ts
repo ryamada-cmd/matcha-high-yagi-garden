@@ -5,6 +5,11 @@ export type GuidelineResult={id:number;source_category:string;category:string;ta
 export type ExpiredResult={id:number;expired_on:string;pesticide_name:string;expiry_type:string;note:string;source_page:string;verification_status:string}
 export type CatalogSearch={official:OfficialResult[];guidelines:GuidelineResult[];expired:ExpiredResult[];counts:{official:number;guidelines:number;expired:number}}
 export type CatalogStatus={role:string;official:number;guidelines:number;expired:number;sourceDate:string;importedAt:string}
+export type PesticideMasterRef={id:string;name:string;registrationNo:string}
+
+export function normalizeFamicText(value:string){
+  return String(value||'').normalize('NFKC')
+}
 
 export async function loadCatalogStatus():Promise<CatalogStatus>{
   const [profile,official,guidelines,expired,source]=await Promise.all([
@@ -17,6 +22,26 @@ export async function loadCatalogStatus():Promise<CatalogStatus>{
   const error=profile.error||official.error||guidelines.error||expired.error||source.error
   if(error) throw error
   return {role:(profile.data as any)?.role||'',official:official.count||0,guidelines:guidelines.count||0,expired:expired.count||0,sourceDate:(source.data as any)?.source_date||'',importedAt:(source.data as any)?.imported_at||''}
+}
+
+export async function loadPesticideMasterMap():Promise<Record<string,PesticideMasterRef>>{
+  const {data,error}=await supabase.from('pesticides').select('id,name,famic_registration_no').not('famic_registration_no','is',null)
+  if(error) throw error
+  const out:Record<string,PesticideMasterRef>={}
+  for(const row of data||[]){
+    const reg=String((row as any).famic_registration_no||'').trim()
+    if(reg) out[reg]={id:(row as any).id,name:(row as any).name||'',registrationNo:reg}
+  }
+  return out
+}
+
+export async function addPesticideMasterFromFamic(registrationNo:string,displayName:string):Promise<string>{
+  const {data,error}=await supabase.rpc('admin_add_pesticide_from_famic',{
+    p_registration_no:registrationNo,
+    p_display_name:normalizeFamicText(displayName),
+  })
+  if(error) throw error
+  return data as string
 }
 
 export async function searchPesticideCatalog(query:string,limit=100):Promise<CatalogSearch>{
