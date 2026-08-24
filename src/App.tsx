@@ -83,7 +83,7 @@ function AppShell({session}:{session:Session}) {
 
   return <div className="app-shell">
     <aside className="sidebar desktop-sidebar">
-      <div className="brand"><ShieldCheck size={28}/><div><b>五代目八木一兵衛</b><span>茶園防除管理</span></div></div>
+      <div className="brand brand-logo-block"><img className="app-brand-logo" src="/yagi-ichibei-logo.svg" alt="五代目八木一兵衛"/><span>茶園防除管理</span></div>
       <nav>
         <NavLink to="/" end><Home size={20}/>ダッシュボード</NavLink>
         <NavLink to="/sprays"><SprayCan size={20}/>散布</NavLink>
@@ -98,7 +98,7 @@ function AppShell({session}:{session:Session}) {
     </aside>
 
     <header className="mobile-topbar">
-      <div className="mobile-brand"><ShieldCheck size={22}/><div><b>五代目八木一兵衛</b><span>茶園防除管理</span></div></div>
+      <div className="mobile-brand mobile-logo-block"><img className="app-brand-logo" src="/yagi-ichibei-logo.svg" alt="五代目八木一兵衛"/></div>
       <button type="button" className="mobile-menu-trigger" aria-label="メニューを開く" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={22}/></button>
     </header>
 
