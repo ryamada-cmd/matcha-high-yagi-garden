@@ -86,17 +86,17 @@ export async function saveAppSettings(input: {
   weatherLatitude?: number | null
   weatherLongitude?: number | null
 }) {
-  const { data, error } = await supabase.rpc('update_app_settings', {
-    p_payload: {
-      low_stock_threshold_percent: input.lowStockPercent,
-      expiry_warning_days: input.expiryDays,
-      upcoming_plan_warning_days: input.planDays,
-      upcoming_harvest_warning_days: input.harvestDays,
-      weather_location_name: input.weatherLocationName ?? '',
-      weather_latitude: input.weatherLatitude ?? '',
-      weather_longitude: input.weatherLongitude ?? '',
-    },
-  })
+  const payload: Record<string, unknown> = {
+    low_stock_threshold_percent: input.lowStockPercent,
+    expiry_warning_days: input.expiryDays,
+    upcoming_plan_warning_days: input.planDays,
+    upcoming_harvest_warning_days: input.harvestDays,
+  }
+  if ('weatherLocationName' in input) payload.weather_location_name = input.weatherLocationName ?? ''
+  if ('weatherLatitude' in input) payload.weather_latitude = input.weatherLatitude ?? ''
+  if ('weatherLongitude' in input) payload.weather_longitude = input.weatherLongitude ?? ''
+
+  const { data, error } = await supabase.rpc('update_app_settings', { p_payload: payload })
   if (error) throw error
   return normalizeSettings(data)
 }
