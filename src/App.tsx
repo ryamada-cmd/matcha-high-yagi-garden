@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { NavLink, Route, Routes } from 'react-router-dom'
-import { Home, SprayCan, Boxes, MapPinned, CalendarDays, ShieldCheck, LogOut, RefreshCw, Database } from 'lucide-react'
+import { Home, SprayCan, Boxes, MapPinned, CalendarDays, ShieldCheck, LogOut, RefreshCw, Database, History } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { loadDashboard, type DashboardData } from './lib/dashboard'
 import InventoryPage from './pages/InventoryPage'
 import SprayPage from './pages/SprayPage'
+import SprayHistoryPage from './pages/SprayHistoryPage'
 import FieldsPage from './pages/FieldsPage'
 import PlansPage from './pages/PlansPage'
 import PesticideCatalogPage from './pages/PesticideCatalogPage'
@@ -69,9 +70,9 @@ function Dashboard() {
 
 function AppShell({session}:{session:Session}) {
   return <div className="app-shell"><aside className="sidebar"><div className="brand"><ShieldCheck size={28}/><div><b>五代目八木一兵衛</b><span>茶園防除管理</span></div></div><nav>
-    <NavLink to="/" end><Home size={20}/>ダッシュボード</NavLink><NavLink to="/sprays"><SprayCan size={20}/>散布</NavLink><NavLink to="/inventory"><Boxes size={20}/>在庫</NavLink><NavLink to="/pesticides"><Database size={20}/>農薬検索</NavLink><NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink><NavLink to="/plans"><CalendarDays size={20}/>年間計画</NavLink>
+    <NavLink to="/" end><Home size={20}/>ダッシュボード</NavLink><NavLink to="/sprays"><SprayCan size={20}/>散布</NavLink><NavLink to="/spray-history"><History size={20}/>散布履歴</NavLink><NavLink to="/inventory"><Boxes size={20}/>在庫</NavLink><NavLink to="/pesticides"><Database size={20}/>農薬検索</NavLink><NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink><NavLink to="/plans"><CalendarDays size={20}/>年間計画</NavLink>
   </nav><div className="sidebar-user"><span>{session.user.email}</span><button onClick={()=>void supabase.auth.signOut()}><LogOut size={17}/>ログアウト</button></div></aside><main><Routes>
-    <Route path="/" element={<Dashboard/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/pesticides" element={<PesticideCatalogPage/>}/><Route path="/fields" element={<FieldsPage/>}/><Route path="/plans" element={<PlansPage/>}/>
+    <Route path="/" element={<Dashboard/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/spray-history" element={<SprayHistoryPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/pesticides" element={<PesticideCatalogPage/>}/><Route path="/fields" element={<FieldsPage/>}/><Route path="/plans" element={<PlansPage/>}/>
   </Routes></main></div>
 }
 
