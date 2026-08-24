@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, RefreshCw, Save, Search, Settings2, ShieldCheck, Users } from 'lucide-react'
 import { changeUserRole, loadAdminConsole, saveAppSettings, type AdminConsoleData, type AuditLogRow } from '../lib/adminConsole'
+import WeatherLocationSettings from '../components/WeatherLocationSettings'
 
 function fmtDate(value: string) {
   if (!value) return '—'
@@ -88,12 +89,14 @@ export default function SettingsPage() {
 
   return <div className="page settings-page">
     <div className="page-head">
-      <div><p className="eyebrow">ADMIN</p><h1>設定・監査</h1><p className="sub">警告基準、ユーザー権限、操作履歴を管理します。</p></div>
+      <div><p className="eyebrow">ADMIN</p><h1>設定・監査</h1><p className="sub">警告基準、天気地点、ユーザー権限、操作履歴を管理します。</p></div>
       <button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button>
     </div>
 
     {error&&<div className="notice error dashboard-notice">{error}</div>}
     {success&&<div className="notice success dashboard-notice">{success}</div>}
+
+    {data && <WeatherLocationSettings settings={data.settings} onSaved={refresh}/>} 
 
     <section className="panel settings-section">
       <div className="panel-title"><div><h2>ダッシュボード警告基準</h2><p>現場に合わせて注意喚起のタイミングを変更できます。</p></div><Settings2 size={20}/></div>
