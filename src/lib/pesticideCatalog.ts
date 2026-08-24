@@ -27,7 +27,22 @@ export async function searchPesticideCatalog(query:string,limit=100):Promise<Cat
 
 export async function syncFamic(){
   const {data,error}=await supabase.functions.invoke('sync-famic',{body:{}})
-  if(error) throw error
-  if((data as any)?.error) throw new Error((data as any).error)
+  if(error){
+    const response=(error as any)?.context as Response|undefined
+    if(response){
+      try{
+        const body=await response.clone().json()
+        const detail=[body?.stage,body?.error].filter(Boolean).join('：')
+        if(detail) throw new Error(detail)
+      }catch(e){
+        if(e instanceof Error && e.message!==error.message) throw e
+      }
+    }
+    throw error
+  }
+  if((data as any)?.error){
+    const detail=[(data as any)?.stage,(data as any)?.error].filter(Boolean).join('：')
+    throw new Error(detail||'FAMIC同期に失敗しました')
+  }
   return data as {ok:boolean;sourceDate:string;rows:number;files:string[]}
 }
