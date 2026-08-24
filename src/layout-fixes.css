@@ -1,0 +1,23 @@
+/* Desktop spray-page layout fixes.
+   Keep the right-side cards in normal document flow so sticky preview cards
+   never cover spray history or detail cards while scrolling. */
+@media (min-width: 1051px) {
+  .spray-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-self: start;
+    min-width: 0;
+  }
+
+  .sticky-summary {
+    position: static !important;
+    top: auto !important;
+  }
+
+  .history-mini,
+  .spray-detail-card {
+    position: relative;
+    z-index: 0;
+  }
+}
