@@ -136,7 +136,7 @@ export default function SprayPage() {
       setChemicals(d.chemicals.map((c) => ({ key: uid(), lotId: c.lotId, dilution: String(c.dilution) })))
 
       setLots((current) => {
-        const map = new Map(current.map((l) => [l.lotId, { ...l, editRestored: undefined }]))
+        const map = new Map<string, SprayLot>(current.map((l) => [l.lotId, { ...l, editRestored: undefined }]))
         for (const c of d.chemicals) {
           const old = map.get(c.lotId)
           map.set(c.lotId, {
