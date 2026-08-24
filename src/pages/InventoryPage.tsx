@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ArchiveRestore, ClipboardCheck, History, PackagePlus, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import {
   adjustInventoryStock,
@@ -21,6 +22,7 @@ const todayLocal = () => new Intl.DateTimeFormat('sv-SE').format(new Date())
 type ActionMode = 'receive'|'adjust'|'dispose'|null
 
 export default function InventoryPage() {
+  const [searchParams,setSearchParams] = useSearchParams()
   const [rows, setRows] = useState<InventoryRow[]>([])
   const [transactions, setTransactions] = useState<InventoryTransactionRow[]>([])
   const [pesticides, setPesticides] = useState<PesticideOption[]>([])
@@ -55,6 +57,19 @@ export default function InventoryPage() {
   }
 
   useEffect(() => { void refresh() }, [])
+
+  useEffect(() => {
+    const pesticideId = searchParams.get('receivePesticide')
+    if (!pesticideId || role !== 'admin' || !pesticides.some((p) => p.id === pesticideId)) return
+    setReceive((prev) => ({ ...prev, pesticideId }))
+    setMode('receive')
+    setTab('stock')
+    setError('')
+    setSuccess('FAMIC公式登録から農薬マスタへ追加しました。続けて購入情報を入力してください。')
+    const next = new URLSearchParams(searchParams)
+    next.delete('receivePesticide')
+    setSearchParams(next, { replace: true })
+  }, [pesticides, role, searchParams, setSearchParams])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
