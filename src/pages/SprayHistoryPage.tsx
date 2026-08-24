@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Download, Eye, Pencil, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp, Download, Pencil, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { deleteSpray } from '../lib/sprays'
 import { downloadSprayHistoryCsv, loadFullSprayHistory, type FullSprayHistoryRow } from '../lib/sprayHistory'
@@ -125,19 +125,19 @@ export default function SprayHistoryPage() {
         <tbody>
           {filtered.map(r => {
             const isOpen = expanded.includes(r.id)
-            return <>
-              <tr key={r.id}>
+            return <Fragment key={r.id}>
+              <tr>
                 <td><b>{r.sprayDate}</b></td><td><code>{r.legacyId}</code></td><td>{r.operator||'—'}</td><td>{r.target||'—'}</td>
                 <td><div className="history-chip-list">{r.chemicals.map(c=><span key={`${r.id}-${c.pesticideId}`}>{c.pesticideName}</span>)}</div></td>
                 <td>{r.fields.length}圃場</td><td><b>{num.format(r.preparedL)}L</b></td>
-                <td><div className="history-page-actions"><button title="明細を展開" onClick={()=>toggle(r.id)}>{isOpen?<ChevronUp size={15}/>:<ChevronDown size={15}/>}</button><button title="散布画面で詳細" onClick={()=>navigate(`/sprays?detail=${encodeURIComponent(r.id)}`)}><Eye size={15}/></button><button title="編集" onClick={()=>navigate(`/sprays?edit=${encodeURIComponent(r.id)}`)}><Pencil size={15}/></button>{role==='admin'&&<button className="delete-action" title="削除" disabled={deletingId===r.id} onClick={()=>void remove(r)}><Trash2 size={15}/></button>}</div></td>
+                <td><div className="history-page-actions"><button title="明細を展開" onClick={()=>toggle(r.id)}>{isOpen?<ChevronUp size={15}/>:<ChevronDown size={15}/>}</button><button title="散布画面で編集" onClick={()=>navigate('/sprays')}><Pencil size={15}/></button>{role==='admin'&&<button className="delete-action" title="削除" disabled={deletingId===r.id} onClick={()=>void remove(r)}><Trash2 size={15}/></button>}</div></td>
               </tr>
-              {isOpen&&<tr key={`${r.id}-detail`} className="history-expanded-row"><td colSpan={8}><div className="history-expanded">
+              {isOpen&&<tr className="history-expanded-row"><td colSpan={8}><div className="history-expanded">
                 <div><h3>使用農薬</h3>{r.chemicals.map(c=><p key={`${r.id}-chem-${c.pesticideId}`}><b>{c.pesticideName}</b><span>{num.format(c.dilution)}倍 / {num.format(c.quantity)}{c.unit}</span></p>)}</div>
                 <div><h3>圃場別散布量</h3>{r.fields.map(f=><p key={`${r.id}-field-${f.fieldId}`}><b>{f.legacyId} {f.name}</b><span>{num.format(f.actualL)}L</span></p>)}</div>
                 <div><h3>基本情報</h3><p><b>天候 / 気温</b><span>{r.weather||'—'} / {r.temperatureC?`${r.temperatureC}℃`:'—'}</span></p><p><b>備考</b><span>{r.note||'—'}</span></p></div>
               </div></td></tr>}
-            </>
+            </Fragment>
           })}
           {!loading&&!filtered.length&&<tr><td colSpan={8} className="empty-cell">条件に一致する散布履歴はありません。</td></tr>}
         </tbody>
