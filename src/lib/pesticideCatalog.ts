@@ -26,23 +26,17 @@ export async function searchPesticideCatalog(query:string,limit=100):Promise<Cat
 }
 
 export async function syncFamic(){
-  const {data,error}=await supabase.functions.invoke('sync-famic',{body:{}})
-  if(error){
-    const response=(error as any)?.context as Response|undefined
-    if(response){
-      try{
-        const body=await response.clone().json()
-        const detail=[body?.stage,body?.error].filter(Boolean).join('：')
-        if(detail) throw new Error(detail)
-      }catch(e){
-        if(e instanceof Error && e.message!==error.message) throw e
-      }
-    }
-    throw error
-  }
-  if((data as any)?.error){
-    const detail=[(data as any)?.stage,(data as any)?.error].filter(Boolean).join('：')
-    throw new Error(detail||'FAMIC同期に失敗しました')
-  }
-  return data as {ok:boolean;sourceDate:string;rows:number;files:string[]}
+  const {data:{session},error:sessionError}=await supabase.auth.getSession()
+  if(sessionError) throw sessionError
+  if(!session?.access_token) throw new Error('ログインが必要です')
+
+  const response=await fetch('/api/sync-famic',{
+    method:'POST',
+    headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},
+    body:'{}',
+  })
+  const body=await response.json().catch(()=>({error:`同期APIが不正な応答を返しました (${response.status})`}))
+  if(!response.ok) throw new Error(body?.error||`FAMIC同期に失敗しました (${response.status})`)
+  if(body?.error) throw new Error(body.error)
+  return body as {ok:boolean;sourceDate:string;rows:number;files:string[]}
 }
