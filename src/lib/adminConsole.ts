@@ -6,6 +6,9 @@ export type AppSettings = {
   expiry_warning_days: number
   upcoming_plan_warning_days: number
   upcoming_harvest_warning_days: number
+  weather_location_name: string | null
+  weather_latitude: number | null
+  weather_longitude: number | null
   updated_by: string | null
   updated_at: string
 }
@@ -42,6 +45,12 @@ const n = (v: unknown) => {
   return Number.isFinite(x) ? x : 0
 }
 
+const nullableNumber = (v: unknown) => {
+  if (v === null || v === undefined || v === '') return null
+  const x = Number(v)
+  return Number.isFinite(x) ? x : null
+}
+
 function normalizeSettings(raw: any): AppSettings {
   return {
     id: n(raw?.id) || 1,
@@ -49,6 +58,9 @@ function normalizeSettings(raw: any): AppSettings {
     expiry_warning_days: n(raw?.expiry_warning_days),
     upcoming_plan_warning_days: n(raw?.upcoming_plan_warning_days),
     upcoming_harvest_warning_days: n(raw?.upcoming_harvest_warning_days),
+    weather_location_name: raw?.weather_location_name || null,
+    weather_latitude: nullableNumber(raw?.weather_latitude),
+    weather_longitude: nullableNumber(raw?.weather_longitude),
     updated_by: raw?.updated_by || null,
     updated_at: raw?.updated_at || '',
   }
@@ -70,6 +82,9 @@ export async function saveAppSettings(input: {
   expiryDays: number
   planDays: number
   harvestDays: number
+  weatherLocationName?: string | null
+  weatherLatitude?: number | null
+  weatherLongitude?: number | null
 }) {
   const { data, error } = await supabase.rpc('update_app_settings', {
     p_payload: {
@@ -77,6 +92,9 @@ export async function saveAppSettings(input: {
       expiry_warning_days: input.expiryDays,
       upcoming_plan_warning_days: input.planDays,
       upcoming_harvest_warning_days: input.harvestDays,
+      weather_location_name: input.weatherLocationName ?? '',
+      weather_latitude: input.weatherLatitude ?? '',
+      weather_longitude: input.weatherLongitude ?? '',
     },
   })
   if (error) throw error
