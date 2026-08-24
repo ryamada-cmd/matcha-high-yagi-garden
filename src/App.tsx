@@ -6,6 +6,8 @@ import { supabase } from './lib/supabase'
 import { loadDashboard, type DashboardData } from './lib/dashboard'
 import InventoryPage from './pages/InventoryPage'
 import SprayPage from './pages/SprayPage'
+import FieldsPage from './pages/FieldsPage'
+import PlansPage from './pages/PlansPage'
 
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
 
@@ -24,16 +26,10 @@ function AuthScreen() {
       if (mode === 'signup') {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(), password,
-          options: {
-            data: { display_name: displayName.trim() || email.split('@')[0] },
-            emailRedirectTo: window.location.origin,
-          },
+          options: { data: { display_name: displayName.trim() || email.split('@')[0] }, emailRedirectTo: window.location.origin },
         })
         if (signUpError) throw signUpError
-        if (!data.session) {
-          setMessage('登録しました。確認メールのリンクを開くと、このアプリへ戻ります。')
-          setMode('signin')
-        }
+        if (!data.session) { setMessage('登録しました。確認メールのリンクを開くと、このアプリへ戻ります。'); setMode('signin') }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (signInError) throw signInError
@@ -70,13 +66,11 @@ function Dashboard() {
   </div>
 }
 
-function Placeholder({title,description}:{title:string;description:string}){return <div className="page"><div className="page-head"><div><h1>{title}</h1><p className="sub">{description}</p></div></div><section className="panel"><p className="empty">この画面は次の実装工程でSupabaseに接続します。</p></section></div>}
-
 function AppShell({session}:{session:Session}) {
   return <div className="app-shell"><aside className="sidebar"><div className="brand"><ShieldCheck size={28}/><div><b>五代目八木一兵衛</b><span>茶園防除管理</span></div></div><nav>
     <NavLink to="/" end><Home size={20}/>ダッシュボード</NavLink><NavLink to="/sprays"><SprayCan size={20}/>散布</NavLink><NavLink to="/inventory"><Boxes size={20}/>在庫</NavLink><NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink><NavLink to="/plans"><CalendarDays size={20}/>年間計画</NavLink>
   </nav><div className="sidebar-user"><span>{session.user.email}</span><button onClick={()=>void supabase.auth.signOut()}><LogOut size={17}/>ログアウト</button></div></aside><main><Routes>
-    <Route path="/" element={<Dashboard/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/fields" element={<Placeholder title="圃場" description="圃場面積・標準散布量・追加編集削除"/>}/><Route path="/plans" element={<Placeholder title="年間計画" description="病害虫・推奨農薬・予定日・実施状況"/>}/>
+    <Route path="/" element={<Dashboard/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/fields" element={<FieldsPage/>}/><Route path="/plans" element={<PlansPage/>}/>
   </Routes></main></div>
 }
 
