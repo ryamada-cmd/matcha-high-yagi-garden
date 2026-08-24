@@ -8,6 +8,7 @@ import './layout-fixes.css'
 import './master.css'
 import './pesticide-catalog.css'
 import './inventory-admin.css'
+import './spray-guidance.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
