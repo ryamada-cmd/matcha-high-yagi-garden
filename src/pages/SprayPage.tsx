@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Eye, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
+import SprayPesticideGuidanceCard from '../components/SprayPesticideGuidance'
 import {
   deleteSpray,
   loadSprayBatchDetail,
@@ -255,12 +256,23 @@ export default function SprayPage() {
                 const lot = lots.find((l) => l.lotId === c.lotId)
                 const dilution = Number(c.dilution) || 0
                 const qty = prepared > 0 && dilution > 0 ? prepared * 1000 / dilution : 0
-                return <div className="chemical-row" key={c.key}>
-                  <div className="chem-no">{index + 1}</div>
-                  <label>農薬 / 在庫ロット<select value={c.lotId} onChange={(e) => updateChem(c.key, { lotId: e.target.value })}><option value="">選択してください</option>{lots.map((l) => <option key={l.lotId} value={l.lotId}>{l.pesticideName}｜利用可 {l.balance.toLocaleString()}{l.unit}{l.editRestored ? `（編集戻し ${l.editRestored.toLocaleString()}${l.unit} 含む）` : ''}｜{l.legacyId}</option>)}</select></label>
-                  <label>希釈倍率<input type="number" min="1" value={c.dilution} onChange={(e) => updateChem(c.key, { dilution: e.target.value })} placeholder="2000"/></label>
-                  <div className="required-qty"><span>必要量</span><b>{qty ? `${Math.round(qty * 1000) / 1000}${lot?.unit || ''}` : '—'}</b>{lot && qty > lot.balance && <em>在庫不足</em>}</div>
-                  {chemicals.length > 1 && <button className="danger-icon" onClick={() => setChemicals((r) => r.filter((x) => x.key !== c.key))}><Trash2 size={17}/></button>}
+                return <div className="chemical-block" key={c.key}>
+                  <div className="chemical-row">
+                    <div className="chem-no">{index + 1}</div>
+                    <label>農薬 / 在庫ロット<select value={c.lotId} onChange={(e) => updateChem(c.key, { lotId: e.target.value })}><option value="">選択してください</option>{lots.map((l) => <option key={l.lotId} value={l.lotId}>{l.pesticideName}｜利用可 {l.balance.toLocaleString()}{l.unit}{l.editRestored ? `（編集戻し ${l.editRestored.toLocaleString()}${l.unit} 含む）` : ''}｜{l.legacyId}</option>)}</select></label>
+                    <label>希釈倍率<input type="number" min="1" value={c.dilution} onChange={(e) => updateChem(c.key, { dilution: e.target.value })} placeholder="2000"/></label>
+                    <div className="required-qty"><span>必要量</span><b>{qty ? `${Math.round(qty * 1000) / 1000}${lot?.unit || ''}` : '—'}</b>{lot && qty > lot.balance && <em>在庫不足</em>}</div>
+                    {chemicals.length > 1 && <button className="danger-icon" onClick={() => setChemicals((r) => r.filter((x) => x.key !== c.key))}><Trash2 size={17}/></button>}
+                  </div>
+                  {lot && <SprayPesticideGuidanceCard
+                    pesticideId={lot.pesticideId}
+                    pesticideName={lot.pesticideName}
+                    dilution={dilution}
+                    target={target}
+                    sprayDate={sprayDate}
+                    harvestDates={chosen.map((f) => f.harvestDate).filter(Boolean)}
+                    editingBatchId={editingId || undefined}
+                  />}
                 </div>
               })}
             </div>
@@ -269,7 +281,7 @@ export default function SprayPage() {
           <section className="panel form-panel">
             <h2>3. 散布圃場</h2>
             <div className="field-groups">
-              {groups.map(([location, fs]) => <div key={location} className="field-group"><h3>{location}</h3><div className="field-check-grid">{fs.map((f) => <label className={`field-check ${selectedFields.includes(f.id) ? 'selected' : ''}`} key={f.id}><input type="checkbox" checked={selectedFields.includes(f.id)} onChange={(e) => setSelectedFields((old) => e.target.checked ? [...old, f.id] : old.filter((id) => id !== f.id))}/><b>{f.legacyId}｜{f.name}</b><span>{f.areaM2.toLocaleString()}㎡ / 標準 {f.standardL.toLocaleString()}L</span></label>)}</div></div>)}
+              {groups.map(([location, fs]) => <div key={location} className="field-group"><h3>{location}</h3><div className="field-check-grid">{fs.map((f) => <label className={`field-check ${selectedFields.includes(f.id) ? 'selected' : ''}`} key={f.id}><input type="checkbox" checked={selectedFields.includes(f.id)} onChange={(e) => setSelectedFields((old) => e.target.checked ? [...old, f.id] : old.filter((id) => id !== f.id))}/><b>{f.legacyId}｜{f.name}</b><span>{f.areaM2.toLocaleString()}㎡ / 標準 {f.standardL.toLocaleString()}L{f.harvestDate ? ` / 摘採予定 ${f.harvestDate}` : ''}</span></label>)}</div></div>)}
             </div>
           </section>
 
