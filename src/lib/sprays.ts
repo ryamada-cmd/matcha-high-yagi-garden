@@ -8,6 +8,7 @@ export type SprayLot = {
   unit: string
   expiryDate: string
   legacyId: string
+  editRestored?: number
 }
 
 export type SprayField = {
@@ -29,20 +30,67 @@ export type SprayHistoryRow = {
   target: string
 }
 
+export type SprayBatchDetail = {
+  id: string
+  legacyId: string
+  sprayDate: string
+  preparedL: number
+  target: string
+  weather: string
+  temperatureC: string
+  operator: string
+  note: string
+  preHarvestChecked: boolean
+  applicationCountChecked: boolean
+  tankMixChecked: boolean
+  chemicals: Array<{
+    pesticideId: string
+    lotId: string
+    pesticideName: string
+    lotLegacyId: string
+    dilution: number
+    qty: number
+    unit: string
+    currentBalance: number
+    virtualBalance: number
+  }>
+  fields: Array<{
+    fieldId: string
+    standardL: number
+    actualL: number
+  }>
+}
+
+export type SprayFormInput = {
+  sprayDate: string
+  preparedL: number
+  target: string
+  weather: string
+  temperatureC: string
+  operatorName: string
+  note: string
+  preHarvestChecked: boolean
+  applicationCountChecked: boolean
+  tankMixChecked: boolean
+  chemicals: { pesticideId: string; lotId: string; dilution: number }[]
+  fieldIds: string[]
+}
+
 function n(v: unknown) {
   const x = Number(v)
   return Number.isFinite(x) ? x : 0
 }
 
-export async function loadSprayFormData(): Promise<{ lots: SprayLot[]; fields: SprayField[]; history: SprayHistoryRow[] }> {
-  const [lotsRes, balancesRes, fieldsRes, historyRes] = await Promise.all([
+export async function loadSprayFormData(): Promise<{ lots: SprayLot[]; fields: SprayField[]; history: SprayHistoryRow[]; role: string }> {
+  const [lotsRes, balancesRes, fieldsRes, historyRes, profileRes] = await Promise.all([
     supabase.from('inventory_lots').select('id,legacy_id,pesticide_id,content_unit,expiry_date,pesticides(name)'),
     supabase.from('inventory_balances').select('inventory_lot_id,balance'),
     supabase.from('fields').select('id,legacy_id,name,location,area_m2,standard_spray_l_per_10a,status').eq('status','active').order('location').order('legacy_id'),
     supabase.from('spray_batches').select('id,legacy_id,spray_date,prepared_volume_l,operator_name_snapshot,target').is('deleted_at',null).order('spray_date',{ascending:false}).order('created_at',{ascending:false}).limit(20),
+    supabase.from('profiles').select('role').single(),
   ])
 
-  const err = lotsRes.error || balancesRes.error || fieldsRes.error || historyRes.error
+  const err = lotsRes.error || balancesRes.error || fieldsRes.error || historyRes.error || profileRes.error
   if (err) throw err
 
   const bal = new Map((balancesRes.data || []).map((b: any) => [b.inventory_lot_id, n(b.balance)]))
@@ -85,24 +133,70 @@ export async function loadSprayFormData(): Promise<{ lots: SprayLot[]; fields: S
     target: r.target || '',
   }))
 
-  return { lots, fields, history }
+  return { lots, fields, history, role: profileRes.data?.role || '' }
 }
 
-export async function registerSpray(input: {
-  sprayDate: string
-  preparedL: number
-  target: string
-  weather: string
-  temperatureC: string
-  operatorName: string
-  note: string
-  preHarvestChecked: boolean
-  applicationCountChecked: boolean
-  tankMixChecked: boolean
-  chemicals: { pesticideId: string; lotId: string; dilution: number }[]
-  fieldIds: string[]
-}) {
-  const payload = {
+export async function loadSprayBatchDetail(batchId: string): Promise<SprayBatchDetail> {
+  const [batchRes, chemRes, fieldRes, balancesRes] = await Promise.all([
+    supabase.from('spray_batches')
+      .select('id,legacy_id,spray_date,prepared_volume_l,target,weather,temperature_c,operator_name_snapshot,note,pre_harvest_checked,application_count_checked,tank_mix_checked')
+      .eq('id',batchId).is('deleted_at',null).single(),
+    supabase.from('spray_batch_chemicals')
+      .select('pesticide_id,inventory_lot_id,dilution,chemical_qty,chemical_unit,inventory_lots(legacy_id,content_unit,pesticides(name))')
+      .eq('spray_batch_id',batchId).order('created_at'),
+    supabase.from('spray_batch_fields')
+      .select('field_id,standard_volume_l,actual_spray_volume_l')
+      .eq('spray_batch_id',batchId).order('created_at'),
+    supabase.from('inventory_balances').select('inventory_lot_id,balance'),
+  ])
+
+  const err = batchRes.error || chemRes.error || fieldRes.error || balancesRes.error
+  if (err) throw err
+  const b: any = batchRes.data
+  const balanceMap = new Map((balancesRes.data || []).map((x: any) => [x.inventory_lot_id, n(x.balance)]))
+
+  const chemicals = (chemRes.data || []).map((c: any) => {
+    const lot = Array.isArray(c.inventory_lots) ? c.inventory_lots[0] : c.inventory_lots
+    const pesticide = Array.isArray(lot?.pesticides) ? lot.pesticides[0] : lot?.pesticides
+    const currentBalance = balanceMap.get(c.inventory_lot_id) || 0
+    const qty = n(c.chemical_qty)
+    return {
+      pesticideId: c.pesticide_id,
+      lotId: c.inventory_lot_id,
+      pesticideName: pesticide?.name || '農薬',
+      lotLegacyId: lot?.legacy_id || '',
+      dilution: n(c.dilution),
+      qty,
+      unit: c.chemical_unit || lot?.content_unit || '',
+      currentBalance,
+      virtualBalance: currentBalance + qty,
+    }
+  })
+
+  return {
+    id: b.id,
+    legacyId: b.legacy_id || '',
+    sprayDate: b.spray_date || '',
+    preparedL: n(b.prepared_volume_l),
+    target: b.target || '',
+    weather: b.weather || '',
+    temperatureC: b.temperature_c == null ? '' : String(b.temperature_c),
+    operator: b.operator_name_snapshot || '',
+    note: b.note || '',
+    preHarvestChecked: !!b.pre_harvest_checked,
+    applicationCountChecked: !!b.application_count_checked,
+    tankMixChecked: !!b.tank_mix_checked,
+    chemicals,
+    fields: (fieldRes.data || []).map((f: any) => ({
+      fieldId: f.field_id,
+      standardL: n(f.standard_volume_l),
+      actualL: n(f.actual_spray_volume_l),
+    })),
+  }
+}
+
+function payloadFrom(input: SprayFormInput) {
+  return {
     spray_date: input.sprayDate,
     prepared_volume_l: input.preparedL,
     target: input.target,
@@ -116,8 +210,22 @@ export async function registerSpray(input: {
     chemicals: input.chemicals.map((c) => ({ pesticide_id: c.pesticideId, inventory_lot_id: c.lotId, dilution: c.dilution })),
     fields: input.fieldIds,
   }
+}
 
-  const { data, error } = await supabase.rpc('register_spray_batch', { payload })
+export async function registerSpray(input: SprayFormInput) {
+  const { data, error } = await supabase.rpc('register_spray_batch', { payload: payloadFrom(input) })
   if (error) throw error
   return data as { id: string; legacy_id: string; prepared_volume_l: number }
+}
+
+export async function updateSpray(batchId: string, input: SprayFormInput) {
+  const { data, error } = await supabase.rpc('update_spray_batch', { p_batch_id: batchId, payload: payloadFrom(input) })
+  if (error) throw error
+  return data as { id: string; legacy_id: string; prepared_volume_l: number }
+}
+
+export async function deleteSpray(batchId: string, reason: string) {
+  const { data, error } = await supabase.rpc('delete_spray_batch', { p_batch_id: batchId, p_reason: reason || null })
+  if (error) throw error
+  return data as { id: string; legacy_id: string; deleted: boolean }
 }
