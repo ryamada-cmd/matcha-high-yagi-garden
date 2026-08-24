@@ -154,16 +154,14 @@ select
   l.id as inventory_lot_id,
   l.pesticide_id,
   l.content_unit,
-  coalesce(l.purchased_content_qty,0)
-    + coalesce(sum(case
-        when t.transaction_type in ('PURCHASE','RETURN') then t.quantity
-        when t.transaction_type in ('SPRAY','DISPOSAL') then -t.quantity
-        when t.transaction_type = 'ADJUSTMENT' then t.quantity
-        else 0 end),0) as balance
+  coalesce(sum(case
+    when t.transaction_type in ('PURCHASE','RETURN') then t.quantity
+    when t.transaction_type in ('SPRAY','DISPOSAL') then -t.quantity
+    when t.transaction_type = 'ADJUSTMENT' then t.quantity
+    else 0 end),0) as balance
 from inventory_lots l
 left join inventory_transactions t on t.inventory_lot_id = l.id
-where l.id is not null
-group by l.id,l.pesticide_id,l.content_unit,l.purchased_content_qty;
+group by l.id,l.pesticide_id,l.content_unit;
 
 create index if not exists idx_inventory_transactions_lot on inventory_transactions(inventory_lot_id, created_at);
 create index if not exists idx_spray_batches_date on spray_batches(spray_date desc) where deleted_at is null;
