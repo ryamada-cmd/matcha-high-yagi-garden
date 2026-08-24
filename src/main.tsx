@@ -6,6 +6,7 @@ import './styles.css'
 import './features.css'
 import './layout-fixes.css'
 import './master.css'
+import './pesticide-catalog.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
