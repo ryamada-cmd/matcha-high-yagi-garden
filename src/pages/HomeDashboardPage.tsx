@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CircleAlert, Factory, Leaf, PackageCheck, RefreshCw, Scissors, ShieldAlert, SprayCan } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CircleAlert, Factory, Leaf, PackageCheck, RefreshCw, Scissors, ShieldAlert, ShoppingCart, SprayCan } from 'lucide-react'
 import WeatherPanel from '../components/WeatherPanel'
 import { loadDashboard, type DashboardAlert, type DashboardData } from '../lib/dashboard'
 import { loadFertilizerDashboard, type FertilizerDashboardData } from '../lib/fertilizerDashboard'
 import { loadHarvestRecords, loadProcessingBatches, type HarvestRecord, type ProcessingBatch } from '../lib/harvestProcessing'
 import { loadManufacturingBatches, loadProductionLots, type ManufacturingBatch, type ProductionLot } from '../lib/production'
+import { loadSalesDashboard, type SalesDashboardData } from '../lib/salesDashboard'
 
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
 const num = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 })
@@ -24,6 +25,7 @@ type HomeData = {
   processing: ProcessingBatch[]
   lots: ProductionLot[]
   manufacturing: ManufacturingBatch[]
+  sales: SalesDashboardData
 }
 
 export default function HomeDashboardPage() {
@@ -34,10 +36,10 @@ export default function HomeDashboardPage() {
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [defense, fertilizer, harvests, processing, lots, manufacturing] = await Promise.all([
-        loadDashboard(), loadFertilizerDashboard(), loadHarvestRecords(300), loadProcessingBatches(200), loadProductionLots(), loadManufacturingBatches(100),
+      const [defense, fertilizer, harvests, processing, lots, manufacturing, sales] = await Promise.all([
+        loadDashboard(), loadFertilizerDashboard(), loadHarvestRecords(300), loadProcessingBatches(200), loadProductionLots(), loadManufacturingBatches(100), loadSalesDashboard(),
       ])
-      setData({ defense, fertilizer, harvests, processing, lots, manufacturing })
+      setData({ defense, fertilizer, harvests, processing, lots, manufacturing, sales })
     } catch (e: any) {
       setError(e?.message || '茶園ダッシュボードを読み込めませんでした。')
     } finally { setLoading(false) }
@@ -74,12 +76,14 @@ export default function HomeDashboardPage() {
     { label: '農薬在庫', value: data ? `${data.defense.stockLots}ロット` : '—', note: data ? yen.format(data.defense.stockValue) : '' },
     { label: '肥料在庫', value: data ? `${num.format(data.fertilizer.stockKg)}kg` : '—', note: data ? `${data.fertilizer.stockLots}ロット` : '' },
     { label: `${year}年 生葉収量`, value: summary ? `${num.format(summary.freshLeafKg)}kg` : '—', note: summary ? `${summary.harvestCount}回摘採` : '' },
-    { label: '原料・製品在庫評価', value: summary ? yen.format(summary.inventoryValue) : '—', note: summary ? `${summary.activeLots}ロット / 製品 ${summary.productLots}` : '' },
+    { label: '製品在庫額', value: summary ? yen.format(summary.productValue) : '—', note: summary ? `製品 ${summary.productLots}ロット / 全在庫 ${yen.format(summary.inventoryValue)}` : '' },
+    { label: '今月売上', value: data ? yen.format(data.sales.monthSalesYen) : '—', note: data ? `${data.sales.monthSaleCount}件 / ${data.sales.monthKey}` : '' },
+    { label: '今月粗利', value: data ? yen.format(data.sales.monthGrossProfitYen) : '—', note: data ? `粗利率 ${data.sales.monthGrossMarginPct.toFixed(1)}%` : '' },
   ]
 
   return <div className="page home-dashboard">
     <div className="page-head home-dashboard-head">
-      <div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理ダッシュボード</h1><p className="sub">防除・施肥・摘採・製茶・製造・在庫・原価をひとつのホーム画面で確認します。</p></div>
+      <div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理ダッシュボード</h1><p className="sub">防除・施肥・摘採・製茶・製造・在庫・原価・販売・粗利をひとつのホーム画面で確認します。</p></div>
       <div className="head-actions"><span className="status">茶園管理 接続済</span><button className="icon-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={18} className={loading ? 'spin' : ''}/></button></div>
     </div>
 
@@ -94,6 +98,7 @@ export default function HomeDashboardPage() {
       <Link to="/fertilizer-applications"><span className="home-action-icon fertilizer"><Leaf size={20}/></span><div><b>施肥を記録</b><small>肥料・施肥量・N/P/K</small></div><ArrowRight size={17}/></Link>
       <Link to="/harvests"><span className="home-action-icon harvest"><Scissors size={20}/></span><div><b>摘採・製茶</b><small>生葉収量・歩留</small></div><ArrowRight size={17}/></Link>
       <Link to="/production"><span className="home-action-icon production"><Factory size={20}/></span><div><b>製造・製品在庫</b><small>二次加工・原価</small></div><ArrowRight size={17}/></Link>
+      <Link to="/sales"><span className="home-action-icon sales"><ShoppingCart size={20}/></span><div><b>販売・出庫</b><small>売上・粗利・ロット追跡</small></div><ArrowRight size={17}/></Link>
     </section>
 
     <WeatherPanel/>
@@ -121,6 +126,12 @@ export default function HomeDashboardPage() {
         <div className="home-module-title"><span><Factory size={19}/></span><div><h2>収穫・製造</h2><p>摘採・製茶・二次加工・製品原価</p></div></div>
         <div className="home-module-stats"><div><span>今年の生葉 / 一次製茶</span><b>{summary ? `${num.format(summary.freshLeafKg)} / ${num.format(summary.primaryOutputKg)}kg` : '—'}</b><small>{summary ? `摘採 ${summary.harvestCount}回 / 製茶 ${summary.processingCount}回` : ''}</small></div><div><span>原料・製品在庫</span><b>{summary ? yen.format(summary.inventoryValue) : '—'}</b><small>{summary ? `製品評価 ${yen.format(summary.productValue)}` : ''}</small></div><div><span>直近の二次加工</span><b>{summary?.lastManufacturing ? `${summary.lastManufacturing.date}｜${summary.lastManufacturing.outputMaterial}` : '記録なし'}</b><small>{summary?.lastManufacturing ? `原価 ${yen.format(summary.lastManufacturing.totalCostYen)} / ${num.format(summary.lastManufacturing.outputQty)}${summary.lastManufacturing.outputUnit}` : ''}</small></div></div>
         <div className="home-module-links"><Link to="/harvests"><Scissors size={13}/>摘採・製茶</Link><Link to="/production"><PackageCheck size={13}/>製造・製品在庫</Link><Link to="/fields">圃場カルテ</Link></div>
+      </section>
+
+      <section className="panel home-module-card sales">
+        <div className="home-module-title"><span><ShoppingCart size={19}/></span><div><h2>販売・粗利</h2><p>販売実績・売上原価・製品ロット追跡</p></div></div>
+        <div className="home-module-stats"><div><span>今月売上</span><b>{data ? yen.format(data.sales.monthSalesYen) : '—'}</b><small>{data ? `${data.sales.monthSaleCount}件 / ${data.sales.monthKey}` : ''}</small></div><div><span>今月粗利</span><b>{data ? yen.format(data.sales.monthGrossProfitYen) : '—'}</b><small>{data ? `売上原価 ${yen.format(data.sales.monthCostYen)} / 粗利率 ${data.sales.monthGrossMarginPct.toFixed(1)}%` : ''}</small></div><div><span>直近販売</span><b>{data?.sales.latest ? `${data.sales.latest.date}｜${data.sales.latest.customerName}` : '記録なし'}</b><small>{data?.sales.latest ? `${data.sales.latest.channel || '—'} / 売上 ${yen.format(data.sales.latest.salesAmountYen)} / 粗利 ${yen.format(data.sales.latest.grossProfitYen)}` : ''}</small></div></div>
+        <div className="home-module-links"><Link to="/sales"><ShoppingCart size={13}/>販売・出庫</Link><Link to="/production"><PackageCheck size={13}/>製品在庫</Link></div>
       </section>
     </div>
 
