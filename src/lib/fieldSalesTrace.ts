@@ -85,7 +85,7 @@ export async function loadFieldSalesTrace(fieldId: string, year: number): Promis
       attributedCostYen: n(item.cost_amount_yen) * share,
       attributedGrossProfitYen: n(item.gross_profit_yen) * share,
     }
-    const existing = grouped.get(sale.id) || {
+    const existing: FieldSaleTraceEvent = grouped.get(sale.id) ?? {
       saleId: sale.id,
       legacyId: sale.legacy_id || '',
       date: sale.sale_date || '',
