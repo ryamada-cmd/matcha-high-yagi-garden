@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MapPinned, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { BookOpen, MapPinned, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
 import { deleteField, loadFields, saveField, type FieldInput, type FieldRecord } from '../lib/fields'
 
 const emptyForm = (): FieldInput => ({
@@ -79,7 +80,7 @@ export default function FieldsPage() {
   }
 
   return <div className="page master-page">
-    <div className="page-head"><div><p className="eyebrow">FIELDS</p><h1>圃場管理</h1><p className="sub">面積を正本に、反・a・標準散布量を自動計算します。</p></div><div className="head-actions">{role==='admin'&&<button className="secondary-button" onClick={beginNew}><Plus size={16}/>圃場追加</button>}<button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div></div>
+    <div className="page-head"><div><p className="eyebrow">FIELDS</p><h1>圃場管理</h1><p className="sub">面積を正本に、反・a・標準散布量を自動計算します。各圃場のカルテから防除・施肥履歴を一元確認できます。</p></div><div className="head-actions">{role==='admin'&&<button className="secondary-button" onClick={beginNew}><Plus size={16}/>圃場追加</button>}<button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div></div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
 
     <div className="metrics field-metrics"><article className="metric"><span>有効圃場</span><strong>{active.length}圃場</strong></article><article className="metric"><span>総面積</span><strong>{totalM2.toLocaleString()}㎡</strong></article><article className="metric"><span>総面積（反）</span><strong>{(totalM2/1000).toFixed(3)}反</strong></article><article className="metric"><span>標準散布量合計</span><strong>{Math.round(totalL*10)/10}L</strong></article></div>
@@ -102,6 +103,6 @@ export default function FieldsPage() {
       <div className="master-form-actions"><button className="primary-button" onClick={()=>void submit()} disabled={saving}><Save size={17}/>{saving?'保存中…':editingId?'変更を保存':'圃場を追加'}</button></div>
     </section>}
 
-    <div className="field-location-groups">{groups.map(([location, fs])=><section className="panel field-master-group" key={location}><div className="panel-title"><h2>{location}</h2><span>{fs.length}圃場</span></div><div className="field-master-grid">{fs.map(f=><article className={`field-master-card ${f.status==='inactive'?'inactive':''}`} key={f.id}><div className="field-card-head"><div className="field-code"><MapPinned size={17}/><b>{f.legacyId}</b></div><span className={`master-status ${f.status}`}>{f.status==='active'?'有効':'休止'}</span></div><h3>{f.name}</h3><div className="field-card-stats"><div><span>面積</span><b>{f.areaM2.toLocaleString()}㎡</b><small>{(f.areaM2/1000).toFixed(4)}反</small></div><div><span>標準散布量</span><b>{f.standardL.toLocaleString()}L</b><small>{f.standardRate}L/反</small></div></div><div className="field-card-meta"><span>品種：{f.variety||'未設定'}</span>{f.harvestDate&&<span>収穫予定：{f.harvestDate}</span>}</div>{f.note&&<p className="field-card-note">{f.note}</p>}{role==='admin'&&<div className="card-actions"><button onClick={()=>beginEdit(f)}><Pencil size={15}/>編集</button><button className="danger-text-button" onClick={()=>void remove(f)}><Trash2 size={15}/>削除</button></div>}</article>)}</div></section>)}</div>
+    <div className="field-location-groups">{groups.map(([location, fs])=><section className="panel field-master-group" key={location}><div className="panel-title"><h2>{location}</h2><span>{fs.length}圃場</span></div><div className="field-master-grid">{fs.map(f=><article className={`field-master-card ${f.status==='inactive'?'inactive':''}`} key={f.id}><div className="field-card-head"><div className="field-code"><MapPinned size={17}/><b>{f.legacyId}</b></div><span className={`master-status ${f.status}`}>{f.status==='active'?'有効':'休止'}</span></div><h3>{f.name}</h3><div className="field-card-stats"><div><span>面積</span><b>{f.areaM2.toLocaleString()}㎡</b><small>{(f.areaM2/1000).toFixed(4)}反</small></div><div><span>標準散布量</span><b>{f.standardL.toLocaleString()}L</b><small>{f.standardRate}L/反</small></div></div><div className="field-card-meta"><span>品種：{f.variety||'未設定'}</span>{f.harvestDate&&<span>収穫予定：{f.harvestDate}</span>}</div>{f.note&&<p className="field-card-note">{f.note}</p>}<div className="card-actions"><Link className="field-dossier-link" to={`/fields/${f.id}`}><BookOpen size={15}/>カルテを見る</Link>{role==='admin'&&<><button onClick={()=>beginEdit(f)}><Pencil size={15}/>編集</button><button className="danger-text-button" onClick={()=>void remove(f)}><Trash2 size={15}/>削除</button></>}</div></article>)}</div></section>)}</div>
   </div>
 }
