@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Home, SprayCan, Boxes, MapPinned, CalendarDays, ShieldCheck, LogOut, Database, History, Settings, Menu, X, ChevronRight, Leaf, Scissors, Factory } from 'lucide-react'
 import { supabase } from './lib/supabase'
-import DashboardPage from './pages/DashboardPage'
+import HomeDashboardPage from './pages/HomeDashboardPage'
 import InventoryPage from './pages/InventoryPage'
 import SprayPage from './pages/SprayPage'
 import SprayHistoryPage from './pages/SprayHistoryPage'
@@ -17,12 +17,8 @@ import FertilizerInventoryPage from './pages/FertilizerInventoryPage'
 import FertilizerApplicationPage from './pages/FertilizerApplicationPage'
 import FertilizerHistoryPage from './pages/FertilizerHistoryPage'
 import FertilizerPlansPage from './pages/FertilizerPlansPage'
-import FertilizerDashboardPanel from './components/FertilizerDashboardPanel'
 import HarvestProcessingPage from './pages/HarvestProcessingPage'
 import ProductionPage from './pages/ProductionPage'
-import ProductionDashboardPanel from './components/ProductionDashboardPanel'
-
-function IntegratedDashboard(){return <><DashboardPage/><div className="page fertilizer-dashboard-standalone"><FertilizerDashboardPanel/></div><div className="page fertilizer-dashboard-standalone"><ProductionDashboardPanel/></div></>}
 
 function AuthScreen(){
   const[mode,setMode]=useState<'signin'|'signup'>('signin'),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[displayName,setDisplayName]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('')
@@ -44,7 +40,7 @@ function AppShell({session}:{session:Session}){
       <div className="nav-section-label">共通</div><NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink>{role==='admin'&&<NavLink to="/settings"><Settings size={20}/>設定・監査</NavLink>}
     </nav><div className="sidebar-user"><span>{session.user.email}</span><button onClick={()=>void supabase.auth.signOut()}><LogOut size={17}/>ログアウト</button></div></aside>
     <header className="mobile-topbar"><div className="mobile-brand mobile-logo-block"><img className="app-brand-logo" src="/yagi-ichibei-logo.svg" alt="五代目八木一兵衛"/></div><button type="button" className="mobile-menu-trigger" aria-label="メニューを開く" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={22}/></button></header>
-    <main><Routes><Route path="/" element={<IntegratedDashboard/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/spray-history" element={<SprayHistoryPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/pesticides" element={<PesticideCatalogPage/>}/><Route path="/plans" element={<PlansPage/>}/><Route path="/fertilizer-applications" element={<FertilizerApplicationPage/>}/><Route path="/fertilizer-history" element={<FertilizerHistoryPage/>}/><Route path="/fertilizer-inventory" element={<FertilizerInventoryPage/>}/><Route path="/fertilizers" element={<FertilizerMasterPage/>}/><Route path="/fertilizer-plans" element={<FertilizerPlansPage/>}/><Route path="/harvests" element={<HarvestProcessingPage/>}/><Route path="/production" element={<ProductionPage/>}/><Route path="/fields" element={<FieldsPage/>}/><Route path="/fields/:fieldId" element={<FieldDossierPage/>}/><Route path="/settings" element={<SettingsPage/>}/></Routes></main>
+    <main><Routes><Route path="/" element={<HomeDashboardPage/>}/><Route path="/sprays" element={<SprayPage/>}/><Route path="/spray-history" element={<SprayHistoryPage/>}/><Route path="/inventory" element={<InventoryPage/>}/><Route path="/pesticides" element={<PesticideCatalogPage/>}/><Route path="/plans" element={<PlansPage/>}/><Route path="/fertilizer-applications" element={<FertilizerApplicationPage/>}/><Route path="/fertilizer-history" element={<FertilizerHistoryPage/>}/><Route path="/fertilizer-inventory" element={<FertilizerInventoryPage/>}/><Route path="/fertilizers" element={<FertilizerMasterPage/>}/><Route path="/fertilizer-plans" element={<FertilizerPlansPage/>}/><Route path="/harvests" element={<HarvestProcessingPage/>}/><Route path="/production" element={<ProductionPage/>}/><Route path="/fields" element={<FieldsPage/>}/><Route path="/fields/:fieldId" element={<FieldDossierPage/>}/><Route path="/settings" element={<SettingsPage/>}/></Routes></main>
     <nav className="mobile-bottom-nav" aria-label="主要メニュー"><NavLink to="/" end><Home size={21}/><span>ホーム</span></NavLink><NavLink to="/sprays"><SprayCan size={21}/><span>散布</span></NavLink><NavLink to="/fertilizer-applications"><Leaf size={21}/><span>施肥</span></NavLink><NavLink to="/fields"><MapPinned size={21}/><span>圃場</span></NavLink><button type="button" className={menuRouteActive?'active':''} onClick={()=>setMobileMenuOpen(true)}><Menu size={21}/><span>メニュー</span></button></nav>
     {mobileMenuOpen&&<div className="mobile-more-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setMobileMenuOpen(false)}}><section className="mobile-more-sheet" role="dialog" aria-modal="true" aria-label="その他のメニュー"><div className="mobile-more-head"><div><b>茶園管理メニュー</b><span>{session.user.email}</span></div><button type="button" aria-label="閉じる" onClick={()=>setMobileMenuOpen(false)}><X size={21}/></button></div><div className="mobile-more-links">
       <div className="mobile-menu-label">防除</div><NavLink to="/spray-history"><span><History size={20}/>散布履歴</span><ChevronRight size={18}/></NavLink><NavLink to="/inventory"><span><Boxes size={20}/>農薬在庫</span><ChevronRight size={18}/></NavLink><NavLink to="/pesticides"><span><Database size={20}/>農薬検索</span><ChevronRight size={18}/></NavLink><NavLink to="/plans"><span><CalendarDays size={20}/>年間防除計画</span><ChevronRight size={18}/></NavLink>
