@@ -22,6 +22,7 @@ import './field-dossier.css'
 import './harvest-processing.css'
 import './production.css'
 import './sales.css'
+import './product-master.css'
 import './ui-system.css'
 import './home-dashboard.css'
 
