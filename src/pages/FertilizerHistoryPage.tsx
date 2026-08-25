@@ -30,7 +30,7 @@ export default function FertilizerHistoryPage(){
   function toggle(id:string){setExpanded(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id])}
   async function remove(a:FertilizerApplication){const reason=window.prompt('削除理由を入力してください。削除すると肥料在庫へ戻入されます。','入力誤り');if(reason===null)return;setBusy(true);setError('');try{await deleteFertilizerApplication(a.id,reason);await refresh()}catch(e:any){setError(e?.message||'削除に失敗しました。')}finally{setBusy(false)}}
   function exportCsv(){
-    const rows=[['施肥日','施肥ID','担当者','方法','天候','圃場','肥料','施肥量kg','kg/10a','N kg','P kg','K kg','備考']]
+    const rows:(string|number)[][]=[['施肥日','施肥ID','担当者','方法','天候','圃場','肥料','施肥量kg','kg/10a','N kg','P kg','K kg','備考']]
     for(const a of filtered)for(const l of a.lines)rows.push([a.date,a.legacyId,a.operator,a.method,a.weather,`${l.fieldLegacyId} ${l.fieldName}`,l.fertilizerName,l.amountKg,l.rateKgPer10a,l.nKg,l.pKg,l.kKg,a.note])
     const text='\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));const el=document.createElement('a');el.href=url;el.download=`施肥履歴_${new Date().toISOString().slice(0,10)}.csv`;el.click();URL.revokeObjectURL(url)
   }
