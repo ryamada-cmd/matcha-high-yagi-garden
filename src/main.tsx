@@ -19,6 +19,7 @@ import './fertilizer.css'
 import './fertilizer-dashboard.css'
 import './fertilizer-history.css'
 import './field-dossier.css'
+import './harvest-processing.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
