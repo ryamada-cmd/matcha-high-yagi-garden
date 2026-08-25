@@ -15,6 +15,7 @@ import './admin-console.css'
 import './mobile-field.css'
 import './brand-logo.css'
 import './weather-dashboard.css'
+import './fertilizer.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
