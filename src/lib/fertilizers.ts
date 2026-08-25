@@ -1,0 +1,84 @@
+import { supabase } from './supabase'
+
+export type Fertilizer = {
+  id:string; legacyId:string; name:string; manufacturer:string; category:string;
+  n:number; p:number; k:number; mg:number; ca:number; note:string; active:boolean
+}
+export type FertilizerLot = {
+  id:string; legacyId:string; fertilizerId:string; fertilizerName:string; balanceKg:number;
+  purchaseDate:string; supplier:string; purchaseUnitPrice:number; packageCount:number;
+  packageUnit:string; packageSizeKg:number; purchasedQtyKg:number; storage:string;
+  manufacturerLotNo:string; note:string; stockValue:number
+}
+export type FertilizerField = { id:string; legacyId:string; name:string; location:string; areaM2:number }
+export type FertilizerApplicationLine = {
+  id:string; fertilizerName:string; fieldName:string; fieldLegacyId:string; amountKg:number;
+  rateKgPer10a:number; nKg:number; pKg:number; kKg:number
+}
+export type FertilizerApplication = {
+  id:string; legacyId:string; date:string; operator:string; method:string; weather:string; note:string;
+  lines:FertilizerApplicationLine[]; totalKg:number; nKg:number; pKg:number; kKg:number
+}
+export type FertilizerPlan = {
+  id:string; legacyId:string; planYear:number; month:number; period:string; fieldId:string|null; allFields:boolean;
+  fieldName:string; purpose:string; fertilizerId:string|null; fertilizerName:string; rateKgPer10a:number|null;
+  plannedDate:string; executedDate:string; status:string; note:string
+}
+
+const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
+const one=(v:any)=>Array.isArray(v)?v[0]:v
+
+export async function loadFertilizerRole(){
+  const {data:{user}}=await supabase.auth.getUser(); if(!user)return ''
+  const {data,error}=await supabase.from('profiles').select('role').eq('id',user.id).maybeSingle(); if(error)throw error
+  return data?.role||''
+}
+
+export async function loadFertilizers():Promise<Fertilizer[]>{
+  const {data,error}=await supabase.from('fertilizers').select('*').is('deleted_at',null).order('name'); if(error)throw error
+  return (data||[]).map((r:any)=>({id:r.id,legacyId:r.legacy_id||'',name:r.name||'',manufacturer:r.manufacturer||'',category:r.category||'',n:n(r.nitrogen_percent),p:n(r.phosphate_percent),k:n(r.potassium_percent),mg:n(r.magnesium_percent),ca:n(r.calcium_percent),note:r.note||'',active:r.is_active!==false}))
+}
+
+export async function saveFertilizer(input:{id?:string;name:string;manufacturer?:string;category?:string;n:number;p:number;k:number;mg?:number;ca?:number;note?:string;active?:boolean}){
+  const {data,error}=await supabase.rpc('admin_save_fertilizer',{p_payload:{id:input.id||'',name:input.name,manufacturer:input.manufacturer||'',category:input.category||'',nitrogen_percent:input.n,phosphate_percent:input.p,potassium_percent:input.k,magnesium_percent:input.mg||0,calcium_percent:input.ca||0,note:input.note||'',is_active:input.active??true}}); if(error)throw error; return data as string
+}
+
+export async function loadFertilizerLots():Promise<FertilizerLot[]>{
+  const [{data:lots,error:e1},{data:balances,error:e2}]=await Promise.all([
+    supabase.from('fertilizer_inventory_lots').select('*,fertilizers(name)').order('created_at',{ascending:false}),
+    supabase.from('fertilizer_inventory_balances').select('*')
+  ]); if(e1)throw e1;if(e2)throw e2
+  const bal=new Map((balances||[]).map((b:any)=>[b.inventory_lot_id,n(b.balance_kg)]))
+  return (lots||[]).map((r:any)=>{const balance=bal.get(r.id)||0;const unit=n(r.purchase_unit_price);const size=n(r.package_size_kg);return {id:r.id,legacyId:r.legacy_id||'',fertilizerId:r.fertilizer_id,fertilizerName:one(r.fertilizers)?.name||'肥料',balanceKg:balance,purchaseDate:r.purchase_date||'',supplier:r.supplier||'',purchaseUnitPrice:unit,packageCount:n(r.package_count),packageUnit:r.package_unit||'袋',packageSizeKg:size,purchasedQtyKg:n(r.purchased_qty_kg),storage:r.storage_location||'',manufacturerLotNo:r.manufacturer_lot_no||'',note:r.note||'',stockValue:size>0?balance*(unit/size):0}})
+}
+
+export async function receiveFertilizerLot(input:{fertilizerId:string;purchaseDate:string;supplier:string;purchaseUnitPrice:number;packageCount:number;packageUnit:string;packageSizeKg:number;storageLocation:string;manufacturerLotNo:string;note:string}){
+  const {data,error}=await supabase.rpc('admin_receive_fertilizer_lot',{p_payload:{fertilizer_id:input.fertilizerId,purchase_date:input.purchaseDate,supplier:input.supplier,purchase_unit_price:input.purchaseUnitPrice,package_count:input.packageCount,package_unit:input.packageUnit,package_size_kg:input.packageSizeKg,storage_location:input.storageLocation,manufacturer_lot_no:input.manufacturerLotNo,note:input.note}});if(error)throw error;return data as string
+}
+export async function adjustFertilizerStock(lotId:string,targetKg:number,reason:string){const{data,error}=await supabase.rpc('admin_adjust_fertilizer_stock',{p_lot_id:lotId,p_target_balance_kg:targetKg,p_reason:reason});if(error)throw error;return n(data)}
+export async function disposeFertilizerStock(lotId:string,qtyKg:number,reason:string){const{data,error}=await supabase.rpc('admin_dispose_fertilizer_stock',{p_lot_id:lotId,p_quantity_kg:qtyKg,p_reason:reason});if(error)throw error;return n(data)}
+
+export async function loadFertilizerFields():Promise<FertilizerField[]>{
+  const {data,error}=await supabase.from('fields').select('id,legacy_id,name,location,area_m2').is('deleted_at',null).eq('status','active').order('legacy_id');if(error)throw error
+  return (data||[]).map((r:any)=>({id:r.id,legacyId:r.legacy_id||'',name:r.name||'',location:r.location||'',areaM2:n(r.area_m2)}))
+}
+
+export async function registerFertilizerApplication(input:{date:string;operator:string;method:string;weather:string;note:string;lines:Array<{fertilizerId:string;lotId:string;fieldId:string;amountKg:number}>}){
+  const {data,error}=await supabase.rpc('register_fertilizer_application',{p_payload:{application_date:input.date,operator_name:input.operator,method:input.method,weather:input.weather,note:input.note,lines:input.lines.map(x=>({fertilizer_id:x.fertilizerId,inventory_lot_id:x.lotId,field_id:x.fieldId,amount_kg:x.amountKg}))}});if(error)throw error;return data as string
+}
+export async function deleteFertilizerApplication(id:string,reason:string){const{error}=await supabase.rpc('delete_fertilizer_application',{p_application_id:id,p_reason:reason});if(error)throw error}
+
+export async function loadFertilizerApplications(limit=50):Promise<FertilizerApplication[]>{
+  const {data:apps,error:e1}=await supabase.from('fertilizer_applications').select('*').is('deleted_at',null).order('application_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit);if(e1)throw e1
+  const ids=(apps||[]).map((a:any)=>a.id); if(!ids.length)return []
+  const {data:lines,error:e2}=await supabase.from('fertilizer_application_lines').select('*,fertilizers(name),fields(name,legacy_id)').in('application_id',ids);if(e2)throw e2
+  const by=new Map<string,FertilizerApplicationLine[]>(); for(const l of lines||[]){const arr=by.get((l as any).application_id)||[];const f=one((l as any).fields);const fert=one((l as any).fertilizers);arr.push({id:(l as any).id,fertilizerName:fert?.name||'肥料',fieldName:f?.name||'圃場',fieldLegacyId:f?.legacy_id||'',amountKg:n((l as any).amount_kg),rateKgPer10a:n((l as any).rate_kg_per_10a),nKg:n((l as any).nitrogen_kg),pKg:n((l as any).phosphate_kg),kKg:n((l as any).potassium_kg)});by.set((l as any).application_id,arr)}
+  return (apps||[]).map((a:any)=>{const ls=by.get(a.id)||[];return{id:a.id,legacyId:a.legacy_id||'',date:a.application_date||'',operator:a.operator_name_snapshot||'',method:a.method||'',weather:a.weather||'',note:a.note||'',lines:ls,totalKg:ls.reduce((s,x)=>s+x.amountKg,0),nKg:ls.reduce((s,x)=>s+x.nKg,0),pKg:ls.reduce((s,x)=>s+x.pKg,0),kKg:ls.reduce((s,x)=>s+x.kKg,0)}})
+}
+
+export async function loadFertilizerPlans():Promise<FertilizerPlan[]>{
+  const {data,error}=await supabase.from('annual_fertilizer_plans').select('*,fields(name,legacy_id),fertilizers(name)').is('deleted_at',null).order('plan_year',{ascending:false}).order('month').order('planned_date');if(error)throw error
+  return (data||[]).map((r:any)=>({id:r.id,legacyId:r.legacy_id||'',planYear:n(r.plan_year),month:n(r.month),period:r.period||'',fieldId:r.field_id||null,allFields:!!r.all_fields,fieldName:r.all_fields?'全圃場':`${one(r.fields)?.legacy_id||''} ${one(r.fields)?.name||''}`.trim(),purpose:r.purpose||'',fertilizerId:r.fertilizer_id||null,fertilizerName:one(r.fertilizers)?.name||r.fertilizer_text||'未指定',rateKgPer10a:r.planned_rate_kg_per_10a===null?null:n(r.planned_rate_kg_per_10a),plannedDate:r.planned_date||'',executedDate:r.executed_date||'',status:r.status||'planned',note:r.note||''}))
+}
+export async function saveFertilizerPlan(input:any){const{data,error}=await supabase.rpc('admin_save_fertilizer_plan',{p_payload:{id:input.id||'',plan_year:input.planYear,month:input.month,period:input.period||'',field_id:input.fieldId||'',all_fields:!!input.allFields,purpose:input.purpose||'',fertilizer_id:input.fertilizerId||'',fertilizer_text:input.fertilizerText||'',planned_rate_kg_per_10a:input.rateKgPer10a??'',planned_date:input.plannedDate||'',executed_date:input.executedDate||'',status:input.status||'planned',note:input.note||''}});if(error)throw error;return data as string}
+export async function deleteFertilizerPlan(id:string){const{error}=await supabase.rpc('admin_delete_fertilizer_plan',{p_id:id});if(error)throw error}
