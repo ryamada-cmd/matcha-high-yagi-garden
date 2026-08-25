@@ -1,0 +1,27 @@
+:root{--ui-green:#173f2b;--ui-green-2:#315f45;--ui-border:#d5dfd7;--ui-border-soft:#dfe6e0;--ui-surface:#fff;--ui-surface-soft:#f8faf8;--ui-text:#17231c;--ui-muted:#69776f;--ui-radius:10px;--ui-focus:0 0 0 3px rgba(77,128,98,.1)}
+
+/* Shared form system. Keeps later modules visually aligned with the original protection UI. */
+.page .form-grid label,.page .full-label,.harvest-form>label,.processing-form>label,.manufacturing-form>label,.production-modal label,.fertilizer-modal label{display:grid;gap:6px;font-size:12px;color:#56635a;font-weight:700}
+.page .form-grid label>input:not([type=checkbox]):not([type=radio]),.page .form-grid label>select,.page .form-grid label>textarea,.page .full-label>input:not([type=checkbox]):not([type=radio]),.page .full-label>select,.page .full-label>textarea,.harvest-form>label>input:not([type=checkbox]):not([type=radio]),.harvest-form>label>select,.harvest-form>label>textarea,.processing-form>label>input:not([type=checkbox]):not([type=radio]),.processing-form>label>select,.processing-form>label>textarea,.manufacturing-form>label>input:not([type=checkbox]):not([type=radio]),.manufacturing-form>label>select,.manufacturing-form>label>textarea,.production-modal label>input:not([type=checkbox]):not([type=radio]),.production-modal label>select,.production-modal label>textarea,.fertilizer-modal label>input:not([type=checkbox]):not([type=radio]),.fertilizer-modal label>select,.fertilizer-modal label>textarea{width:100%;min-height:42px;border:1px solid var(--ui-border);border-radius:var(--ui-radius);padding:10px 11px;background:var(--ui-surface);color:var(--ui-text);outline:none;font:inherit;line-height:1.35}
+.page .form-grid label>textarea,.page .full-label>textarea,.harvest-form>label>textarea,.processing-form>label>textarea,.manufacturing-form>label>textarea{min-height:76px;resize:vertical}
+.page .form-grid label>:focus,.page .full-label>:focus,.harvest-form>label>:focus,.processing-form>label>:focus,.manufacturing-form>label>:focus,.production-modal label>:focus,.fertilizer-modal label>:focus{border-color:#4d8062;box-shadow:var(--ui-focus)}
+.page input[type=date],.page input[type=time],.page input[type=datetime-local]{color-scheme:light;font-variant-numeric:tabular-nums}
+.page input[type=date]::-webkit-calendar-picker-indicator,.page input[type=time]::-webkit-calendar-picker-indicator,.page input[type=datetime-local]::-webkit-calendar-picker-indicator{opacity:.62;cursor:pointer}
+.page input:disabled,.page select:disabled,.page textarea:disabled{background:#f1f4f1;color:#879088;cursor:not-allowed}
+.form-grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}.form-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* Tabs use one shape and height across modules. */
+.harvest-tabs,.production-tabs,.plan-year-tabs{display:flex;gap:7px;margin:12px 0}
+.harvest-tabs button,.production-tabs button,.plan-year-tabs button{border:1px solid #dce5de;background:#fff;border-radius:10px;min-height:42px;padding:8px 15px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:800;color:#496052;cursor:pointer}
+.harvest-tabs button.active,.production-tabs button.active,.plan-year-tabs button.active{background:var(--ui-green);color:#fff;border-color:var(--ui-green)}
+
+/* Buttons share the original protection module geometry. */
+.page .primary-button{min-height:42px;border-radius:11px;padding:10px 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.page .secondary-button{min-height:38px;border-radius:9px;padding:8px 10px;font-weight:700}
+.page .icon-button{flex:0 0 auto}
+
+/* Panels and headings remain consistent when newer modules nest content. */
+.page .panel-title h2{font-size:17px;margin:0}.page .panel-title p{font-size:11px;color:#77837b;margin:4px 0 0;line-height:1.5}
+
+@media(max-width:1000px){.form-grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.form-grid.four,.form-grid.two{grid-template-columns:1fr}.page .form-grid label>input:not([type=checkbox]):not([type=radio]),.page .form-grid label>select,.page .full-label>input:not([type=checkbox]):not([type=radio]),.page .full-label>select,.harvest-form>label>input:not([type=checkbox]):not([type=radio]),.harvest-form>label>select,.processing-form>label>input:not([type=checkbox]):not([type=radio]),.processing-form>label>select,.manufacturing-form>label>input:not([type=checkbox]):not([type=radio]),.manufacturing-form>label>select{min-height:46px;font-size:16px}.harvest-tabs,.production-tabs,.plan-year-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.production-tabs button{border-radius:10px}.page textarea{font-size:16px}}
