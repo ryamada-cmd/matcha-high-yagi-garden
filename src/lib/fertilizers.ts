@@ -7,7 +7,7 @@ export type Fertilizer = {
 }
 export type OfficialFertilizer = {
   id:string; registrationNo:string; registrationCategory:string; name:string; company:string; type:string;
-  registrationDate:string; expirationDate:string; validPeriod:string; address:string; components:Record<string,number>;
+  registrationDate:string; expirationDate:string; validPeriod:string; address:string; lapseStatus:string; components:Record<string,number>;
   sourceDate:string; sourceUrl:string; n:number; p:number; k:number; mg:number; ca:number
 }
 export type OfficialFertilizerMeta = { count:number; sourceDate:string; rowCount:number; completedAt:string }
@@ -59,7 +59,7 @@ export async function saveFertilizer(input:{id?:string;name:string;manufacturer?
 
 function mapOfficial(r:any):OfficialFertilizer{
   const components:Record<string,number>={};for(const[k,v]of Object.entries(r.components||{})){if(Number.isFinite(Number(v)))components[k]=Number(v)}
-  return {id:r.id,registrationNo:r.registration_no||'',registrationCategory:r.registration_category||'',name:r.fertilizer_name||'',company:r.company_name||'',type:r.fertilizer_type||'',registrationDate:r.registration_date||'',expirationDate:r.expiration_date||'',validPeriod:r.valid_period||'',address:r.address||'',components,sourceDate:r.source_date||'',sourceUrl:r.source_url||'',n:first(maybe(r.tn),maybe(r.an),maybe(r.nn)),p:first(maybe(r.tp),maybe(r.cp),maybe(r.sp),maybe(r.wp)),k:first(maybe(r.tk),maybe(r.ck),maybe(r.wk)),mg:first(maybe(r.smg),maybe(r.cmg),maybe(r.wmg)),ca:first(maybe(r.sca),maybe(r.cca),maybe(r.wca))}
+  return {id:r.id,registrationNo:r.registration_no||'',registrationCategory:r.registration_category||'',name:r.fertilizer_name||'',company:r.company_name||'',type:r.fertilizer_type||'',registrationDate:r.registration_date||'',expirationDate:r.expiration_date||'',validPeriod:r.valid_period||'',address:r.address||'',lapseStatus:r.lapse_status||'',components,sourceDate:r.source_date||'',sourceUrl:r.source_url||'',n:first(maybe(r.tn),maybe(r.an),maybe(r.nn)),p:first(maybe(r.tp),maybe(r.cp),maybe(r.sp),maybe(r.wp)),k:first(maybe(r.tk),maybe(r.ck),maybe(r.wk)),mg:first(maybe(r.smg),maybe(r.cmg),maybe(r.wmg)),ca:first(maybe(r.sca),maybe(r.cca),maybe(r.wca))}
 }
 
 export async function loadOfficialFertilizerMeta():Promise<OfficialFertilizerMeta>{
@@ -95,7 +95,7 @@ export async function receiveFertilizerLot(input:{fertilizerId:string;purchaseDa
   const {data,error}=await supabase.rpc('admin_receive_fertilizer_lot',{p_payload:{fertilizer_id:input.fertilizerId,purchase_date:input.purchaseDate,supplier:input.supplier,purchase_unit_price:input.purchaseUnitPrice,package_count:input.packageCount,package_unit:input.packageUnit,package_size_kg:input.packageSizeKg,storage_location:input.storageLocation,manufacturer_lot_no:input.manufacturerLotNo,note:input.note}});if(error)throw error;return data as string
 }
 export async function adjustFertilizerStock(lotId:string,targetKg:number,reason:string){const{data,error}=await supabase.rpc('admin_adjust_fertilizer_stock',{p_lot_id:lotId,p_target_balance_kg:targetKg,p_reason:reason});if(error)throw error;return n(data)}
-export async function disposeFertilizerStock(lotId:string,qtyKg:number,reason:string){const{data,error}=await supabase.rpc('admin_dispose_fertilizer_stock',{p_lot_id:lotId,p_quantity_kg:qtyKg,p_reason:reason});if(error)throw error;return n(data)}
+export async function disposeFertilizerStock(lotId:string,qtyKg:number,reason:string){const{data,error}=await supabase.rpc('admin_dispose_fertilizer_stock',{p_lot_id:lotId,p_quantity_kg:qtyKg,p_reason:reason});if(error)throw error}
 
 export async function loadFertilizerFields():Promise<FertilizerField[]>{
   const {data,error}=await supabase.from('fields').select('id,legacy_id,name,location,area_m2').is('deleted_at',null).eq('status','active').order('legacy_id');if(error)throw error
