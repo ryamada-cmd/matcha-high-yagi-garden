@@ -1,10 +1,20 @@
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const isGitHubPages = process.env.GITHUB_ACTIONS === 'true'
+const buildTime = new Date().toISOString()
+let revision = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || ''
+if (!revision) {
+  try { revision = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim() } catch { revision = '' }
+}
 
 export default defineConfig({
   base: isGitHubPages ? '/matcha-high-yagi-garden/' : '/',
   plugins: [react()],
+  define: {
+    __APP_BUILD_TIME__: JSON.stringify(buildTime),
+    __APP_REVISION__: JSON.stringify(revision.slice(0, 12)),
+  },
   build: { sourcemap: true },
 })
