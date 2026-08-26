@@ -1,58 +1,75 @@
-/* Global visual system — loaded last to normalize every module without changing business logic. */
+/*
+ * Yagi Garden Manager — unified visual system v2
+ * Presentation only. This stylesheet is loaded last and intentionally changes no
+ * application logic, data flow, routes, RPCs, permissions, or persisted values.
+ */
 :root{
-  --app-bg:#f4f6f2;
+  --app-bg:#f3f5f1;
   --app-surface:#ffffff;
   --app-surface-soft:#f8faf7;
-  --app-surface-tint:#eef4ef;
+  --app-surface-tint:#edf3ee;
+  --app-surface-warm:#faf9f5;
   --app-green:#173f2b;
   --app-green-2:#28573d;
-  --app-green-3:#4e7b60;
+  --app-green-3:#4f7a60;
+  --app-green-soft:#eaf2ec;
   --app-text:#17231c;
-  --app-muted:#6d7971;
+  --app-text-2:#34423a;
+  --app-muted:#6c7971;
   --app-muted-2:#8a948d;
   --app-border:#dce4de;
-  --app-border-strong:#cbd7ce;
+  --app-border-strong:#c9d5cc;
   --app-danger:#a34238;
-  --app-warning:#9b6817;
+  --app-danger-soft:#fff1ef;
+  --app-warning:#966314;
+  --app-warning-soft:#fff7e8;
   --app-success:#2d6842;
+  --app-success-soft:#eef8f1;
+  --app-info:#486a7c;
+  --app-info-soft:#f0f6f8;
   --app-radius-xs:8px;
   --app-radius-sm:10px;
   --app-radius-md:14px;
   --app-radius-lg:18px;
   --app-shadow-xs:0 1px 2px rgba(21,52,34,.035);
-  --app-shadow-sm:0 6px 18px rgba(21,52,34,.045);
-  --app-shadow-md:0 16px 42px rgba(21,52,34,.11);
+  --app-shadow-sm:0 7px 22px rgba(21,52,34,.055);
+  --app-shadow-md:0 18px 48px rgba(21,52,34,.12);
   --app-focus:0 0 0 3px rgba(62,112,80,.13);
+  --app-control-h:42px;
+  --app-page-max:1400px;
 }
 
-html{background:var(--app-bg)}
-body{background:var(--app-bg);color:var(--app-text);font-family:Inter,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;line-height:1.5}
+*{box-sizing:border-box}
+html{background:var(--app-bg);color-scheme:light}
+body{background:var(--app-bg);color:var(--app-text);font-family:Inter,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:inherit}
+button{font-size:inherit}
+a{color:inherit}
 ::selection{background:#dcebe1;color:#173f2b}
 
 /* Shell / navigation */
 .app-shell{background:var(--app-bg)}
 .desktop-sidebar{background:var(--app-green);padding:22px 14px 18px}
-.desktop-sidebar .brand{margin-bottom:22px;padding:0 7px 17px;border-bottom:1px solid rgba(255,255,255,.12)}
+.desktop-sidebar .brand{margin-bottom:20px;padding:0 7px 17px;border-bottom:1px solid rgba(255,255,255,.12)}
 .desktop-sidebar .brand>span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.62)}
 .desktop-sidebar nav{gap:3px}
-.desktop-sidebar .nav-section-label{margin:15px 9px 5px;color:rgba(255,255,255,.48);font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+.desktop-sidebar .nav-section-label{margin:15px 9px 5px;color:rgba(255,255,255,.46);font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
 .desktop-sidebar nav a{min-height:40px;padding:9px 10px;border-radius:10px;color:rgba(246,250,247,.82);font-size:12.5px;font-weight:650;transition:background .14s ease,color .14s ease,transform .14s ease}
 .desktop-sidebar nav a:hover{background:rgba(255,255,255,.08);color:#fff}
-.desktop-sidebar nav a.active{background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
-.desktop-sidebar nav a svg{opacity:.82;flex:0 0 auto}
+.desktop-sidebar nav a.active{background:rgba(255,255,255,.145);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.055)}
+.desktop-sidebar nav a svg{opacity:.8;flex:0 0 auto}
 .desktop-sidebar nav a.active svg{opacity:1}
 .sidebar-user{border-top:1px solid rgba(255,255,255,.11);padding-top:14px;margin-top:20px}
 .sidebar-user button{min-height:40px;border-radius:10px}
 
 /* Page rhythm */
-.page{max-width:1360px;padding:30px 30px 42px}
-.page-head{margin-bottom:20px;align-items:flex-start}
+.page{width:100%;max-width:var(--app-page-max);padding:30px 30px 44px;margin:0 auto}
+.page-head{margin-bottom:20px;align-items:flex-start;gap:18px}
 .page-head>div:first-child{min-width:0}
-.page-head h1{font-size:28px;line-height:1.25;letter-spacing:-.02em;color:var(--app-text);font-weight:800}
+.page-head h1{margin:0;font-size:28px;line-height:1.25;letter-spacing:-.025em;color:var(--app-text);font-weight:800}
 .eyebrow{margin:0 0 6px;color:var(--app-green-3);font-size:10px;font-weight:800;letter-spacing:.16em}
-.sub{max-width:820px;margin-top:7px;color:var(--app-muted);font-size:13px;line-height:1.65}
-.head-actions{gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.sub{max-width:840px;margin-top:7px;color:var(--app-muted);font-size:13px;line-height:1.65}
+.head-actions{gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
 
 /* Surfaces */
 .panel,.metric{background:var(--app-surface);border:1px solid var(--app-border);box-shadow:var(--app-shadow-xs)}
@@ -64,25 +81,26 @@ button,input,select,textarea{font-family:inherit}
 .metric small{margin-top:4px;color:var(--app-muted-2);font-size:10px;line-height:1.45}
 .panel-grid{gap:12px;margin-top:12px}
 
-/* Normalize feature cards without erasing semantic backgrounds. */
+/* Feature cards: same physical language, semantic fills stay intact. */
 .page [class$="-card"],.page [class*="-card "]{border-radius:var(--app-radius-md);border-color:var(--app-border);box-shadow:var(--app-shadow-xs)}
-.page [class$="-card"] h3,.page [class*="-card "] h3{color:var(--app-text);letter-spacing:-.01em}
+.page [class$="-card"] h3,.page [class*="-card "] h3{color:var(--app-text);letter-spacing:-.012em}
+.page [class$="-card"] p,.page [class*="-card "] p{line-height:1.6}
 
 /* Section headings */
 .panel-title,.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .panel-title{margin-bottom:14px}
-.panel-title h2,.section-head h2,.panel h2{color:var(--app-text);font-size:16px;font-weight:800;letter-spacing:-.01em}
+.panel-title h2,.section-head h2,.panel h2{color:var(--app-text);font-size:16px;font-weight:800;letter-spacing:-.012em}
 .panel-title p,.section-head p{color:var(--app-muted);font-size:11px;line-height:1.55}
 .panel-title>span{background:var(--app-surface-tint);color:var(--app-green-2);border:1px solid #e1e9e3;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:750}
 
 /* Buttons */
 .primary-button,.secondary-button,.icon-button,.page button{transition:background-color .14s ease,border-color .14s ease,color .14s ease,box-shadow .14s ease,transform .08s ease}
-.primary-button{min-height:42px;border:1px solid var(--app-green)!important;background:var(--app-green)!important;color:#fff!important;border-radius:10px!important;padding:9px 14px!important;font-weight:750!important;box-shadow:none}
+.primary-button{min-height:var(--app-control-h);border:1px solid var(--app-green)!important;background:var(--app-green)!important;color:#fff!important;border-radius:10px!important;padding:9px 14px!important;font-weight:750!important;box-shadow:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}
 .primary-button:hover:not(:disabled){background:#214d36!important;border-color:#214d36!important}
 .primary-button:active:not(:disabled){transform:translateY(1px)}
 .secondary-button{min-height:40px;border:1px solid var(--app-border-strong)!important;background:#fff!important;color:var(--app-green-2)!important;border-radius:10px!important;padding:8px 12px!important;font-weight:700!important;display:inline-flex;align-items:center;justify-content:center;gap:7px}
 .secondary-button:hover:not(:disabled){background:var(--app-surface-soft)!important;border-color:#b9c9bd!important}
-.icon-button{width:40px;height:40px;border:1px solid var(--app-border-strong)!important;border-radius:10px!important;background:#fff!important;color:var(--app-green-2)!important;box-shadow:none!important}
+.icon-button{width:40px;height:40px;border:1px solid var(--app-border-strong)!important;border-radius:10px!important;background:#fff!important;color:var(--app-green-2)!important;box-shadow:none!important;display:grid;place-items:center}
 .icon-button:hover:not(:disabled){background:var(--app-surface-soft)!important}
 .page button:disabled{opacity:.52;cursor:not-allowed}
 .danger-text,.danger-text-button,.page .danger{color:var(--app-danger)!important}
@@ -90,18 +108,18 @@ button,input,select,textarea{font-family:inherit}
 /* Inputs / fields */
 .page label{color:#536158}
 .page input:not([type=checkbox]):not([type=radio]),.page select,.page textarea{border:1px solid var(--app-border-strong);border-radius:10px;background:#fff;color:var(--app-text);outline:none;box-shadow:none;transition:border-color .14s ease,box-shadow .14s ease,background .14s ease}
-.page input:not([type=checkbox]):not([type=radio]),.page select{min-height:42px}
-.page textarea{min-height:80px;resize:vertical}
+.page input:not([type=checkbox]):not([type=radio]),.page select{min-height:var(--app-control-h)}
+.page textarea{min-height:84px;resize:vertical}
 .page input:not([type=checkbox]):not([type=radio]):focus,.page select:focus,.page textarea:focus{border-color:var(--app-green-3);box-shadow:var(--app-focus)}
 .page input::placeholder,.page textarea::placeholder{color:#9aa39d}
 .page input:disabled,.page select:disabled,.page textarea:disabled{background:#f1f4f1;color:#8a938d}
 .page input[type=checkbox],.page input[type=radio]{accent-color:var(--app-green)}
 .form-grid{gap:11px}
-.form-grid label,.full-label,.inventory-action-form label,.manufacturing-form label,.harvest-form label,.processing-form label{font-size:11px!important;font-weight:700!important;gap:6px!important}
+.form-grid label,.full-label,.inventory-action-form label,.manufacturing-form label,.harvest-form label,.processing-form label,.daily-report-form label,.expense-claim-form label{font-size:11px!important;font-weight:700!important;gap:6px!important}
 
 /* Search / toolbars */
 .toolbar{gap:10px;align-items:center}
-.search-box{border:1px solid var(--app-border-strong)!important;background:#fff!important;border-radius:10px!important;min-height:42px;box-shadow:none!important}
+.search-box{border:1px solid var(--app-border-strong)!important;background:#fff!important;border-radius:10px!important;min-height:var(--app-control-h);box-shadow:none!important}
 .search-box:focus-within{border-color:var(--app-green-3)!important;box-shadow:var(--app-focus)!important}
 .search-box input{border:0!important;box-shadow:none!important;background:transparent!important;min-height:auto!important}
 .search-box svg{color:#7d8981}
@@ -110,8 +128,9 @@ button,input,select,textarea{font-family:inherit}
 /* Tabs */
 .page [class*="-tabs"]{gap:6px}
 .page [class*="-tabs"] button{min-height:40px;border-radius:9px;border:1px solid var(--app-border)!important;background:#fff!important;color:#607067!important;font-weight:700!important;box-shadow:none!important}
-.page [class*="-tabs"] button:hover{background:var(--app-surface-soft)!important;color:var(--app-green)!important}
+.page [class*="-tabs"] button:hover:not(:disabled){background:var(--app-surface-soft)!important;color:var(--app-green)!important}
 .page [class*="-tabs"] button.active{background:var(--app-green)!important;border-color:var(--app-green)!important;color:#fff!important}
+.page [class*="-tabs"] button.active span{background:rgba(255,255,255,.14)!important;color:#fff!important}
 
 /* Tables — desktop only, preserving mobile card transformations. */
 @media(min-width:801px){
@@ -125,17 +144,81 @@ button,input,select,textarea{font-family:inherit}
 }
 
 /* Status / notices */
-.status,.product-status,.history-status,.badge{border-radius:999px;font-weight:750}
+.status,.product-status,.history-status,.badge,.expense-status{border-radius:999px;font-weight:750}
 .notice{border-radius:10px;padding:11px 12px;font-size:12px;box-shadow:none}
-.notice.success{background:#eef8f1;border-color:#cfe7d5;color:var(--app-success)}
-.notice.error{background:#fff2f0;border-color:#f0d0ca;color:var(--app-danger)}
-.empty{border:1px dashed #dbe3dd;background:#fafcf9;color:var(--app-muted);border-radius:10px;text-align:center;padding:20px}
+.notice.success{background:var(--app-success-soft);border-color:#cfe7d5;color:var(--app-success)}
+.notice.error{background:var(--app-danger-soft);border-color:#f0d0ca;color:var(--app-danger)}
+.empty,.official-empty{border:1px dashed #dbe3dd!important;background:#fafcf9!important;color:var(--app-muted)!important;border-radius:12px!important;text-align:center}
+.empty{padding:20px}
 
-/* Details */
+/* Detail blocks */
 .detail-list{gap:8px}
 .detail-list>div{background:var(--app-surface-soft);border:1px solid #edf1ee;border-radius:10px;padding:11px}
 .detail-list span{color:var(--app-muted-2);font-size:10px;font-weight:700}
 .detail-list b{color:var(--app-text);font-size:13px}
+
+/* Shared chips / compact metadata */
+.daily-report-card-meta span,.daily-report-card-fields span,.official-db-meta span,.official-components span,.official-link-badge,.official-tags span,.official-tags code,.official-tags em{box-shadow:none}
+.daily-report-card-meta span,.official-db-meta span{border-color:#e3eae5!important;background:#f6f8f6!important;color:#66736b!important}
+.daily-report-card-fields span,.official-link-badge{background:var(--app-green-soft)!important;color:#315c42!important}
+
+/* Daily reports */
+.daily-report-review{margin-top:20px!important;gap:12px!important}
+.daily-report-history-panel{padding:16px!important}
+.daily-report-history-card{padding:14px!important;background:#fff!important;border:1px solid var(--app-border)!important}
+.daily-report-card-body{gap:8px!important}
+.daily-report-card-body section{border:1px solid #e8ede9!important;border-radius:10px!important;background:var(--app-surface-soft)!important;padding:10px 11px!important}
+.daily-report-card-body .good{background:#f2f8f3!important}
+.daily-report-card-body .issue{background:#fff8ed!important}
+.daily-report-card-body .next{background:#f2f7f9!important}
+.daily-report-card-actions{border-top-color:#edf1ee!important}
+.daily-report-card-actions button{border-color:var(--app-border-strong)!important;background:#fff!important;color:var(--app-green-2)!important;border-radius:9px!important}
+.daily-report-field-chips button{border-color:var(--app-border)!important;background:#fff!important;border-radius:10px!important}
+.daily-report-field-chips button.selected{background:var(--app-green-soft)!important;border-color:#8cac97!important;color:var(--app-green)!important}
+.month-switch button{border-color:var(--app-border-strong)!important;background:#fff!important;color:var(--app-green-2)!important;border-radius:10px!important}
+
+/* Expense claims */
+.expense-item-row{border:1px solid var(--app-border)!important;border-radius:12px!important;background:var(--app-surface-soft)!important;padding:10px!important}
+.expense-item-no{background:var(--app-green-soft)!important;color:var(--app-green-2)!important;border-radius:9px!important}
+.expense-line-total{background:var(--app-green-soft)!important;border:1px solid #e0e9e2;border-radius:10px!important}
+.expense-remove{border-color:#ead8d4!important;background:#fff!important;color:var(--app-danger)!important;border-radius:10px!important}
+.expense-submit-row{border-top-color:var(--app-border)!important}
+.expense-claim-card{background:#fff!important;border:1px solid var(--app-border)!important;border-radius:14px!important;overflow:hidden}
+.expense-card-head,.expense-card-items>div,.expense-note,.expense-review-result{border-color:#edf1ee!important}
+.expense-note{background:var(--app-surface-soft)!important}
+.expense-review-result{background:#f6f8f6!important}
+.expense-card-actions button{border:1px solid var(--app-border-strong)!important;background:#fff!important;color:var(--app-green-2)!important;border-radius:9px!important;font-weight:700!important}
+.expense-card-actions .approve{background:var(--app-green)!important;color:#fff!important;border-color:var(--app-green)!important}
+.expense-card-actions .reject{background:#fff!important;color:var(--app-danger)!important;border-color:#e8cbc6!important}
+.expense-status.submitted{background:var(--app-warning-soft)!important;color:var(--app-warning)!important}
+.expense-status.approved{background:var(--app-success-soft)!important;color:var(--app-success)!important}
+.expense-status.rejected{background:var(--app-danger-soft)!important;color:var(--app-danger)!important}
+
+/* Official fertilizer registry */
+.fertilizer-source-tabs{margin-bottom:14px!important}
+.official-fertilizer-panel{padding:18px!important}
+.official-db-title>svg{color:var(--app-green-2)!important}
+.official-db-title h2{font-size:16px!important}
+.official-db-head>a{color:var(--app-green-2)!important}
+.official-fertilizer-card{background:#fff!important;border:1px solid var(--app-border)!important;border-radius:13px!important;padding:14px!important}
+.official-fertilizer-card.expired{opacity:.7}
+.official-fertilizer-card-head>button{border:1px solid var(--app-border-strong)!important;background:#f4f8f5!important;color:var(--app-green-2)!important;border-radius:9px!important;font-weight:750!important}
+.official-fertilizer-card-head>button:not(:disabled):hover{background:var(--app-green-soft)!important}
+.official-fertilizer-card-head>button.imported{background:#eef3ef!important;color:#68766d!important}
+.official-npk{gap:6px!important}
+.official-npk>div{background:#f5f8f5!important;border:1px solid #edf1ee;border-radius:9px!important}
+.official-npk span{color:var(--app-muted-2)!important}
+.official-npk b{color:var(--app-green)!important}
+.official-components span{background:#f8faf8!important;border-color:#e4eae5!important;color:#617067!important}
+.official-tags span{background:var(--app-green-soft)!important;color:#315a41!important}
+.official-tags code{background:#f0f3f1!important;color:#66736b!important}
+.official-tags em{background:var(--app-danger-soft)!important;color:var(--app-danger)!important}
+.official-fertilizer-detail{border-top-color:#edf1ee!important}
+.official-import-notice{background:var(--app-green-soft)!important;border-color:#d5e5d9!important;color:#315b41!important;border-radius:10px!important}
+
+/* Product / production / sales / inventory: keep data semantics, align shells. */
+.product-master-card,.product-packaging-card,.production-lot-card,.manufacturing-card,.sale-card,.inventory-card,.fertilizer-master-card,.field-dossier-card{background-color:#fff;border-color:var(--app-border)!important}
+.product-master-card:hover,.production-lot-card:hover,.sale-card:hover{border-color:var(--app-border-strong)!important}
 
 /* Modals / sheets */
 .inventory-modal-backdrop,.modal-backdrop{background:rgba(14,31,20,.46)!important;backdrop-filter:blur(2px)}
@@ -149,13 +232,15 @@ button,input,select,textarea{font-family:inherit}
 .auth-tabs{background:#f0f4f1}
 .auth-tabs button.active{color:var(--app-green);box-shadow:var(--app-shadow-xs)}
 
-/* Mobile navigation and responsive rhythm */
+/* Tablet */
 @media(max-width:1100px) and (min-width:801px){
-  .page{padding:24px 22px 36px}
+  .page{padding:24px 22px 38px}
   .app-shell{grid-template-columns:216px minmax(0,1fr)}
 }
 
+/* Mobile */
 @media(max-width:800px){
+  :root{--app-control-h:46px}
   body{background:var(--app-bg)}
   .mobile-topbar{height:58px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--app-border);box-shadow:0 2px 12px rgba(23,63,43,.045)}
   .mobile-menu-trigger{border-color:var(--app-border-strong);border-radius:10px;color:var(--app-green-2)}
@@ -169,7 +254,7 @@ button,input,select,textarea{font-family:inherit}
   .mobile-more-links a.active{background:#eef5f0;color:var(--app-green)}
   .mobile-menu-label{color:#829087!important;font-size:9px!important;letter-spacing:.14em!important;font-weight:800!important}
 
-  .page{padding:16px 12px 28px!important}
+  .page{padding:16px 12px 30px!important}
   .page-head{margin-bottom:15px!important;gap:10px!important}
   .page-head h1{font-size:23px!important}
   .sub{font-size:12px;line-height:1.55}
@@ -189,6 +274,12 @@ button,input,select,textarea{font-family:inherit}
   .search-box input{font-size:16px!important}
   .page [class*="-tabs"] button{min-height:42px}
 
+  .daily-report-history-panel{padding:12px!important}
+  .daily-report-history-card,.official-fertilizer-card{padding:12px!important}
+  .expense-claim-card{border-radius:12px!important}
+  .expense-item-row{background:#fff!important}
+  .official-fertilizer-panel{padding:14px!important}
+
   .inventory-modal,.production-modal,.fertilizer-modal,.product-master-modal,.product-packaging-modal,.modal{border-radius:20px 20px 0 0!important;border-bottom:0!important}
 }
 
@@ -196,4 +287,5 @@ button,input,select,textarea{font-family:inherit}
   .metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .head-actions{width:100%;justify-content:flex-start}
   .page-head>.head-actions{align-items:center!important}
+  .fertilizer-source-tabs{grid-template-columns:1fr 1fr!important}
 }
