@@ -2,8 +2,15 @@ import { supabase } from './supabase'
 
 export type Fertilizer = {
   id:string; legacyId:string; name:string; manufacturer:string; category:string;
-  n:number; p:number; k:number; mg:number; ca:number; note:string; active:boolean
+  n:number; p:number; k:number; mg:number; ca:number; note:string; active:boolean;
+  officialRegistrationId:string; officialRegistrationNo:string; officialSourceDate:string
 }
+export type OfficialFertilizer = {
+  id:string; registrationNo:string; registrationCategory:string; name:string; company:string; type:string;
+  registrationDate:string; expirationDate:string; validPeriod:string; address:string; components:Record<string,number>;
+  sourceDate:string; sourceUrl:string; n:number; p:number; k:number; mg:number; ca:number
+}
+export type OfficialFertilizerMeta = { count:number; sourceDate:string; rowCount:number; completedAt:string }
 export type FertilizerLot = {
   id:string; legacyId:string; fertilizerId:string; fertilizerName:string; balanceKg:number;
   purchaseDate:string; supplier:string; purchaseUnitPrice:number; packageCount:number;
@@ -31,7 +38,9 @@ export type FertilizerFieldNpk = {
 }
 
 const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
+const maybe=(v:unknown)=>v===null||v===undefined||v===''?null:n(v)
 const one=(v:any)=>Array.isArray(v)?v[0]:v
+const first=(...xs:Array<number|null>)=>xs.find(x=>x!==null)??0
 
 export async function loadFertilizerRole(){
   const {data:{user}}=await supabase.auth.getUser(); if(!user)return ''
@@ -41,11 +50,36 @@ export async function loadFertilizerRole(){
 
 export async function loadFertilizers():Promise<Fertilizer[]>{
   const {data,error}=await supabase.from('fertilizers').select('*').is('deleted_at',null).order('name'); if(error)throw error
-  return (data||[]).map((r:any)=>({id:r.id,legacyId:r.legacy_id||'',name:r.name||'',manufacturer:r.manufacturer||'',category:r.category||'',n:n(r.nitrogen_percent),p:n(r.phosphate_percent),k:n(r.potassium_percent),mg:n(r.magnesium_percent),ca:n(r.calcium_percent),note:r.note||'',active:r.is_active!==false}))
+  return (data||[]).map((r:any)=>({id:r.id,legacyId:r.legacy_id||'',name:r.name||'',manufacturer:r.manufacturer||'',category:r.category||'',n:n(r.nitrogen_percent),p:n(r.phosphate_percent),k:n(r.potassium_percent),mg:n(r.magnesium_percent),ca:n(r.calcium_percent),note:r.note||'',active:r.is_active!==false,officialRegistrationId:r.official_registration_id||'',officialRegistrationNo:r.official_registration_no||'',officialSourceDate:r.official_source_date||''}))
 }
 
-export async function saveFertilizer(input:{id?:string;name:string;manufacturer?:string;category?:string;n:number;p:number;k:number;mg?:number;ca?:number;note?:string;active?:boolean}){
-  const {data,error}=await supabase.rpc('admin_save_fertilizer',{p_payload:{id:input.id||'',name:input.name,manufacturer:input.manufacturer||'',category:input.category||'',nitrogen_percent:input.n,phosphate_percent:input.p,potassium_percent:input.k,magnesium_percent:input.mg||0,calcium_percent:input.ca||0,note:input.note||'',is_active:input.active??true}}); if(error)throw error; return data as string
+export async function saveFertilizer(input:{id?:string;name:string;manufacturer?:string;category?:string;n:number;p:number;k:number;mg?:number;ca?:number;note?:string;active?:boolean;officialRegistrationId?:string}){
+  const {data,error}=await supabase.rpc('admin_save_fertilizer',{p_payload:{id:input.id||'',name:input.name,manufacturer:input.manufacturer||'',category:input.category||'',nitrogen_percent:input.n,phosphate_percent:input.p,potassium_percent:input.k,magnesium_percent:input.mg||0,calcium_percent:input.ca||0,note:input.note||'',is_active:input.active??true,official_registration_id:input.officialRegistrationId||''}}); if(error)throw error; return data as string
+}
+
+function mapOfficial(r:any):OfficialFertilizer{
+  const components:Record<string,number>={};for(const[k,v]of Object.entries(r.components||{})){if(Number.isFinite(Number(v)))components[k]=Number(v)}
+  return {id:r.id,registrationNo:r.registration_no||'',registrationCategory:r.registration_category||'',name:r.fertilizer_name||'',company:r.company_name||'',type:r.fertilizer_type||'',registrationDate:r.registration_date||'',expirationDate:r.expiration_date||'',validPeriod:r.valid_period||'',address:r.address||'',components,sourceDate:r.source_date||'',sourceUrl:r.source_url||'',n:first(maybe(r.tn),maybe(r.an),maybe(r.nn)),p:first(maybe(r.tp),maybe(r.cp),maybe(r.sp),maybe(r.wp)),k:first(maybe(r.tk),maybe(r.ck),maybe(r.wk)),mg:first(maybe(r.smg),maybe(r.cmg),maybe(r.wmg)),ca:first(maybe(r.sca),maybe(r.cca),maybe(r.wca))}
+}
+
+export async function loadOfficialFertilizerMeta():Promise<OfficialFertilizerMeta>{
+  const [{count,error:e1},{data:log,error:e2}]=await Promise.all([
+    supabase.from('fertilizer_official_registrations').select('id',{count:'exact',head:true}),
+    supabase.from('fertilizer_official_sync_log').select('source_date,row_count,completed_at').order('completed_at',{ascending:false}).limit(1).maybeSingle()
+  ]);if(e1)throw e1;if(e2)throw e2
+  return {count:count||0,sourceDate:log?.source_date||'',rowCount:n(log?.row_count),completedAt:log?.completed_at||''}
+}
+
+export async function searchOfficialFertilizers(query='',limit=100,offset=0):Promise<OfficialFertilizer[]>{
+  const {data,error}=await supabase.rpc('search_official_fertilizers',{p_query:query,p_limit:limit,p_offset:offset});if(error)throw error
+  return (data||[]).map(mapOfficial)
+}
+
+export async function syncOfficialFertilizers():Promise<{sourceDate:string;rows:number;csvFiles:string[]}>{
+  const {data,error}=await supabase.functions.invoke('sync-fertilizers',{body:{}})
+  if(error)throw new Error((data as any)?.error||error.message||'公式肥料DBを同期できませんでした。')
+  if((data as any)?.error)throw new Error((data as any).error)
+  return {sourceDate:(data as any)?.sourceDate||'',rows:n((data as any)?.rows),csvFiles:Array.isArray((data as any)?.csvFiles)?(data as any).csvFiles:[]}
 }
 
 export async function loadFertilizerLots():Promise<FertilizerLot[]>{
