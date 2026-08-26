@@ -95,7 +95,7 @@ export async function receiveFertilizerLot(input:{fertilizerId:string;purchaseDa
   const {data,error}=await supabase.rpc('admin_receive_fertilizer_lot',{p_payload:{fertilizer_id:input.fertilizerId,purchase_date:input.purchaseDate,supplier:input.supplier,purchase_unit_price:input.purchaseUnitPrice,package_count:input.packageCount,package_unit:input.packageUnit,package_size_kg:input.packageSizeKg,storage_location:input.storageLocation,manufacturer_lot_no:input.manufacturerLotNo,note:input.note}});if(error)throw error;return data as string
 }
 export async function adjustFertilizerStock(lotId:string,targetKg:number,reason:string){const{data,error}=await supabase.rpc('admin_adjust_fertilizer_stock',{p_lot_id:lotId,p_target_balance_kg:targetKg,p_reason:reason});if(error)throw error;return n(data)}
-export async function disposeFertilizerStock(lotId:string,qtyKg:number,reason:string){const{data,error}=await supabase.rpc('admin_dispose_fertilizer_stock',{p_lot_id:lotId,p_quantity_kg:qtyKg,p_reason:reason});if(error)throw error}
+export async function disposeFertilizerStock(lotId:string,qtyKg:number,reason:string){const{data,error}=await supabase.rpc('admin_dispose_fertilizer_stock',{p_lot_id:lotId,p_quantity_kg:qtyKg,p_reason:reason});if(error)throw error;return n(data)}
 
 export async function loadFertilizerFields():Promise<FertilizerField[]>{
   const {data,error}=await supabase.from('fields').select('id,legacy_id,name,location,area_m2').is('deleted_at',null).eq('status','active').order('legacy_id');if(error)throw error
