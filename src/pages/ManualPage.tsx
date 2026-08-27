@@ -2,119 +2,72 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Search, ShieldCheck, ChevronRight, Clock3, GitBranch, Lightbulb, CircleHelp } from 'lucide-react'
 
-type GuideItem = {
-  title: string
-  summary: string
-  steps: string[]
-  notes?: string[]
-  path?: string
-  adminOnly?: boolean
-}
-type GuideSection = { id:string; label:string; description:string; items:GuideItem[] }
+type GuideItem={title:string;summary:string;steps:string[];notes?:string[];path?:string;adminOnly?:boolean}
+type GuideSection={id:string;label:string;description:string;items:GuideItem[]}
 
-const guideSections: GuideSection[] = [
-  {
-    id:'start', label:'はじめに', description:'ログイン、権限、画面の見方など、最初に確認する内容です。',
-    items:[
-      {title:'ログインとユーザー権限',summary:'登録されたアカウントでログインして利用します。権限により表示される変更操作が異なります。',steps:['メールアドレスとパスワードでログインします。','初回登録ユーザーは管理者、2人目以降は作業者として登録されます。','管理者は「設定・監査」でユーザーを管理者／作業者へ変更できます。','各画面では、現在の権限で実行できるボタンだけを使用してください。'],notes:['最後の管理者1名は作業者へ変更できないよう保護されています。']},
-      {title:'PC・スマホのメニュー',summary:'PCでは左サイドバー、スマホでは下部ナビと「メニュー」から各機能へ移動します。',steps:['PCは左側の「防除」「施肥」「収穫・製造」「共通」から機能を選びます。','スマホは「ホーム・散布・施肥・圃場」を下部ナビからすぐ開けます。','その他の機能はスマホ下部の「メニュー」から開きます。']},
-      {title:'データの考え方',summary:'在庫・散布・施肥・製造・販売は互いに連動しています。前工程のデータを正しく登録すると後工程へ引き継がれます。',steps:['マスタで対象を登録します。','在庫を入庫します。','散布・施肥・製造・販売など実際の作業を登録します。','履歴や圃場カルテで後から確認します。'],notes:['登録済みデータを削除・取消した場合、関連する在庫を戻す仕組みがある機能があります。画面の確認メッセージを読んで操作してください。']},
-    ]
-  },
-  {
-    id:'dashboard', label:'ダッシュボード', description:'今日の判断に必要な情報をまとめて確認します。',
-    items:[
-      {title:'ダッシュボード',summary:'天気、直近作業、在庫、予定、製造・販売など、茶園全体の状況を一覧で確認します。',path:'/',steps:['ログイン直後にダッシュボードが開きます。','天気、前回作業、次回予定、在庫警告などを確認します。','各カードやクイック操作から必要な機能へ移動します。','月間売上・売上原価・粗利など販売状況も確認できます。'],notes:['警告の基準値や天気地点は管理者が「設定・監査」で変更できます。']},
-    ]
-  },
-  {
-    id:'spray', label:'防除', description:'農薬検索、在庫、散布、履歴、年間防除計画を管理します。',
-    items:[
-      {title:'散布を登録する',summary:'在庫のある農薬と圃場を選び、散布量・希釈情報を確認して散布記録を作成します。',path:'/sprays',steps:['「散布」を開きます。','使用する農薬在庫ロットを選びます。複数農薬を同じタンクへ登録できます。','散布する圃場を選びます。','散布液量を入力・選択し、必要薬量の自動計算を確認します。','FAMIC情報に基づく使用時期・回数などの注意表示を確認します。','内容を確認して散布を登録します。'],notes:['登録すると対象農薬の在庫が連動して減少します。']},
-      {title:'散布履歴を見る・修正する',summary:'過去の散布内容を振り返り、必要に応じて編集・削除します。',path:'/spray-history',steps:['「散布履歴」を開きます。','日付や圃場などから対象記録を確認します。','編集時は変更後の在庫差分が反映されます。','削除時は使用した在庫が戻ることを確認して実行します。']},
-      {title:'農薬在庫を管理する',summary:'購入した農薬の入庫、棚卸調整、廃棄をロット単位で管理します。',path:'/inventory',steps:['「農薬在庫」を開きます。','購入した農薬を入庫し、数量・購入日・購入先・単価・保管場所などを登録します。','実在庫との差がある場合は棚卸調整を行います。','廃棄した場合は廃棄処理を登録します。'],adminOnly:true},
-      {title:'農薬を公式DBから探す',summary:'FAMICの茶登録農薬データを検索し、使用する農薬を確認します。',path:'/pesticides',steps:['「農薬検索」を開きます。','農薬名・登録情報などで検索します。','茶への適用、対象病害虫、希釈倍数、使用時期・回数などを確認します。','必要な農薬を自社マスタへ取り込みます。','管理者は必要に応じてFAMIC公式DBを同期します。'],adminOnly:true,notes:['公式登録情報は使用前に最新表示を確認してください。']},
-      {title:'年間防除計画',summary:'時期ごとの散布予定を登録し、実施状況を管理します。',path:'/plans',steps:['「年間防除計画」を開きます。','対象時期、圃場、目的、農薬などを登録します。','ダッシュボードで近い予定を確認します。','実施後は散布記録と合わせて振り返ります。']},
-    ]
-  },
-  {
-    id:'fertilizer', label:'施肥', description:'肥料マスタ、公式肥料DB、在庫、施肥、履歴、年間計画を管理します。',
-    items:[
-      {title:'肥料マスタと農水省公式DB',summary:'自社で使う肥料と、農林水産省の公式肥料登録データを分けて管理します。',path:'/fertilizers',steps:['「肥料マスタ」を開きます。','「農水省 公式肥料DB」タブで肥料名・会社名・種類・登録番号を検索します。','有効な登録肥料の保証成分を確認します。','「マスタへ登録」から自社肥料マスタへ取り込みます。','管理者は「公式DB同期」で最新データへ更新できます。'],adminOnly:true,notes:['満期失効・廃止失効の肥料は公式DBで確認できますが、自社マスタへの新規取り込みはブロックされます。','N・P・K・Mg・Caなどは公式保証成分から自動転記されます。']},
-      {title:'肥料在庫を管理する',summary:'購入した肥料を袋・kgなどの単位で入庫し、現在庫と在庫金額を管理します。',path:'/fertilizer-inventory',steps:['「肥料在庫」を開きます。','肥料マスタから対象肥料を選びます。','購入日・購入先・袋数・1袋重量・単価・保管場所などを登録します。','必要に応じて棚卸調整や廃棄を登録します。']},
-      {title:'施肥を登録する',summary:'肥料在庫と圃場を紐付けて施肥量を記録し、N・P・K投入量を計算します。',path:'/fertilizer-applications',steps:['「施肥」を開きます。','使用する肥料在庫ロットを選びます。','施肥する圃場を選びます。','施肥量、方法、天候などを入力します。','N・P・K投入量を確認して登録します。'],notes:['登録すると肥料在庫が減少し、圃場別の年間養分集計へ反映されます。']},
-      {title:'施肥履歴・年間施肥計画',summary:'実施した施肥と今後の施肥予定を分けて確認します。',path:'/fertilizer-history',steps:['「施肥履歴」で過去の施肥量・圃場・肥料を確認します。','必要に応じて編集・削除します。','「年間施肥計画」で月・時期・圃場・目的・予定量を登録します。'],notes:['年間計画は「年間施肥計画」メニューから開けます。']},
-    ]
-  },
-  {
-    id:'fields', label:'圃場', description:'圃場情報と、圃場を起点にした作業・生産・販売履歴を確認します。',
-    items:[
-      {title:'圃場一覧と圃場カルテ',summary:'区画ごとの面積・情報を管理し、1つの圃場から関連履歴を追跡します。',path:'/fields',steps:['「圃場」を開きます。','対象区画を選び圃場カルテを開きます。','散布・施肥・摘採などの履歴を確認します。','摘採から製茶・製造・製品ロット・販売先までつながるデータがある場合はトレーサビリティを確認します。'],notes:['圃場面積は散布量や施肥量の計算にも使用されます。']},
-    ]
-  },
-  {
-    id:'harvest', label:'摘採・製造', description:'生葉の摘採から一次製茶、二次加工、商品化までを管理します。',
-    items:[
-      {title:'摘採を登録する',summary:'圃場ごとの摘採日・生葉重量・摘採方法などを記録します。',path:'/harvests',steps:['「摘採・製茶」を開きます。','摘採日、圃場、茶期、摘採方法、生葉重量などを登録します。','必要に応じて摘採面積、担当者、搬入先、品質メモなども入力します。','未加工の生葉残量を確認します。']},
-      {title:'一次製茶を登録する',summary:'複数の摘採記録をまとめて製茶し、碾茶・玉露などの出来高と歩留まりを記録します。',path:'/harvests',steps:['「摘採・製茶」の製茶側を開きます。','原料に使う摘採記録を選び、各投入kgを指定します。','加工日、工程、製品重量、工場、加工費などを入力します。','入力重量を超えて使っていないことを確認し登録します。']},
-      {title:'製造・製品在庫',summary:'一次製茶後の原料や購入原料をロット管理し、二次加工・在庫・原価を管理します。',path:'/production',steps:['「製造・製品在庫」を開きます。','必要に応じて原料・製品ロットを入庫します。','二次加工では入力ロットを選び、加工後の出力ロットを作成します。','原料原価、加工費、包材費、その他費用から総原価と単位原価を確認します。','棚卸調整・廃棄・加工履歴も同じ画面から管理します。']},
-      {title:'商品マスタ',summary:'販売する商品のSKU・内容量・容器・標準価格・包材原価などを登録します。',path:'/products',steps:['「商品マスタ」を開きます。','SKU、商品名、カテゴリ、ブランド、内容量、容器、標準価格、包材原価などを登録します。','販売を止める場合はステータスを変更します。','過去履歴を保持するため削除は安全な方式で処理されます。'],adminOnly:true},
-      {title:'商品化・SKU在庫',summary:'抹茶などの原料kgを、30g缶・袋・箱など販売単位の商品在庫へ変換します。',path:'/product-packaging',steps:['「商品化・SKU在庫」を開きます。','原料ロットと商品マスタのSKUを選びます。','製造個数を入力します。','必要原料量、商品化後の原料残量、原料原価、包材原価、総原価、1個原価を確認します。','登録するとSKU単位の製品ロットが入庫されます。'],notes:['商品マスタの内容量と包材原価を使って自動計算します。']},
-    ]
-  },
-  {
-    id:'sales', label:'販売', description:'製品在庫の出庫、売上、原価、粗利、販売先トレーサビリティを管理します。',
-    items:[
-      {title:'販売・出庫を登録する',summary:'在庫のある製品ロットを選び、販売数量・単価・販売先を記録します。',path:'/sales',steps:['「販売・出庫」を開きます。','在庫のある製品ロットを選びます。','数量と販売単価を入力します。','販売先、チャネル、請求書番号、発送先など必要情報を入力します。','売上、売上原価、粗利、粗利率を確認して登録します。'],notes:['販売登録すると製品在庫が減少します。取消した場合は対象在庫が戻ります。','販売履歴はCSV出力にも対応しています。']},
-    ]
-  },
-  {
-    id:'common', label:'日報・経費', description:'日々の作業記録と経費精算を管理します。',
-    items:[
-      {title:'日報を書く・振り返る',summary:'作業内容と振り返りを1日単位で記録し、月別・圃場別に後から確認します。',path:'/daily-reports',steps:['「日報」を開きます。','日付、作業時間、天気・現場状況、関連圃場を入力します。','作業内容、良かった点、課題、次回やることを入力して保存します。','履歴では月、担当者、圃場、キーワードで絞り込みます。'],notes:['原則として1人1日1件の日報として管理します。']},
-      {title:'経費精算を申請する',summary:'1回の購入で複数商品を買った場合も、複数明細をまとめて精算申請できます。',path:'/expenses',steps:['「経費精算」を開きます。','購入日時、購入先、備考を入力します。','購入内容ごとに数量、税込単価、税率を入力します。','必要なだけ明細を追加し、申請合計を確認します。','申請を送信します。','差戻された場合は内容を修正して再申請します。'],notes:['申請中・承認済の内容は申請者側から自由に変更できないよう保護されています。']},
-      {title:'経費を承認・CSV出力する',summary:'管理者は全員の精算申請を確認し、承認・差戻し・CSV出力を行います。',path:'/expenses',steps:['申請一覧から対象を開きます。','明細、購入先、合計金額などを確認します。','問題なければ承認、修正が必要ならコメントを付けて差戻します。','必要な月・状態などへ絞り込み、CSVを出力します。'],adminOnly:true},
-    ]
-  },
-  {
-    id:'admin', label:'設定・管理', description:'管理者向けの警告基準、天気地点、ユーザー権限、監査ログです。',
-    items:[
-      {title:'設定・監査',summary:'ダッシュボード警告基準、天気地点、ユーザー権限、操作履歴を管理します。',path:'/settings',adminOnly:true,steps:['「設定・監査」を開きます。','在庫残量、使用期限、防除予定、摘採予定の警告基準を必要に応じて変更します。','ダッシュボードに表示する天気地点を設定します。','ユーザー権限を管理者／作業者へ変更します。','監査ログで作成・更新・削除・同期操作を確認します。'],notes:['監査ログは「誰が・何を・いつ変更したか」を確認するために使用します。']},
-    ]
-  },
-  {
-    id:'help', label:'困ったとき', description:'入力や表示で迷ったときの基本的な確認方法です。',
-    items:[
-      {title:'登録ボタンが押せない・項目が出ない',summary:'入力不足、権限、前工程のデータ不足などを確認します。',steps:['画面上部の赤いエラーメッセージを確認します。','必須項目が空欄になっていないか確認します。','在庫を使う機能では、対象ロットの在庫が0になっていないか確認します。','管理者限定操作の場合は現在のユーザー権限を確認します。','公式DB検索は同期済みか、検索語を短くして再検索します。']},
-      {title:'データを修正したい',summary:'履歴画面または対象機能の編集操作から修正します。',steps:['該当する履歴・ロット・マスタを検索します。','編集ボタンがある場合は編集を使用します。','削除・取消時に在庫が戻る機能では確認メッセージを必ず確認します。','編集ボタンが表示されない場合は権限または後続データとの関連を確認します。']},
-    ]
-  },
+const guideSections:GuideSection[]=[
+  {id:'start',label:'はじめに',description:'ログイン、権限、画面の使い方',items:[
+    {title:'ログインとユーザー権限',summary:'登録アカウントでログインし、権限に応じて操作します。',steps:['メールアドレスとパスワードでログインします。','初回登録ユーザーは管理者、2人目以降は作業者として登録されます。','管理者は「設定・監査」でユーザー権限を変更できます。','作業者には閲覧や日常作業に必要な操作だけが表示されます。'],notes:['最後の管理者1名は作業者へ変更できないよう保護されています。']},
+    {title:'PC・スマホのメニュー',summary:'PCは左サイドバー、スマホは下部ナビとメニューから各機能を開きます。',steps:['PCでは「防除」「施肥」「収穫・製造」「設備」「共通」から選択します。','スマホではホーム・散布・施肥・圃場を下部ナビから開けます。','その他の機能は下部の「メニュー」から開きます。']},
+    {title:'データの基本的な流れ',summary:'マスタ・在庫・作業・履歴が連動するため、実際の順番に沿って登録します。',steps:['圃場・農薬・肥料・商品・設備など必要な基礎情報を登録します。','購入・取得した在庫や設備を登録します。','散布・施肥・摘採・製造・販売・修理など実際の作業を記録します。','履歴、圃場カルテ、ダッシュボードで振り返ります。']}
+  ]},
+  {id:'dashboard',label:'ダッシュボード',description:'今日の判断に必要な情報を確認',items:[
+    {title:'ダッシュボード',summary:'天気、作業、予定、在庫、製造、販売など茶園全体の状況を一覧表示します。',path:'/',steps:['ログインするとダッシュボードが開きます。','昨日・今日・先1週間の天気と降水情報を確認します。','前回作業、次回予定、在庫警告などを確認します。','売上・売上原価・粗利など販売状況を確認します。'],notes:['天気地点や警告基準は管理者が「設定・監査」で変更できます。']}
+  ]},
+  {id:'spray',label:'防除',description:'農薬検索・在庫・散布・履歴・年間計画',items:[
+    {title:'散布を登録する',summary:'在庫のある農薬と圃場を選び、必要薬量を計算して散布を記録します。',path:'/sprays',steps:['使用する農薬在庫ロットを選びます。複数農薬を同一タンクへ登録できます。','散布する圃場を選択します。','散布液量を入力し、希釈倍率と必要薬量を確認します。','FAMIC情報に基づく使用時期・回数などの注意表示を確認します。','内容を確認して登録します。'],notes:['登録すると農薬在庫が連動して減少します。']},
+    {title:'散布履歴',summary:'過去の散布を検索し、必要に応じて修正・削除します。',path:'/spray-history',steps:['対象の散布記録を探します。','編集すると在庫差分も再計算されます。','削除すると使用分の在庫が戻ります。']},
+    {title:'農薬在庫',summary:'購入した農薬をロット単位で入庫し、棚卸・廃棄・在庫金額を管理します。',path:'/inventory',adminOnly:true,steps:['農薬を選び、購入日・購入先・数量・単価・保管場所などを登録します。','必要に応じて棚卸調整や廃棄を登録します。','在庫残量と在庫金額を確認します。']},
+    {title:'FAMIC公式農薬DB',summary:'茶に登録された農薬の公式情報を検索し、自社マスタへ取り込みます。',path:'/pesticides',adminOnly:true,steps:['農薬名や登録情報で検索します。','茶への適用、病害虫、希釈倍数、使用時期・回数を確認します。','必要な農薬を自社マスタへ登録します。','管理者は公式DB同期で最新情報へ更新できます。']},
+    {title:'年間防除計画',summary:'時期・圃場・目的・農薬ごとに年間の防除予定を管理します。',path:'/plans',steps:['予定時期、圃場、目的、農薬を登録します。','ダッシュボードで近い予定を確認します。','実施後は散布履歴と合わせて振り返ります。']}
+  ]},
+  {id:'fertilizer',label:'施肥',description:'肥料公式DB・在庫・施肥・履歴・年間計画',items:[
+    {title:'肥料マスタと農水省公式DB',summary:'自社で使用する肥料と農水省の公式登録肥料を分けて管理します。',path:'/fertilizers',adminOnly:true,steps:['「農水省 公式肥料DB」から肥料名・会社名・種類・登録番号で検索します。','有効な登録肥料の保証成分を確認します。','使用する肥料だけを自社肥料マスタへ取り込みます。','必要に応じて公式DB同期を実行します。'],notes:['満期失効・廃止失効の肥料は閲覧できますが、自社マスタへの新規取り込みはブロックされます。']},
+    {title:'肥料在庫',summary:'袋数・重量・購入単価・保管場所などを登録し在庫を管理します。',path:'/fertilizer-inventory',steps:['肥料マスタから対象を選択します。','購入日・購入先・袋数・1袋重量・単価・保管場所を登録します。','棚卸調整や廃棄が必要な場合は在庫画面から登録します。']},
+    {title:'施肥を登録する',summary:'肥料在庫と圃場を紐付けて、施肥量とN・P・K投入量を記録します。',path:'/fertilizer-applications',steps:['肥料在庫ロットを選択します。','圃場を選び、施肥量・方法・天候などを入力します。','自動計算されたN・P・K量を確認して登録します。'],notes:['登録すると肥料在庫が減り、圃場別の年間養分集計へ反映されます。']},
+    {title:'施肥履歴・年間施肥計画',summary:'実施履歴と今後の施肥予定を管理します。',path:'/fertilizer-history',steps:['施肥履歴で過去の肥料・圃場・量を確認します。','必要に応じて編集・削除します。','年間施肥計画で月・時期・圃場・目的・予定量を登録します。']}
+  ]},
+  {id:'fields',label:'圃場',description:'区画情報と圃場起点の履歴を確認',items:[
+    {title:'圃場一覧・圃場カルテ',summary:'圃場面積や区画情報を管理し、散布・施肥・摘採・販売まで関連履歴を確認します。',path:'/fields',steps:['圃場一覧から区画を選びます。','圃場カルテで基本情報と作業履歴を確認します。','摘採から製茶・製造・製品ロット・販売までデータがつながっている場合はトレーサビリティを確認します。'],notes:['圃場面積は散布量や施肥量の計算にも利用されます。']}
+  ]},
+  {id:'production',label:'摘採・製造',description:'摘採から製茶・製造・商品化まで管理',items:[
+    {title:'摘採・一次製茶',summary:'圃場ごとの摘採と、複数摘採ロットを使った一次製茶を管理します。',path:'/harvests',steps:['摘採日、圃場、茶期、摘採方法、生葉重量などを登録します。','製茶時は原料に使う摘採記録と投入kgを選択します。','加工日、工程、製品重量、工場、加工費などを入力して登録します。']},
+    {title:'製造・製品在庫',summary:'原料・製品ロット、二次加工、棚卸、廃棄、原価を管理します。',path:'/production',steps:['原料または製品ロットを入庫します。','加工する場合は入力ロットと出力ロットを設定します。','原料原価、加工費、包材費、その他費用から総原価・単位原価を確認します。','在庫調整・廃棄・加工履歴を確認します。']},
+    {title:'商品マスタ',summary:'SKU、商品名、内容量、容器、標準価格、包材原価を管理します。',path:'/products',adminOnly:true,steps:['SKUと商品名を入力します。','内容量・単位・容器タイプを設定します。','標準販売価格と包材原価を登録します。']},
+    {title:'商品化・SKU在庫',summary:'原料ロットを商品マスタの仕様で包装し、完成品在庫と原価を作成します。',path:'/product-packaging',adminOnly:true,steps:['商品マスタから商品を選びます。','原料ロットと製造個数を指定します。','加工費・その他費用を入力し、必要原料量・総原価・個当たり原価を確認します。','登録すると完成品SKU在庫が作成されます。']}
+  ]},
+  {id:'sales',label:'販売',description:'販売・出庫と粗利を管理',items:[
+    {title:'販売・出庫',summary:'製品ロットを販売先・販売チャネルと紐付けて出庫し、売上と粗利を記録します。',path:'/sales',steps:['販売する在庫ロットを選びます。','販売数量・単価・販売先・販売チャネルなどを入力します。','売上、売上原価、粗利を確認して登録します。','取消時は対象在庫が戻ることを確認します。']}
+  ]},
+  {id:'equipment',label:'機械設備',description:'農機具・農具・車両と修理・車検・税金を管理',items:[
+    {title:'設備を登録する',summary:'農機具・農具・車両を資産台帳へ登録します。',path:'/equipment',adminOnly:true,steps:['「設備 → 機械設備管理」を開き「設備を登録」を押します。','設備区分、名前、メーカー、品番・型番、製造番号、保管場所を入力します。','取得区分を「購入・譲受・引継/相続・リース・その他」から選び、分かる場合は取得日と金額を入力します。','機械の場合はガソリン・混合オイル・軽油・電気・バッテリー等の燃料タイプを登録します。','現在状態と破損・不調などの状態メモを登録します。','車両の場合は車両番号、車検期限、税金期限、保険期限も登録します。']},
+    {title:'修理・整備履歴を登録する',summary:'設備ごとに修理・整備・点検・車検・税金などを時系列で残します。',path:'/equipment',adminOnly:true,steps:['設備カードの「修理・整備を登録」または履歴タブの「履歴を登録」を押します。','修理、整備、点検、オイル交換、部品交換、車検、自動車税、保険などから区分を選びます。','実施日、依頼先、内容、費用を入力します。','車両は走行距離、機械は稼働時間を必要に応じて記録します。','次回期限がある場合は日付を登録します。','作業後の状態を入力すると設備台帳の現在状態も更新されます。']},
+    {title:'期限と状態を確認する',summary:'修理必要設備や車検・税金・保険・整備期限を一覧で確認します。',path:'/equipment',steps:['上部の「要注意・修理」で状態確認が必要な設備数を確認します。','「期限警告」で期限超過または30日以内の設備数を確認します。','設備カードを開いて車検・税金・保険・次回整備日を確認します。','履歴タブで過去にいくら修理・整備費を使ったか確認します。'],notes:['作業者は設備情報と履歴を閲覧できます。設備・履歴の登録変更は管理者が行います。']}
+  ]},
+  {id:'common',label:'日報・経費',description:'日常業務と経費精算を記録',items:[
+    {title:'日報',summary:'1日の作業内容、良かった点、課題、次回対応、関連圃場を記録して振り返ります。',path:'/daily-reports',steps:['日付、作業時間、天気・現場状況、関連圃場を入力します。','作業内容、良かった点、課題、次回やることを登録します。','履歴で月・担当者・圃場・キーワードを使って振り返ります。']},
+    {title:'経費精算',summary:'複数の購入明細を1申請にまとめ、管理者が承認・差戻しします。',path:'/expenses',steps:['購入日時と購入先を入力します。','購入内容、数量、税込単価、税率を明細ごとに追加します。','申請すると管理者の確認対象になります。','差戻された場合は内容を修正して再申請します。','管理者は承認・差戻しとCSVエクスポートができます。']}
+  ]},
+  {id:'admin',label:'設定・サポート',description:'設定、監査、更新版の確認方法',items:[
+    {title:'設定・監査',summary:'天気地点、警告基準、ユーザー権限、監査ログを管理します。',path:'/settings',adminOnly:true,steps:['天気表示地点を設定します。','在庫・期限・予定の警告基準を調整します。','ユーザー権限を管理します。','監査ログで作成・更新・削除・同期操作を確認します。']},
+    {title:'この操作ガイドの更新方法',summary:'操作ガイドはアプリ本体に組み込まれているため、アプリのリリースと同時に更新されます。',path:'/manual',steps:['画面上部の「アプリ更新」と「リビジョン」を確認します。','新機能や仕様変更のリリース時には、この操作ガイドも同じアプリ版で更新されます。','古いPDFや別ファイルを参照する必要はありません。'],notes:['画面表示と説明が一致しない場合は、ブラウザを再読み込みして最新リリースを取得してください。']}
+  ]}
 ]
 
-const normalize=(v:string)=>v.normalize('NFKC').toLowerCase().replace(/\s+/g,' ')
-const buildDate = new Intl.DateTimeFormat('ja-JP',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Tokyo'}).format(new Date(__APP_BUILD_TIME__))
+function formatBuildDate(value:string){if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?value:new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',dateStyle:'medium',timeStyle:'short'}).format(d)}
 
 export default function ManualPage(){
   const[query,setQuery]=useState('')
-  const filtered=useMemo(()=>{
-    const q=normalize(query.trim())
-    if(!q)return guideSections
-    return guideSections.map(section=>({...section,items:section.items.filter(item=>normalize([section.label,section.description,item.title,item.summary,...item.steps,...(item.notes||[])].join(' ')).includes(q))})).filter(section=>section.items.length>0)
-  },[query])
-  const total=filtered.reduce((sum,s)=>sum+s.items.length,0)
+  const q=query.trim().normalize('NFKC').toLowerCase()
+  const sections=useMemo(()=>guideSections.map(s=>({...s,items:s.items.filter(i=>!q||`${s.label} ${s.description} ${i.title} ${i.summary} ${i.steps.join(' ')} ${(i.notes||[]).join(' ')}`.normalize('NFKC').toLowerCase().includes(q))})).filter(s=>s.items.length>0),[q])
+  const resultCount=sections.reduce((n,s)=>n+s.items.length,0)
   return <div className="page manual-page">
-    <div className="page-head manual-page-head"><div><p className="eyebrow">OPERATION GUIDE</p><h1>操作ガイド</h1><p className="sub">現在の茶園管理アプリに合わせた説明書です。機能の追加・更新と同じソースで管理され、アプリのデプロイ時に最新版へ置き換わります。</p></div><div className="manual-version"><span><Clock3 size={14}/>アプリ更新 {buildDate}</span><span><GitBranch size={14}/>rev {__APP_REVISION__||'build'}</span></div></div>
-
-    <section className="manual-intro panel"><div className="manual-intro-icon"><BookOpen size={24}/></div><div><h2>この説明書について</h2><p>外部PDFではなくアプリ本体に組み込んでいます。アプリを新しいリビジョンへ更新すると、このページも同じデプロイ内容で上書きされます。</p></div><div className="manual-policy"><ShieldCheck size={17}/><span>説明書だけ古い版が残らない構成</span></div></section>
-
-    <div className="manual-search search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="例：FAMIC、肥料、経費、商品化、CSV で検索"/><span>{total}項目</span></div>
-
+    <div className="page-head manual-page-head"><div><p className="eyebrow">USER GUIDE</p><h1>操作ガイド</h1><p className="sub">現在公開中の茶園管理アプリに対応した説明書です。機能更新と同じリリースで内容も更新されます。</p></div><div className="manual-version"><span><Clock3 size={13}/>アプリ更新 {formatBuildDate(__APP_BUILD_TIME__)}</span><span><GitBranch size={13}/>リビジョン {__APP_REVISION__||'—'}</span></div></div>
+    <section className="panel manual-intro"><div className="manual-intro-icon"><BookOpen size={23}/></div><div><h2>五代目八木一兵衛｜茶園管理 操作説明書</h2><p>分からない操作は下の検索欄から「車検」「農薬」「日報」「CSV」などの言葉で探してください。</p></div><span className="manual-policy"><ShieldCheck size={15}/>アプリと説明書を同時更新</span></section>
+    <div className="search-box manual-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="操作・機能・キーワードで説明書を検索"/><span>{resultCount}項目</span></div>
     <div className="manual-layout">
-      <aside className="manual-index panel"><div className="manual-index-title"><CircleHelp size={17}/><b>目次</b></div>{guideSections.map(section=><a key={section.id} href={`#manual-${section.id}`}>{section.label}<ChevronRight size={15}/></a>)}</aside>
-      <main className="manual-content">
-        {filtered.map(section=><section className="manual-section" id={`manual-${section.id}`} key={section.id}><div className="manual-section-head"><div><span>{section.label}</span><h2>{section.description}</h2></div><b>{section.items.length}</b></div><div className="manual-items">{section.items.map((item,index)=><article className="manual-card" key={`${section.id}-${item.title}`}><div className="manual-card-head"><div><span>{String(index+1).padStart(2,'0')}</span><div><div className="manual-title-row"><h3>{item.title}</h3>{item.adminOnly&&<em>管理者操作あり</em>}</div><p>{item.summary}</p></div></div>{item.path&&<Link to={item.path}>この画面を開く<ChevronRight size={15}/></Link>}</div><ol>{item.steps.map(step=><li key={step}>{step}</li>)}</ol>{item.notes?.length?<div className="manual-notes"><Lightbulb size={16}/><div>{item.notes.map(note=><p key={note}>{note}</p>)}</div></div>:null}</article>)}</div></section>)}
-        {!filtered.length&&<div className="manual-empty panel"><Search size={28}/><h2>該当する説明がありません</h2><p>検索語を短くするか、別の言葉で検索してください。</p></div>}
-      </main>
+      <aside className="panel manual-index"><div className="manual-index-title"><CircleHelp size={16}/><b>目次</b></div>{sections.map(s=><a key={s.id} href={`#manual-${s.id}`}>{s.label}<ChevronRight size={14}/></a>)}</aside>
+      <div className="manual-content">{sections.map(s=><section className="manual-section" id={`manual-${s.id}`} key={s.id}><div className="manual-section-head"><div><span>{s.label}</span><h2>{s.description}</h2></div><b>{s.items.length}</b></div><div className="manual-items">{s.items.map((item,index)=><article className="manual-card" key={item.title}><div className="manual-card-head"><div><span>{index+1}</span><div><div className="manual-title-row"><h3>{item.title}</h3>{item.adminOnly&&<em>管理者操作</em>}</div><p>{item.summary}</p></div></div>{item.path&&<Link to={item.path}>この画面を開く<ChevronRight size={14}/></Link>}</div><ol>{item.steps.map(step=><li key={step}>{step}</li>)}</ol>{item.notes&&item.notes.length>0&&<div className="manual-notes"><Lightbulb size={15}/><div>{item.notes.map(note=><p key={note}>{note}</p>)}</div></div>}</article>)}</div></section>)}{sections.length===0&&<div className="panel manual-empty">「{query}」に一致する説明はありません。</div>}</div>
     </div>
   </div>
 }
