@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 import { loadProductionLots, type ProductionLot } from './production'
 
 export type SaleSummary={id:string;legacyId:string;date:string;customerName:string;channel:string;invoiceNo:string;destination:string;note:string;status:string;salesAmountYen:number;costAmountYen:number;grossProfitYen:number;itemCount:number;cancelReason:string}
@@ -7,7 +8,7 @@ export type SaleTrace={salesItemId:string;saleId:string;fieldId:string;fieldLega
 export type SaleBundle={summary:SaleSummary;items:SaleItem[];traces:SaleTrace[]}
 const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
 
-export async function loadSalesRole(){const{data:{user}}=await supabase.auth.getUser();if(!user)return'';const{data,error}=await supabase.from('profiles').select('role').eq('id',user.id).maybeSingle();if(error)throw error;return data?.role||''}
+export async function loadSalesRole(){return await hasPermission('sales.manage')?'admin':'worker'}
 export async function loadSaleableLots():Promise<ProductionLot[]>{const lots=await loadProductionLots();return lots.filter(l=>l.balance>0.0005)}
 
 export async function loadSales(limit=300):Promise<SaleBundle[]>{
