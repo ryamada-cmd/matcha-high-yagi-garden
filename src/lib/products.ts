@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 
 export type ProductMaster = {
   id: string
@@ -23,11 +24,7 @@ export type ProductInput = Omit<ProductMaster, 'id' | 'createdAt' | 'updatedAt'>
 const n = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0
 
 export async function loadProductRole() {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return ''
-  const { data, error } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-  if (error) throw error
-  return data?.role || ''
+  return await hasPermission('products.manage') ? 'admin' : 'worker'
 }
 
 export async function loadProducts(): Promise<ProductMaster[]> {
