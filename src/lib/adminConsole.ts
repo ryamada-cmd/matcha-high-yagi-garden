@@ -34,6 +34,20 @@ export type AuditLogRow = {
   created_at: string
 }
 
+export type PermissionDefinition = {
+  permission_key: string
+  feature_key: string
+  feature_label: string
+  item_label: string
+  description: string
+  sort_order: number
+  locked: boolean
+  admin_allowed: boolean
+  worker_allowed: boolean
+}
+
+export type RolePermissionMatrix = { definitions: PermissionDefinition[] }
+
 export type AdminConsoleData = {
   settings: AppSettings
   users: AdminUser[]
@@ -75,6 +89,34 @@ export async function loadAdminConsole(limit = 100): Promise<AdminConsoleData> {
     users: (Array.isArray(raw?.users) ? raw.users : []) as AdminUser[],
     audit_logs: (Array.isArray(raw?.audit_logs) ? raw.audit_logs : []) as AuditLogRow[],
   }
+}
+
+export async function loadRolePermissionMatrix(): Promise<RolePermissionMatrix> {
+  const { data, error } = await supabase.rpc('get_role_permission_matrix')
+  if (error) throw error
+  const raw = (data || {}) as any
+  return {
+    definitions: (Array.isArray(raw.definitions) ? raw.definitions : []).map((r: any) => ({
+      permission_key: String(r.permission_key || ''),
+      feature_key: String(r.feature_key || ''),
+      feature_label: String(r.feature_label || ''),
+      item_label: String(r.item_label || ''),
+      description: String(r.description || ''),
+      sort_order: n(r.sort_order),
+      locked: r.locked === true,
+      admin_allowed: r.admin_allowed === true,
+      worker_allowed: r.worker_allowed === true,
+    })),
+  }
+}
+
+export async function saveRolePermissions(role: 'admin' | 'worker', permissions: Record<string, boolean>) {
+  const { data, error } = await supabase.rpc('update_role_permissions', {
+    p_role: role,
+    p_permissions: permissions,
+  })
+  if (error) throw error
+  return (data || {}) as Record<string, boolean>
 }
 
 export async function saveAppSettings(input: {
