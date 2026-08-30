@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 
 export type PlanField = { id:string; legacyId:string; name:string; location:string }
 export type PlanPesticide = { id:string; name:string; fracIrac:string }
@@ -10,13 +11,13 @@ export type AnnualPlan = {
 export type AnnualPlanInput = Omit<AnnualPlan,'id'>
 
 export async function loadAnnualPlans(): Promise<{plans:AnnualPlan[];fields:PlanField[];pesticides:PlanPesticide[];role:string}> {
-  const [plansRes,fieldsRes,pesticidesRes,profileRes] = await Promise.all([
+  const [plansRes,fieldsRes,pesticidesRes,canManage] = await Promise.all([
     supabase.from('annual_spray_plans').select('id,legacy_id,plan_year,month,period,field_id,all_fields,target_pest,recommended_pesticide_id,recommended_pesticide_text,frac_irac,planned_date,executed_date,status,note').order('plan_year',{ascending:false}).order('month').order('period'),
     supabase.from('fields').select('id,legacy_id,name,location,status').eq('status','active').order('location').order('legacy_id'),
     supabase.from('pesticides').select('id,name,frac_irac').order('name'),
-    supabase.from('profiles').select('role').single(),
+    hasPermission('spray_plans.manage'),
   ])
-  const err = plansRes.error || fieldsRes.error || pesticidesRes.error || profileRes.error
+  const err = plansRes.error || fieldsRes.error || pesticidesRes.error
   if (err) throw err
   return {
     plans:(plansRes.data||[]).map((p:any)=>({
@@ -25,7 +26,7 @@ export async function loadAnnualPlans(): Promise<{plans:AnnualPlan[];fields:Plan
     })),
     fields:(fieldsRes.data||[]).map((f:any)=>({id:f.id,legacyId:f.legacy_id||'',name:f.name||'',location:f.location||''})),
     pesticides:(pesticidesRes.data||[]).map((p:any)=>({id:p.id,name:p.name||'',fracIrac:p.frac_irac||''})),
-    role:(profileRes.data as any)?.role||'',
+    role:canManage?'admin':'worker',
   }
 }
 
