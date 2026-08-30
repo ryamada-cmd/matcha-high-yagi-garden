@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 
 export type FieldRecord = {
   id: string
@@ -31,12 +32,11 @@ export type FieldInput = {
 const n = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0
 
 export async function loadFields(): Promise<{ fields: FieldRecord[]; role: string }> {
-  const [fieldsRes, profileRes] = await Promise.all([
+  const [fieldsRes, canManage] = await Promise.all([
     supabase.from('fields').select('id,legacy_id,name,location,area_m2,variety,cultivation_type,standard_spray_l_per_10a,harvest_planned_date,status,note').order('location').order('legacy_id'),
-    supabase.from('profiles').select('role').single(),
+    hasPermission('fields.manage'),
   ])
-  const err = fieldsRes.error || profileRes.error
-  if (err) throw err
+  if (fieldsRes.error) throw fieldsRes.error
   const fields = (fieldsRes.data || []).map((f: any) => {
     const area = n(f.area_m2)
     const rate = n(f.standard_spray_l_per_10a)
@@ -55,7 +55,7 @@ export async function loadFields(): Promise<{ fields: FieldRecord[]; role: strin
       note: f.note || '',
     }
   })
-  return { fields, role: (profileRes.data as any)?.role || '' }
+  return { fields, role: canManage ? 'admin' : 'worker' }
 }
 
 export async function saveField(fieldId: string | null, input: FieldInput) {
