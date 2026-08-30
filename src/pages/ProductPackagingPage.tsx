@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Box, Edit3, PackageCheck, RefreshCw, Trash2 } from 'lucide-react'
-import { loadProducts, type ProductMaster } from '../lib/products'
-import { loadProductionLots, type ProductionLot } from '../lib/production'
+import type { ProductMaster } from '../lib/products'
+import type { ProductionLot } from '../lib/production'
 import { useAppPermissions } from '../lib/permissions'
-import { deleteProductPackaging, loadProductPackagingBatches, loadProductStockLots, saveProductPackaging, type ProductPackagingBatch, type ProductStockLot } from '../lib/productPackaging'
+import { deleteProductPackaging, loadPackagingProducts, loadPackagingSourceLots, loadProductPackagingBatches, loadProductStockLots, saveProductPackaging, type ProductPackagingBatch, type ProductStockLot } from '../lib/productPackaging'
 
 const today=()=>new Intl.DateTimeFormat('sv-SE').format(new Date())
 const num=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:3})
@@ -24,11 +24,12 @@ export default function ProductPackagingPage(){
   const[products,setProducts]=useState<ProductMaster[]>([]),[lots,setLots]=useState<ProductionLot[]>([]),[batches,setBatches]=useState<ProductPackagingBatch[]>([]),[stocks,setStocks]=useState<ProductStockLot[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
   const[batchId,setBatchId]=useState(''),[productId,setProductId]=useState(''),[sourceLotId,setSourceLotId]=useState(''),[units,setUnits]=useState(''),[date,setDate]=useState(today()),[facility,setFacility]=useState('自社'),[processingCost,setProcessingCost]=useState('0'),[otherCost,setOtherCost]=useState('0'),[operator,setOperator]=useState(''),[note,setNote]=useState('')
 
-  async function refresh(){setLoading(true);setError('');try{const[p,l,b,s]=await Promise.all([loadProducts(),loadProductionLots(),loadProductPackagingBatches(),loadProductStockLots()]);setProducts(p);setLots(l);setBatches(b);setStocks(s)}catch(e:any){setError(e?.message||'商品化データを読み込めませんでした。')}finally{setLoading(false)}}
-  useEffect(()=>{void refresh()},[])
+  async function refresh(){setLoading(true);setError('');try{const[p,l,b,s]=await Promise.all([canManage?loadPackagingProducts():Promise.resolve([] as ProductMaster[]),canManage?loadPackagingSourceLots():Promise.resolve([] as ProductionLot[]),loadProductPackagingBatches(),loadProductStockLots()]);setProducts(p);setLots(l);setBatches(b);setStocks(s)}catch(e:any){setError(e?.message||'商品化データを読み込めませんでした。')}finally{setLoading(false)}}
+  useEffect(()=>{void refresh()},[canManage])
+  useEffect(()=>{if(!canManage)reset()},[canManage])
   const current=batches.find(b=>b.batchId===batchId)||null
   const activeProducts=products.filter(p=>p.status==='ACTIVE'||p.id===productId)
-  const sourceLots=lots.filter(l=>['kg','g'].includes(l.unit.toLowerCase())&&(l.balance+(current?.sourceLotId===l.id?current.contentInputQty:0))>0.0005)
+  const sourceLots=lots.filter(l=>l.id!==current?.outputLotId&&['kg','g'].includes(l.unit.toLowerCase())&&(l.balance+(current?.sourceLotId===l.id?current.contentInputQty:0))>0.0005)
   const product=products.find(p=>p.id===productId)||null
   const source=lots.find(l=>l.id===sourceLotId)||null
   const count=Math.max(0,Math.floor(Number(units||0)))
