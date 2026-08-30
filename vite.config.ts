@@ -1,11 +1,12 @@
 import { execSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const isGitHubPages = process.env.GITHUB_ACTIONS === 'true'
 const buildTime = new Date().toISOString()
 let revision = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || ''
-if (!revision) {
+if (!revision && existsSync('.git')) {
   try { revision = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim() } catch { revision = '' }
 }
 
