@@ -18,7 +18,7 @@ function entityLabel(entity: string) {
   const map: Record<string,string> = {
     spray_batch: '散布記録', inventory_lot: '在庫ロット', inventory_transaction: '入出庫', pesticide: '農薬マスタ',
     pesticide_catalog: 'FAMIC公式DB', field: '圃場', annual_spray_plan: '年間計画', app_settings: 'アプリ設定', profile_role: 'ユーザー権限',
-    equipment_asset: '機械設備', equipment_service_record: '修理・整備履歴',
+    equipment_asset: '機械設備', equipment_service_record: '修理・整備履歴', vendor_invoice: '外部請求書', vendor_invoice_payment: '請求書支払履歴',
   }
   return map[entity] || entity
 }
