@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Eye, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
 import SprayPesticideGuidanceCard from '../components/SprayPesticideGuidance'
+import { useAppPermissions } from '../lib/permissions'
 import {
   deleteSpray,
   loadSprayBatchDetail,
@@ -18,10 +19,13 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 const today = () => new Date().toLocaleDateString('sv-SE')
 
 export default function SprayPage() {
+  const { allowed } = useAppPermissions()
+  const canCreate = allowed('sprays.create')
+  const canEdit = allowed('sprays.edit')
+  const canDelete = allowed('sprays.delete')
   const [lots, setLots] = useState<SprayLot[]>([])
   const [fields, setFields] = useState<SprayField[]>([])
   const [history, setHistory] = useState<SprayHistoryRow[]>([])
-  const [role, setRole] = useState('')
   const [chemicals, setChemicals] = useState<ChemRow[]>([{ key: uid(), lotId: '', dilution: '' }])
   const [selectedFields, setSelectedFields] = useState<string[]>([])
   const [sprayDate, setSprayDate] = useState(today())
@@ -52,7 +56,6 @@ export default function SprayPage() {
       setLots(data.lots)
       setFields(data.fields)
       setHistory(data.history)
-      setRole(data.role)
     } catch (e: any) {
       setError(e?.message || '散布データを読み込めませんでした。')
     } finally { setLoading(false) }
@@ -115,6 +118,7 @@ export default function SprayPage() {
   }
 
   async function startEdit(batchId: string) {
+    if (!canEdit) return setError('散布記録を編集する権限がありません。')
     setDetailLoading(true)
     setError('')
     setSuccess('')
@@ -165,6 +169,7 @@ export default function SprayPage() {
   }
 
   async function save() {
+    if (editingId ? !canEdit : !canCreate) return setError(editingId ? '散布記録を編集する権限がありません。' : '散布を登録する権限がありません。')
     setError(''); setSuccess('')
     const p = Number(preparedL)
     if (!sprayDate) return setError('散布日を入力してください。')
@@ -204,7 +209,7 @@ export default function SprayPage() {
   }
 
   async function remove(batchId: string, legacyId: string) {
-    if (role !== 'admin') return setError('散布記録の削除は管理者のみ実行できます。')
+    if (!canDelete) return setError('散布記録を削除する権限がありません。')
     if (!window.confirm(`${legacyId} を削除しますか？\n使用した農薬は在庫へ戻入し、入出庫履歴には戻入記録を残します。`)) return
     const reason = window.prompt('削除理由を入力してください（任意）', '')
     if (reason === null) return
@@ -234,6 +239,7 @@ export default function SprayPage() {
 
       <div className="spray-layout">
         <div className="spray-main">
+          {!canCreate&&!editingId?<section className="panel"><p className="empty">散布記録は閲覧のみ許可されています。新規登録は管理者の権限設定が必要です。</p></section>:<>
           <section className="panel form-panel">
             <h2>1. 基本情報</h2>
             <div className="form-grid three">
@@ -294,16 +300,16 @@ export default function SprayPage() {
             </div>
             <label className="full-label">備考<textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3}/></label>
             <button className="primary-button save-spray" onClick={() => void save()} disabled={saving}><Save size={18}/>{saving ? '在庫・履歴へ反映中…' : editingId ? '散布記録を更新' : '散布を登録'}</button>
-          </section>
+          </section></>}
         </div>
 
         <aside className="spray-summary">
-          <section className="panel sticky-summary">
+          {(canCreate||editingId)&&<section className="panel sticky-summary">
             <h2>全量散布プレビュー</h2>
             <div className="summary-numbers"><div><span>調製量</span><b>{prepared.toLocaleString()}L</b></div><div><span>標準必要量</span><b>{Math.round(totalStandard * 10) / 10}L</b></div><div><span>選択圃場</span><b>{chosen.length}圃場</b></div><div><span>残液</span><b>0L</b></div></div>
             {totalStandard > 0 && <p className="ratio-note">標準量に対して {(prepared / totalStandard * 100).toFixed(1)}% の密度で各圃場へ面積比例配分します。</p>}
             <div className="allocation-list">{allocations.map((a) => <div key={a.id}><span>{a.legacyId} {a.name}</span><b>{a.actual.toLocaleString()}L</b></div>)}</div>
-          </section>
+          </section>}
 
           <section className="panel history-mini">
             <div className="section-head"><h2>散布履歴</h2><span className="history-count">{history.length}件</span></div>
@@ -312,8 +318,8 @@ export default function SprayPage() {
               <strong>{h.preparedL.toLocaleString()}L</strong>
               <div className="history-actions">
                 <button title="詳細" onClick={() => void showDetail(h.id)}><Eye size={15}/></button>
-                <button title="編集" onClick={() => void startEdit(h.id)}><Pencil size={15}/></button>
-                {role === 'admin' && <button className="delete-action" title="削除" disabled={deletingId === h.id} onClick={() => void remove(h.id, h.legacyId)}><Trash2 size={15}/></button>}
+                {canEdit&&<button title="編集" onClick={() => void startEdit(h.id)}><Pencil size={15}/></button>}
+                {canDelete&&<button className="delete-action" title="削除" disabled={deletingId === h.id} onClick={() => void remove(h.id, h.legacyId)}><Trash2 size={15}/></button>}
               </div>
             </div>)}
           </section>
@@ -331,7 +337,7 @@ export default function SprayPage() {
               <div className="detail-subtitle">圃場別散布量</div>
               <div className="allocation-list">{detail.fields.map((f) => { const field = fields.find((x) => x.id === f.fieldId); return <div key={f.fieldId}><span>{field ? `${field.legacyId} ${field.name}` : f.fieldId}</span><b>{f.actualL.toLocaleString()}L</b></div> })}</div>
               {detail.note && <div className="detail-note"><span>備考</span><p>{detail.note}</p></div>}
-              <div className="detail-buttons"><button onClick={() => void startEdit(detail.id)}><Pencil size={15}/>編集</button>{role === 'admin' && <button className="danger-text-button" onClick={() => void remove(detail.id, detail.legacyId)}><Trash2 size={15}/>削除</button>}</div>
+              {(canEdit||canDelete)&&<div className="detail-buttons">{canEdit&&<button onClick={() => void startEdit(detail.id)}><Pencil size={15}/>編集</button>}{canDelete&&<button className="danger-text-button" onClick={() => void remove(detail.id, detail.legacyId)}><Trash2 size={15}/>削除</button>}</div>}
             </>}
           </section>}
         </aside>
