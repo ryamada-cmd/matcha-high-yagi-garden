@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Edit3, Package, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react'
-import { deleteProduct, loadProductRole, loadProducts, saveProduct, type ProductMaster } from '../lib/products'
+import { deleteProduct, loadProducts, saveProduct, type ProductMaster } from '../lib/products'
+import { useAppPermissions } from '../lib/permissions'
 
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
 const num = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 3 })
@@ -12,8 +13,9 @@ const blank = {
 }
 
 export default function ProductMasterPage() {
+  const { allowed }=useAppPermissions()
+  const canManage=allowed('products.manage')
   const [rows, setRows] = useState<ProductMaster[]>([])
-  const [role, setRole] = useState('')
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
@@ -26,13 +28,14 @@ export default function ProductMasterPage() {
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [r, ro] = await Promise.all([loadProducts(), loadProductRole()])
-      setRows(r); setRole(ro)
+      const r = await loadProducts()
+      setRows(r)
     } catch (e: any) {
       setError(e?.message || '商品マスタを読み込めませんでした。')
     } finally { setLoading(false) }
   }
   useEffect(() => { void refresh() }, [])
+  useEffect(()=>{if(!canManage){setOpen(false);setForm(blank)}},[canManage])
 
   const categories = useMemo(() => [...new Set(rows.map(r => r.category).filter(Boolean))].sort(), [rows])
   const filtered = useMemo(() => {
@@ -46,9 +49,9 @@ export default function ProductMasterPage() {
 
   const activeCount = rows.filter(r => r.status === 'ACTIVE').length
   const standardValue = rows.filter(r => r.status === 'ACTIVE').reduce((s, r) => s + r.standardPriceYen, 0)
-  const isAdmin = role === 'admin'
 
   function edit(r: ProductMaster) {
+    if(!canManage)return
     setForm({
       id: r.id, sku: r.sku, productName: r.productName, category: r.category, brandName: r.brandName,
       janCode: r.janCode, netContent: String(r.netContent), contentUnit: r.contentUnit, packageType: r.packageType,
@@ -58,7 +61,7 @@ export default function ProductMasterPage() {
   }
 
   async function submit(e: FormEvent) {
-    e.preventDefault(); setBusy(true); setError(''); setSuccess('')
+    e.preventDefault();if(!canManage)return setError('商品マスタを変更する権限がありません。'); setBusy(true); setError(''); setSuccess('')
     try {
       const netContent = Number(form.netContent)
       const standardPriceYen = Number(form.standardPriceYen)
@@ -91,6 +94,7 @@ export default function ProductMasterPage() {
   }
 
   async function remove(r: ProductMaster) {
+    if(!canManage)return setError('商品マスタを削除する権限がありません。')
     if (!window.confirm(`「${r.productName}」を商品マスタから削除しますか？\n過去データ保護のため内部では履歴を保持します。`)) return
     setBusy(true); setError(''); setSuccess('')
     try {
@@ -104,9 +108,9 @@ export default function ProductMasterPage() {
 
   return <div className="page product-master-page">
     <div className="page-head">
-      <div><p className="eyebrow">PRODUCT / SKU MASTER</p><h1>商品マスタ</h1><p className="sub">販売商品のSKU・JAN・内容量・価格・包材原価を管理します。管理者は登録・編集・削除できます。</p></div>
+      <div><p className="eyebrow">PRODUCT / SKU MASTER</p><h1>商品マスタ</h1><p className="sub">販売商品のSKU・JAN・内容量・価格・包材原価を管理します。変更権限がある場合は登録・編集・削除できます。</p></div>
       <div className="head-actions">
-        {isAdmin && <button className="primary-button" onClick={() => { setForm(blank); setOpen(true); setError(''); setSuccess('') }}><Plus size={17}/>商品を追加</button>}
+        {canManage && <button className="primary-button" onClick={() => { setForm(blank); setOpen(true); setError(''); setSuccess('') }}><Plus size={17}/>商品を追加</button>}
         <button className="icon-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={18} className={loading ? 'spin' : ''}/></button>
       </div>
     </div>
@@ -132,13 +136,13 @@ export default function ProductMasterPage() {
           <div className="product-card-identifiers"><code>{r.sku}</code>{r.janCode && <span>JAN {r.janCode}</span>}</div>
           <div className="product-card-specs"><div><span>内容量</span><b>{num.format(r.netContent)} {r.contentUnit}</b></div><div><span>容器</span><b>{r.packageType || '未設定'}</b></div><div><span>標準価格</span><b>{yen.format(r.standardPriceYen)}</b></div><div><span>包材原価</span><b>{yen.format(r.packagingCostYen)}</b></div></div>
           {r.note && <p>{r.note}</p>}
-          <div className="product-card-foot"><span className={`product-status ${r.status === 'ACTIVE' ? 'active' : 'inactive'}`}>{r.status === 'ACTIVE' ? '販売中' : '休止'}</span>{isAdmin && <div><button onClick={() => edit(r)}><Edit3 size={14}/>編集</button><button className="danger-text" onClick={() => void remove(r)} disabled={busy}><Trash2 size={14}/>削除</button></div>}</div>
+          <div className="product-card-foot"><span className={`product-status ${r.status === 'ACTIVE' ? 'active' : 'inactive'}`}>{r.status === 'ACTIVE' ? '販売中' : '休止'}</span>{canManage && <div><button onClick={() => edit(r)}><Edit3 size={14}/>編集</button><button className="danger-text" onClick={() => void remove(r)} disabled={busy}><Trash2 size={14}/>削除</button></div>}</div>
         </article>)}
         {!loading && !filtered.length && <p className="empty">該当する商品はありません。</p>}
       </div>
     </section>
 
-    {open && <div className="inventory-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget && !busy) setOpen(false) }}>
+    {canManage&&open && <div className="inventory-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget && !busy) setOpen(false) }}>
       <section className="panel inventory-modal product-master-modal">
         <div className="section-head"><div><p className="eyebrow">PRODUCT MASTER</p><h2>{form.id ? '商品を編集' : '商品を追加'}</h2></div><button className="close-detail" onClick={() => setOpen(false)} disabled={busy}><X size={17}/></button></div>
         <form className="inventory-action-form" onSubmit={submit}>
