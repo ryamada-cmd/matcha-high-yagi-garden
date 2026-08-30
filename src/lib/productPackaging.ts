@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
-import { hasPermission } from './permissions'
+import type { ProductMaster } from './products'
+import type { ProductionLot } from './production'
 
 export type ProductPackagingBatch={
   id:string;batchId:string;legacyId:string;date:string;productId:string;sku:string;productName:string;category:string;
@@ -18,7 +19,25 @@ export type ProductStockLot={
 
 const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
 
-export async function loadProductPackagingRole(){return await hasPermission('packaging.manage')?'admin':'worker'}
+export async function loadPackagingProducts():Promise<ProductMaster[]>{
+  const{data,error}=await supabase.from('packaging_product_options').select('*').order('category',{ascending:true}).order('product_name',{ascending:true})
+  if(error)throw error
+  return(data||[]).map((r:any)=>({
+    id:r.id,sku:r.sku||'',productName:r.product_name||'',category:r.category||'',brandName:r.brand_name||'',janCode:r.jan_code||'',
+    netContent:n(r.net_content),contentUnit:r.content_unit||'g',packageType:r.package_type||'',standardPriceYen:n(r.standard_price_yen),packagingCostYen:n(r.packaging_cost_yen),
+    status:r.status==='INACTIVE'?'INACTIVE':'ACTIVE',note:r.note||'',createdAt:r.created_at||'',updatedAt:r.updated_at||''
+  }))
+}
+
+export async function loadPackagingSourceLots():Promise<ProductionLot[]>{
+  const{data,error}=await supabase.from('packaging_source_lots').select('*').order('received_date',{ascending:false}).order('legacy_id',{ascending:false})
+  if(error)throw error
+  return(data||[]).map((r:any)=>({
+    id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),
+    balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',
+    supplier:'',storageLocation:r.storage_location||'',note:''
+  }))
+}
 
 export async function loadProductPackagingBatches(limit=200):Promise<ProductPackagingBatch[]>{
   const{data,error}=await supabase.from('product_packaging_summary').select('*').is('deleted_at',null).order('manufacturing_date',{ascending:false}).order('legacy_id',{ascending:false}).limit(limit)
