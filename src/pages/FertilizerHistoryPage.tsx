@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp, Download, Edit3, RefreshCw, Search, Trash2 } from 'lucide-react'
-import { deleteFertilizerApplication, loadFertilizerApplications, loadFertilizerFields, loadFertilizerNpkByField, loadFertilizerRole, loadFertilizers, type Fertilizer, type FertilizerApplication, type FertilizerField, type FertilizerFieldNpk } from '../lib/fertilizers'
+import { useAppPermissions } from '../lib/permissions'
+import { deleteFertilizerApplication, loadFertilizerApplications, loadFertilizerFields, loadFertilizerNpkByField, loadFertilizers, type Fertilizer, type FertilizerApplication, type FertilizerField, type FertilizerFieldNpk } from '../lib/fertilizers'
 
 const num=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:3})
 const thisYear=()=>Number(new Intl.DateTimeFormat('en',{year:'numeric'}).format(new Date()))
@@ -9,11 +10,12 @@ const norm=(v:unknown)=>String(v??'').normalize('NFKC').toLowerCase()
 const csvCell=(v:unknown)=>`"${String(v??'').replace(/"/g,'""')}"`
 
 export default function FertilizerHistoryPage(){
+  const{allowed}=useAppPermissions(),canEdit=allowed('fertilizer_applications.edit'),canDelete=allowed('fertilizer_applications.delete')
   const navigate=useNavigate()
-  const[apps,setApps]=useState<FertilizerApplication[]>([]),[fertilizers,setFertilizers]=useState<Fertilizer[]>([]),[fields,setFields]=useState<FertilizerField[]>([]),[npk,setNpk]=useState<FertilizerFieldNpk[]>([]),[role,setRole]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('')
+  const[apps,setApps]=useState<FertilizerApplication[]>([]),[fertilizers,setFertilizers]=useState<Fertilizer[]>([]),[fields,setFields]=useState<FertilizerField[]>([]),[npk,setNpk]=useState<FertilizerFieldNpk[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('')
   const[query,setQuery]=useState(''),[start,setStart]=useState(''),[end,setEnd]=useState(''),[fertilizerId,setFertilizerId]=useState(''),[fieldId,setFieldId]=useState(''),[year,setYear]=useState(thisYear()),[expanded,setExpanded]=useState<string[]>([])
 
-  async function refresh(){setLoading(true);setError('');try{const[a,f,fi,r]=await Promise.all([loadFertilizerApplications(500),loadFertilizers(),loadFertilizerFields(),loadFertilizerRole()]);setApps(a);setFertilizers(f);setFields(fi);setRole(r);setNpk(await loadFertilizerNpkByField(year))}catch(e:any){setError(e?.message||'施肥履歴を読み込めませんでした。')}finally{setLoading(false)}}
+  async function refresh(){setLoading(true);setError('');try{const[a,f,fi]=await Promise.all([loadFertilizerApplications(500),loadFertilizers(),loadFertilizerFields()]);setApps(a);setFertilizers(f);setFields(fi);setNpk(await loadFertilizerNpkByField(year))}catch(e:any){setError(e?.message||'施肥履歴を読み込めませんでした。')}finally{setLoading(false)}}
   useEffect(()=>{void refresh()},[])
   useEffect(()=>{void loadFertilizerNpkByField(year).then(setNpk).catch(()=>{})},[year])
 
@@ -28,7 +30,7 @@ export default function FertilizerHistoryPage(){
   const summary=useMemo(()=>filtered.reduce((s,a)=>({kg:s.kg+a.totalKg,n:s.n+a.nKg,p:s.p+a.pKg,k:s.k+a.kKg}),{kg:0,n:0,p:0,k:0}),[filtered])
 
   function toggle(id:string){setExpanded(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id])}
-  async function remove(a:FertilizerApplication){const reason=window.prompt('削除理由を入力してください。削除すると肥料在庫へ戻入されます。','入力誤り');if(reason===null)return;setBusy(true);setError('');try{await deleteFertilizerApplication(a.id,reason);await refresh()}catch(e:any){setError(e?.message||'削除に失敗しました。')}finally{setBusy(false)}}
+  async function remove(a:FertilizerApplication){if(!canDelete)return setError('施肥記録を削除する権限がありません。');const reason=window.prompt('削除理由を入力してください。削除すると肥料在庫へ戻入されます。','入力誤り');if(reason===null)return;setBusy(true);setError('');try{await deleteFertilizerApplication(a.id,reason);await refresh()}catch(e:any){setError(e?.message||'削除に失敗しました。')}finally{setBusy(false)}}
   function exportCsv(){
     const rows:(string|number)[][]=[['施肥日','施肥ID','担当者','方法','天候','圃場','肥料','施肥量kg','kg/10a','N kg','P kg','K kg','備考']]
     for(const a of filtered)for(const l of a.lines)rows.push([a.date,a.legacyId,a.operator,a.method,a.weather,`${l.fieldLegacyId} ${l.fieldName}`,l.fertilizerName,l.amountKg,l.rateKgPer10a,l.nKg,l.pKg,l.kKg,a.note])
@@ -54,7 +56,7 @@ export default function FertilizerHistoryPage(){
       <div className="panel-title"><div><h2>施肥実績</h2><p>条件に一致した記録を表示</p></div><span>{filtered.length}件</span></div>
       <div className="fertilizer-history-list formal">
         {filtered.map(a=>{const open=expanded.includes(a.id);return <article key={a.id}>
-          <div className="fertilizer-history-head"><button className="fertilizer-history-expand" onClick={()=>toggle(a.id)}><div><span>{a.date}</span><b>{a.legacyId}</b><small>{a.operator||'担当未入力'} / {a.method||'方法未入力'}</small></div><div><strong>{num.format(a.totalKg)}kg</strong>{open?<ChevronUp size={17}/>:<ChevronDown size={17}/>}</div></button><div className="fertilizer-history-actions"><button onClick={()=>navigate(`/fertilizer-applications?edit=${a.id}`)}><Edit3 size={15}/>編集</button>{role==='admin'&&<button className="danger-text-button" disabled={busy} onClick={()=>void remove(a)}><Trash2 size={15}/>削除</button>}</div></div>
+          <div className="fertilizer-history-head"><button className="fertilizer-history-expand" onClick={()=>toggle(a.id)}><div><span>{a.date}</span><b>{a.legacyId}</b><small>{a.operator||'担当未入力'} / {a.method||'方法未入力'}</small></div><div><strong>{num.format(a.totalKg)}kg</strong>{open?<ChevronUp size={17}/>:<ChevronDown size={17}/>}</div></button>{(canEdit||canDelete)&&<div className="fertilizer-history-actions">{canEdit&&<button onClick={()=>navigate(`/fertilizer-applications?edit=${a.id}`)}><Edit3 size={15}/>編集</button>}{canDelete&&<button className="danger-text-button" disabled={busy} onClick={()=>void remove(a)}><Trash2 size={15}/>削除</button>}</div>}</div>
           <div className="fertilizer-history-npk"><span>N <b>{num.format(a.nKg)}kg</b></span><span>P <b>{num.format(a.pKg)}kg</b></span><span>K <b>{num.format(a.kKg)}kg</b></span></div>
           {open&&<div className="fertilizer-history-detail"><div className="detail-list"><div><span>天候</span><b>{a.weather||'—'}</b></div><div><span>方法</span><b>{a.method||'—'}</b></div><div className="detail-wide"><span>備考</span><b>{a.note||'—'}</b></div></div><div className="fertilizer-history-lines">{a.lines.map(l=><span key={l.id}><b>{l.fieldLegacyId} {l.fieldName}</b>｜{l.fertilizerName} {num.format(l.amountKg)}kg（{num.format(l.rateKgPer10a)}kg/10a）｜N {num.format(l.nKg)} / P {num.format(l.pKg)} / K {num.format(l.kKg)}kg</span>)}</div></div>}
         </article>})}
