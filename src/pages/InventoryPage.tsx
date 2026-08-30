@@ -5,7 +5,6 @@ import {
   adjustInventoryStock,
   disposeInventoryStock,
   loadInventory,
-  loadInventoryRole,
   loadInventoryTransactions,
   loadPesticideOptions,
   receiveInventoryLot,
@@ -13,6 +12,7 @@ import {
   type InventoryTransactionRow,
   type PesticideOption,
 } from '../lib/inventory'
+import { useAppPermissions } from '../lib/permissions'
 
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
 const num = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 3 })
@@ -22,11 +22,12 @@ const todayLocal = () => new Intl.DateTimeFormat('sv-SE').format(new Date())
 type ActionMode = 'receive'|'adjust'|'dispose'|null
 
 export default function InventoryPage() {
+  const { allowed } = useAppPermissions()
+  const canManage = allowed('pesticide_inventory.manage')
   const [searchParams,setSearchParams] = useSearchParams()
   const [rows, setRows] = useState<InventoryRow[]>([])
   const [transactions, setTransactions] = useState<InventoryTransactionRow[]>([])
   const [pesticides, setPesticides] = useState<PesticideOption[]>([])
-  const [role, setRole] = useState('')
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState<'stock'|'history'>('stock')
   const [loading, setLoading] = useState(true)
@@ -47,20 +48,21 @@ export default function InventoryPage() {
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [stock, tx, pesticideList, currentRole] = await Promise.all([
-        loadInventory(), loadInventoryTransactions(), loadPesticideOptions(), loadInventoryRole()
+      const [stock, tx, pesticideList] = await Promise.all([
+        loadInventory(), loadInventoryTransactions(), loadPesticideOptions()
       ])
-      setRows(stock); setTransactions(tx); setPesticides(pesticideList); setRole(currentRole)
+      setRows(stock); setTransactions(tx); setPesticides(pesticideList)
     } catch (e: any) {
       setError(e?.message || '在庫を読み込めませんでした。')
     } finally { setLoading(false) }
   }
 
   useEffect(() => { void refresh() }, [])
+  useEffect(() => { if (!canManage) { setMode(null); setSelectedLot(null) } }, [canManage])
 
   useEffect(() => {
     const pesticideId = searchParams.get('receivePesticide')
-    if (!pesticideId || role !== 'admin' || !pesticides.some((p) => p.id === pesticideId)) return
+    if (!pesticideId || !canManage || !pesticides.some((p) => p.id === pesticideId)) return
     setReceive((prev) => ({ ...prev, pesticideId }))
     setMode('receive')
     setTab('stock')
@@ -69,7 +71,7 @@ export default function InventoryPage() {
     const next = new URLSearchParams(searchParams)
     next.delete('receivePesticide')
     setSearchParams(next, { replace: true })
-  }, [pesticides, role, searchParams, setSearchParams])
+  }, [pesticides, canManage, searchParams, setSearchParams])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -85,20 +87,21 @@ export default function InventoryPage() {
     const days = (d.getTime() - Date.now()) / 86400000
     return days >= 0 && days <= 90
   }).length
-  const isAdmin = role === 'admin'
 
   function closeAction() {
     setMode(null); setSelectedLot(null); setPhysicalBalance(''); setAdjustReason(''); setDisposeQty(''); setDisposeReason('')
   }
   function openAdjust(lot: InventoryRow) {
+    if(!canManage)return
     setSelectedLot(lot); setPhysicalBalance(String(lot.balance)); setAdjustReason(''); setMode('adjust'); setError(''); setSuccess('')
   }
   function openDispose(lot: InventoryRow) {
+    if(!canManage)return
     setSelectedLot(lot); setDisposeQty(''); setDisposeReason(''); setMode('dispose'); setError(''); setSuccess('')
   }
 
   async function submitReceive(e: FormEvent) {
-    e.preventDefault(); setBusy(true); setError(''); setSuccess('')
+    e.preventDefault(); if(!canManage)return setError('農薬在庫を変更する権限がありません。');setBusy(true); setError(''); setSuccess('')
     try {
       if (!receive.pesticideId) throw new Error('農薬を選択してください。')
       await receiveInventoryLot({
@@ -124,6 +127,7 @@ export default function InventoryPage() {
 
   async function submitAdjust(e: FormEvent) {
     e.preventDefault(); if (!selectedLot) return
+    if(!canManage)return setError('農薬在庫を変更する権限がありません。')
     setBusy(true); setError(''); setSuccess('')
     try {
       const target = Number(physicalBalance)
@@ -136,6 +140,7 @@ export default function InventoryPage() {
 
   async function submitDispose(e: FormEvent) {
     e.preventDefault(); if (!selectedLot) return
+    if(!canManage)return setError('農薬在庫を変更する権限がありません。')
     setBusy(true); setError(''); setSuccess('')
     try {
       await disposeInventoryStock(selectedLot.lotId, Number(disposeQty), disposeReason)
@@ -154,7 +159,7 @@ export default function InventoryPage() {
           <p className="sub">在庫は購入・散布・戻入・廃棄・棚卸調整の履歴から自動算出します。</p>
         </div>
         <div className="head-actions">
-          {isAdmin && <button className="primary-button inventory-add-button" onClick={()=>{setMode('receive');setError('');setSuccess('')}}><PackagePlus size={17}/>農薬を入庫</button>}
+          {canManage && <button className="primary-button inventory-add-button" onClick={()=>{setMode('receive');setError('');setSuccess('')}}><PackagePlus size={17}/>農薬を入庫</button>}
           <button className="icon-button" onClick={() => void refresh()} disabled={loading} aria-label="更新"><RefreshCw size={18} className={loading ? 'spin' : ''}/></button>
         </div>
       </div>
@@ -181,17 +186,17 @@ export default function InventoryPage() {
         </div>
         <div className="table-wrap">
           <table className="data-table inventory-table">
-            <thead><tr><th>農薬</th><th>残量</th><th>在庫金額</th><th>期限</th><th>購入先</th><th>保管場所</th><th>ロット</th>{isAdmin&&<th>操作</th>}</tr></thead>
+            <thead><tr><th>農薬</th><th>残量</th><th>在庫金額</th><th>期限</th><th>購入先</th><th>保管場所</th><th>ロット</th>{canManage&&<th>操作</th>}</tr></thead>
             <tbody>
               {filtered.map((r) => (
                 <tr key={r.lotId} className={r.balance <= 0 ? 'row-zero' : ''}>
                   <td><b>{r.pesticideName}</b>{r.manufacturerLotNo&&<small className="cell-sub">メーカーLot: {r.manufacturerLotNo}</small>}</td>
                   <td><span className={r.balance > 0 ? 'stock-pill' : 'stock-pill zero'}>{num.format(r.balance)} {r.unit}</span></td>
                   <td>{yen.format(r.stockValue)}</td><td>{r.expiryDate || '—'}</td><td>{r.supplier || '—'}</td><td>{r.storage || '—'}</td><td><code>{r.legacyId || '—'}</code></td>
-                  {isAdmin&&<td><div className="inventory-row-actions"><button onClick={()=>openAdjust(r)}><ClipboardCheck size={14}/>棚卸</button><button className="danger-text-button" disabled={r.balance<=0} onClick={()=>openDispose(r)}><Trash2 size={14}/>廃棄</button></div></td>}
+                  {canManage&&<td><div className="inventory-row-actions"><button onClick={()=>openAdjust(r)}><ClipboardCheck size={14}/>棚卸</button><button className="danger-text-button" disabled={r.balance<=0} onClick={()=>openDispose(r)}><Trash2 size={14}/>廃棄</button></div></td>}
                 </tr>
               ))}
-              {!loading && filtered.length === 0 && <tr><td colSpan={isAdmin?8:7} className="empty-cell">該当する在庫はありません。</td></tr>}
+              {!loading && filtered.length === 0 && <tr><td colSpan={canManage?8:7} className="empty-cell">該当する在庫はありません。</td></tr>}
             </tbody>
           </table>
         </div>
@@ -203,7 +208,7 @@ export default function InventoryPage() {
         </tbody></table></div>
       </section>}
 
-      {mode && <div className="inventory-modal-backdrop" onMouseDown={(e)=>{if(e.target===e.currentTarget&&!busy)closeAction()}}><section className="panel inventory-modal">
+      {canManage&&mode && <div className="inventory-modal-backdrop" onMouseDown={(e)=>{if(e.target===e.currentTarget&&!busy)closeAction()}}><section className="panel inventory-modal">
         <div className="section-head"><div><p className="eyebrow">{mode==='receive'?'RECEIVING':mode==='adjust'?'STOCKTAKE':'DISPOSAL'}</p><h2>{mode==='receive'?'農薬を入庫':mode==='adjust'?'棚卸調整':'農薬を廃棄'}</h2></div><button className="close-detail" disabled={busy} onClick={closeAction}><X size={17}/></button></div>
 
         {mode==='receive'&&<form className="inventory-action-form" onSubmit={submitReceive}>
