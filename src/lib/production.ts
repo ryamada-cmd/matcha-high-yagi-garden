@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 
 export type ProductionLot={
  id:string;legacyId:string;materialName:string;category:string;unit:string;receivedDate:string;initialQty:number;balance:number;
@@ -17,8 +18,15 @@ const one=(v:any)=>Array.isArray(v)?v[0]:v
 export async function loadProductionRole(){const{data:{user}}=await supabase.auth.getUser();if(!user)return'';const{data,error}=await supabase.from('profiles').select('role').eq('id',user.id).maybeSingle();if(error)throw error;return data?.role||''}
 
 export async function loadProductionLots():Promise<ProductionLot[]>{
- const{data,error}=await supabase.from('production_inventory_balances').select('*').is('deleted_at',null).order('received_date',{ascending:false}).order('legacy_id',{ascending:false});if(error)throw error
- return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',supplier:r.supplier||'',storageLocation:r.storage_location||'',note:r.note||''}))
+ if(await hasPermission('production.view')){
+  const{data,error}=await supabase.from('production_inventory_balances').select('*').is('deleted_at',null).order('received_date',{ascending:false}).order('legacy_id',{ascending:false});if(error)throw error
+  return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',supplier:r.supplier||'',storageLocation:r.storage_location||'',note:r.note||''}))
+ }
+ if(await hasPermission('packaging.view')){
+  const{data,error}=await supabase.from('product_stock_lots').select('*').order('received_date',{ascending:false}).order('legacy_id',{ascending:false});if(error)throw error
+  return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.product_name||'',category:'製品',unit:'個',receivedDate:r.received_date||'',initialQty:n(r.units_produced),balance:n(r.stock_units),totalCostYen:n(r.unit_cost_yen)*n(r.units_produced),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:'MANUFACTURING',sourceId:r.manufacturing_batch_id||'',supplier:'',storageLocation:r.storage_location||'',note:''}))
+ }
+ return[]
 }
 
 export async function loadManufacturingBatches(limit=200):Promise<ManufacturingBatch[]>{
