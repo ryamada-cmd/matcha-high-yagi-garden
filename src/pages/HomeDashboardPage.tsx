@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CircleAlert, Factory, Leaf, PackageCheck, RefreshCw, Scissors, ShieldAlert, ShoppingCart, SprayCan } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CircleAlert, Factory, Leaf, PackageCheck, RefreshCw, Scissors, ShieldAlert, ShoppingCart, SprayCan, Tractor } from 'lucide-react'
 import WeatherPanel from '../components/WeatherPanel'
 import { loadDashboard, type DashboardAlert, type DashboardData } from '../lib/dashboard'
 import { loadFertilizerDashboard, type FertilizerDashboardData } from '../lib/fertilizerDashboard'
 import { loadHarvestRecords, loadProcessingBatches, type HarvestRecord, type ProcessingBatch } from '../lib/harvestProcessing'
 import { loadManufacturingBatches, loadProductionLots, type ManufacturingBatch, type ProductionLot } from '../lib/production'
 import { loadSalesDashboard, type SalesDashboardData } from '../lib/salesDashboard'
+import { loadEquipmentDashboard, type EquipmentDashboardData } from '../lib/equipmentDashboard'
 
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
 const num = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 })
@@ -26,6 +27,7 @@ type HomeData = {
   lots: ProductionLot[]
   manufacturing: ManufacturingBatch[]
   sales: SalesDashboardData
+  equipment: EquipmentDashboardData
 }
 
 export default function HomeDashboardPage() {
@@ -36,10 +38,17 @@ export default function HomeDashboardPage() {
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [defense, fertilizer, harvests, processing, lots, manufacturing, sales] = await Promise.all([
-        loadDashboard(), loadFertilizerDashboard(), loadHarvestRecords(300), loadProcessingBatches(200), loadProductionLots(), loadManufacturingBatches(100), loadSalesDashboard(),
+      const [defense, fertilizer, harvests, processing, lots, manufacturing, sales, equipment] = await Promise.all([
+        loadDashboard(),
+        loadFertilizerDashboard(),
+        loadHarvestRecords(300),
+        loadProcessingBatches(200),
+        loadProductionLots(),
+        loadManufacturingBatches(100),
+        loadSalesDashboard(),
+        loadEquipmentDashboard(),
       ])
-      setData({ defense, fertilizer, harvests, processing, lots, manufacturing, sales })
+      setData({ defense, fertilizer, harvests, processing, lots, manufacturing, sales, equipment })
     } catch (e: any) {
       setError(e?.message || '茶園ダッシュボードを読み込めませんでした。')
     } finally { setLoading(false) }
@@ -70,8 +79,19 @@ export default function HomeDashboardPage() {
     }
   }, [data, year])
 
+  const combinedAlerts = useMemo(() => {
+    if (!data) return [] as DashboardAlert[]
+    const alerts = [...data.defense.alerts, ...data.equipment.alerts] as DashboardAlert[]
+    const rank = (severity: DashboardAlert['severity']) => severity === 'critical' ? 0 : severity === 'warning' ? 1 : 2
+    return alerts.sort((a, b) => rank(a.severity) - rank(b.severity) || a.title.localeCompare(b.title, 'ja'))
+  }, [data])
+
+  const criticalCount = data ? data.defense.criticalCount + data.equipment.criticalCount : 0
+  const warningCount = data ? data.defense.warningCount + data.equipment.warningCount : 0
+  const attentionCount = criticalCount + warningCount
+
   const topCards = [
-    { label: '今日の要確認', value: data ? `${data.defense.attentionCount}件` : '—', note: data ? `重要 ${data.defense.criticalCount} / 注意 ${data.defense.warningCount}` : '', tone: data?.defense.criticalCount ? 'danger' : data?.defense.warningCount ? 'warning' : 'ok' },
+    { label: '今日の要確認', value: data ? `${attentionCount}件` : '—', note: data ? `重要 ${criticalCount} / 注意 ${warningCount}` : '', tone: criticalCount ? 'danger' : warningCount ? 'warning' : 'ok' },
     { label: '管理圃場', value: data ? `${data.defense.readiness.harvestTotal}圃場` : '—', note: '防除・施肥・収穫を共通管理' },
     { label: '農薬在庫', value: data ? `${data.defense.stockLots}ロット` : '—', note: data ? yen.format(data.defense.stockValue) : '' },
     { label: '肥料在庫', value: data ? `${num.format(data.fertilizer.stockKg)}kg` : '—', note: data ? `${data.fertilizer.stockLots}ロット` : '' },
@@ -83,7 +103,7 @@ export default function HomeDashboardPage() {
 
   return <div className="page home-dashboard">
     <div className="page-head home-dashboard-head">
-      <div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理ダッシュボード</h1><p className="sub">防除・施肥・摘採・製茶・製造・在庫・原価・販売・粗利をひとつのホーム画面で確認します。</p></div>
+      <div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理ダッシュボード</h1><p className="sub">防除・施肥・摘採・製茶・製造・在庫・販売・設備の状況をひとつのホーム画面で確認します。</p></div>
       <div className="head-actions"><span className="status">茶園管理 接続済</span><button className="icon-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={18} className={loading ? 'spin' : ''}/></button></div>
     </div>
 
@@ -104,9 +124,9 @@ export default function HomeDashboardPage() {
     <WeatherPanel/>
 
     <section className="panel attention-panel home-attention-panel">
-      <div className="panel-title attention-title"><div><h2>今日の確認事項</h2><p>安全・在庫・予定に関する自動チェック</p></div>{data && <span className={data.defense.criticalCount ? 'attention-badge critical' : data.defense.warningCount ? 'attention-badge warning' : 'attention-badge ok'}>{data.defense.criticalCount ? `重要 ${data.defense.criticalCount}` : data.defense.warningCount ? `注意 ${data.defense.warningCount}` : '問題なし'}</span>}</div>
-      {!loading && data?.defense.alerts.length === 0 && <div className="all-clear"><CheckCircle2 size={24}/><div><b>現在、自動検出された要確認事項はありません。</b><span>防除・施肥・収穫・製造の登録内容を引き続き確認してください。</span></div></div>}
-      <div className="attention-list">{(data?.defense.alerts || []).slice(0, 8).map(alert => <article className={`attention-item ${alert.severity}`} key={alert.id}><div className="attention-icon"><AlertIcon severity={alert.severity}/></div><div className="attention-copy"><b>{alert.title}</b><span>{alert.detail}</span></div><Link to={alert.href}>{alert.action}<ArrowRight size={15}/></Link></article>)}</div>
+      <div className="panel-title attention-title"><div><h2>今日の確認事項</h2><p>安全・在庫・予定・機械設備に関する自動チェック</p></div>{data && <span className={criticalCount ? 'attention-badge critical' : warningCount ? 'attention-badge warning' : 'attention-badge ok'}>{criticalCount ? `重要 ${criticalCount}` : warningCount ? `注意 ${warningCount}` : '問題なし'}</span>}</div>
+      {!loading && combinedAlerts.length === 0 && <div className="all-clear"><CheckCircle2 size={24}/><div><b>現在、自動検出された要確認事項はありません。</b><span>防除・施肥・収穫・製造・設備の登録内容を引き続き確認してください。</span></div></div>}
+      <div className="attention-list">{combinedAlerts.slice(0, 10).map(alert => <article className={`attention-item ${alert.severity}`} key={alert.id}><div className="attention-icon"><AlertIcon severity={alert.severity}/></div><div className="attention-copy"><b>{alert.title}</b><span>{alert.detail}</span></div><Link to={alert.href}>{alert.action}<ArrowRight size={15}/></Link></article>)}</div>
     </section>
 
     <div className="home-module-grid">
@@ -133,6 +153,12 @@ export default function HomeDashboardPage() {
         <div className="home-module-stats"><div><span>今月売上</span><b>{data ? yen.format(data.sales.monthSalesYen) : '—'}</b><small>{data ? `${data.sales.monthSaleCount}件 / ${data.sales.monthKey}` : ''}</small></div><div><span>今月粗利</span><b>{data ? yen.format(data.sales.monthGrossProfitYen) : '—'}</b><small>{data ? `売上原価 ${yen.format(data.sales.monthCostYen)} / 粗利率 ${data.sales.monthGrossMarginPct.toFixed(1)}%` : ''}</small></div><div><span>直近販売</span><b>{data?.sales.latest ? `${data.sales.latest.date}｜${data.sales.latest.customerName}` : '記録なし'}</b><small>{data?.sales.latest ? `${data.sales.latest.channel || '—'} / 売上 ${yen.format(data.sales.latest.salesAmountYen)} / 粗利 ${yen.format(data.sales.latest.grossProfitYen)}` : ''}</small></div></div>
         <div className="home-module-links"><Link to="/sales"><ShoppingCart size={13}/>販売・出庫</Link><Link to="/production"><PackageCheck size={13}/>製品在庫</Link></div>
       </section>
+
+      <section className="panel home-module-card equipment">
+        <div className="home-module-title"><span><Tractor size={19}/></span><div><h2>機械設備</h2><p>農機具・車両・修理状態・期限管理</p></div></div>
+        <div className="home-module-stats"><div><span>稼働設備</span><b>{data ? `${data.equipment.activeCount}件` : '—'}</b><small>{data ? `取得金額 ${yen.format(data.equipment.acquisitionValueYen)}` : ''}</small></div><div><span>要確認</span><b>{data ? `${data.equipment.attentionCount}件` : '—'}</b><small>{data ? `重要 ${data.equipment.criticalCount} / 注意 ${data.equipment.warningCount}` : ''}</small></div><div><span>次の期限</span><b>{data?.equipment.nextDue ? `${data.equipment.nextDue.date}｜${data.equipment.nextDue.label}` : '予定なし'}</b><small>{data?.equipment.nextDue ? `${data.equipment.nextDue.assetNo} ${data.equipment.nextDue.name}`.trim() : '車検・税金・保険・整備'}</small></div></div>
+        <div className="home-module-links"><Link to="/equipment"><Tractor size={13}/>機械設備管理</Link></div>
+      </section>
     </div>
 
     <section className="panel home-next-work">
@@ -141,6 +167,7 @@ export default function HomeDashboardPage() {
         <Link to="/plans"><span>防除</span><b>{data?.defense.nextPlan?.label || '予定なし'}</b><small>{data?.defense.nextPlan?.target || '年間防除計画を確認'}</small></Link>
         <Link to="/fertilizer-plans"><span>施肥</span><b>{data?.fertilizer.nextPlan?.label || '予定なし'}</b><small>{data?.fertilizer.nextPlan?.purpose || '年間施肥計画を確認'}</small></Link>
         <Link to="/fields"><span>摘採</span><b>{data?.defense.harvests[0]?.date || '予定なし'}</b><small>{data?.defense.harvests[0] ? `${data.defense.harvests[0].legacyId} ${data.defense.harvests[0].name}` : '圃場の摘採予定日を設定'}</small></Link>
+        <Link to="/equipment"><span>設備</span><b>{data?.equipment.nextDue ? `${data.equipment.nextDue.date}｜${data.equipment.nextDue.label}` : '予定なし'}</b><small>{data?.equipment.nextDue ? data.equipment.nextDue.name : '車検・税金・保険・整備期限を確認'}</small></Link>
       </div>
     </section>
   </div>
