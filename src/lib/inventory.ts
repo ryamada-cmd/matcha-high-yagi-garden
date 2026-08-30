@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 
 export type InventoryRow = {
   lotId: string
@@ -56,9 +57,7 @@ function n(v: unknown) {
 }
 
 export async function loadInventoryRole(): Promise<string> {
-  const { data, error } = await supabase.from('profiles').select('role').single()
-  if (error) throw error
-  return (data as any)?.role || ''
+  return await hasPermission('pesticide_inventory.manage') ? 'admin' : 'worker'
 }
 
 export async function loadPesticideOptions(): Promise<PesticideOption[]> {
