@@ -1,6 +1,5 @@
 import { supabase } from './supabase'
-import { hasPermission } from './permissions'
-import { loadProductionLots, type ProductionLot } from './production'
+import type { ProductionLot } from './production'
 
 export type SaleSummary={id:string;legacyId:string;date:string;customerName:string;channel:string;invoiceNo:string;destination:string;note:string;status:string;salesAmountYen:number;costAmountYen:number;grossProfitYen:number;itemCount:number;cancelReason:string}
 export type SaleItem={id:string;saleId:string;lotId:string;lotLegacyId:string;materialName:string;quantity:number;unit:string;unitPriceYen:number;salesAmountYen:number;unitCostYen:number;costAmountYen:number;grossProfitYen:number}
@@ -8,8 +7,10 @@ export type SaleTrace={salesItemId:string;saleId:string;fieldId:string;fieldLega
 export type SaleBundle={summary:SaleSummary;items:SaleItem[];traces:SaleTrace[]}
 const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
 
-export async function loadSalesRole(){return await hasPermission('sales.manage')?'admin':'worker'}
-export async function loadSaleableLots():Promise<ProductionLot[]>{const lots=await loadProductionLots();return lots.filter(l=>l.balance>0.0005)}
+export async function loadSaleableLots():Promise<ProductionLot[]>{
+ const{data,error}=await supabase.from('sales_saleable_lots').select('*').order('received_date',{ascending:false}).order('legacy_id',{ascending:false});if(error)throw error
+ return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',supplier:'',storageLocation:'',note:''}))
+}
 
 export async function loadSales(limit=300):Promise<SaleBundle[]>{
  const{data:heads,error:e1}=await supabase.from('sales_record_summary').select('*').order('sale_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit);if(e1)throw e1
