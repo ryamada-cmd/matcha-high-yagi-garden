@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 
 export type EquipmentCategory='AGRICULTURAL_MACHINE'|'TOOL'|'VEHICLE'|'OTHER'
 export type EquipmentStatus='NORMAL'|'CAUTION'|'REPAIR_NEEDED'|'UNDER_REPAIR'|'OUT_OF_SERVICE'|'DISPOSED'
@@ -24,9 +25,7 @@ const nullableNumber=(v:unknown)=>v===null||v===undefined||v===''?null:n(v)
 const one=(v:any)=>Array.isArray(v)?v[0]:v
 
 export async function loadEquipmentRole(){
-  const {data:{user}}=await supabase.auth.getUser();if(!user)return ''
-  const {data,error}=await supabase.from('profiles').select('role').eq('id',user.id).maybeSingle();if(error)throw error
-  return data?.role||''
+  return await hasPermission('equipment.manage') ? 'admin' : 'worker'
 }
 
 export async function loadEquipmentAssets():Promise<EquipmentAsset[]>{
