@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { hasPermission } from './permissions'
 
 export type ProductPackagingBatch={
   id:string;batchId:string;legacyId:string;date:string;productId:string;sku:string;productName:string;category:string;
@@ -16,6 +17,8 @@ export type ProductStockLot={
 }
 
 const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
+
+export async function loadProductPackagingRole(){return await hasPermission('packaging.manage')?'admin':'worker'}
 
 export async function loadProductPackagingBatches(limit=200):Promise<ProductPackagingBatch[]>{
   const{data,error}=await supabase.from('product_packaging_summary').select('*').is('deleted_at',null).order('manufacturing_date',{ascending:false}).order('legacy_id',{ascending:false}).limit(limit)
@@ -41,4 +44,9 @@ export async function saveProductPackaging(input:{batchId?:string;productId:stri
   const{data,error}=await supabase.rpc('admin_save_product_packaging',{p_batch_id:input.batchId||null,p_payload:{product_id:input.productId,source_lot_id:input.sourceLotId,units:input.units,manufacturing_date:input.date,facility:input.facility,processing_cost_yen:input.processingCostYen,other_cost_yen:input.otherCostYen,operator_name:input.operator,note:input.note}})
   if(error)throw error
   return data as string
+}
+
+export async function deleteProductPackaging(batchId:string,reason:string){
+  const{error}=await supabase.rpc('delete_product_packaging',{p_batch_id:batchId,p_reason:reason})
+  if(error)throw error
 }
