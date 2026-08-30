@@ -1,15 +1,18 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Download, Pencil, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useAppPermissions } from '../lib/permissions'
 import { deleteSpray } from '../lib/sprays'
 import { downloadSprayHistoryCsv, loadFullSprayHistory, type FullSprayHistoryRow } from '../lib/sprayHistory'
 
 const num = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 1 })
 
 export default function SprayHistoryPage() {
+  const { allowed } = useAppPermissions()
+  const canEdit = allowed('sprays.edit')
+  const canDelete = allowed('sprays.delete')
   const navigate = useNavigate()
   const [rows, setRows] = useState<FullSprayHistoryRow[]>([])
-  const [role, setRole] = useState('')
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState('')
   const [error, setError] = useState('')
@@ -25,7 +28,7 @@ export default function SprayHistoryPage() {
     setLoading(true); setError('')
     try {
       const data = await loadFullSprayHistory()
-      setRows(data.rows); setRole(data.role)
+      setRows(data.rows)
     } catch (e: any) {
       setError(e?.message || '散布履歴を読み込めませんでした。')
     } finally { setLoading(false) }
@@ -75,7 +78,7 @@ export default function SprayHistoryPage() {
   }
 
   async function remove(row: FullSprayHistoryRow) {
-    if (role !== 'admin') return setError('散布記録の削除は管理者のみ実行できます。')
+    if (!canDelete) return setError('散布記録を削除する権限がありません。')
     if (!window.confirm(`${row.legacyId} を削除しますか？\n使用した農薬は在庫へ戻入し、監査履歴を残します。`)) return
     const reason = window.prompt('削除理由を入力してください（任意）', '')
     if (reason === null) return
@@ -130,7 +133,7 @@ export default function SprayHistoryPage() {
                 <td><b>{r.sprayDate}</b></td><td><code>{r.legacyId}</code></td><td>{r.operator||'—'}</td><td>{r.target||'—'}</td>
                 <td><div className="history-chip-list">{r.chemicals.map(c=><span key={`${r.id}-${c.pesticideId}`}>{c.pesticideName}</span>)}</div></td>
                 <td>{r.fields.length}圃場</td><td><b>{num.format(r.preparedL)}L</b></td>
-                <td><div className="history-page-actions"><button title="明細を展開" onClick={()=>toggle(r.id)}>{isOpen?<ChevronUp size={15}/>:<ChevronDown size={15}/>}</button><button title="散布画面で編集" onClick={()=>navigate('/sprays')}><Pencil size={15}/></button>{role==='admin'&&<button className="delete-action" title="削除" disabled={deletingId===r.id} onClick={()=>void remove(r)}><Trash2 size={15}/></button>}</div></td>
+                <td><div className="history-page-actions"><button title="明細を展開" onClick={()=>toggle(r.id)}>{isOpen?<ChevronUp size={15}/>:<ChevronDown size={15}/>}</button>{canEdit&&<button title="散布画面で編集" onClick={()=>navigate('/sprays')}><Pencil size={15}/></button>}{canDelete&&<button className="delete-action" title="削除" disabled={deletingId===r.id} onClick={()=>void remove(r)}><Trash2 size={15}/></button>}</div></td>
               </tr>
               {isOpen&&<tr className="history-expanded-row"><td colSpan={8}><div className="history-expanded">
                 <div><h3>使用農薬</h3>{r.chemicals.map(c=><p key={`${r.id}-chem-${c.pesticideId}`}><b>{c.pesticideName}</b><span>{num.format(c.dilution)}倍 / {num.format(c.quantity)}{c.unit}</span></p>)}</div>
