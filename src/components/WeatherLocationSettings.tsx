@@ -3,7 +3,7 @@ import { MapPin, Search } from 'lucide-react'
 import { saveAppSettings, type AppSettings } from '../lib/adminConsole'
 import { searchWeatherLocations, type WeatherLocation } from '../lib/weather'
 
-export default function WeatherLocationSettings({ settings, onSaved }:{ settings: AppSettings, onSaved: () => Promise<void> | void }) {
+export default function WeatherLocationSettings({ settings, onSaved, canManage = true }:{ settings: AppSettings, onSaved: () => Promise<void> | void, canManage?: boolean }) {
   const [query,setQuery] = useState(settings.weather_location_name || '')
   const [results,setResults] = useState<WeatherLocation[]>([])
   const [selected,setSelected] = useState<WeatherLocation | null>(settings.weather_latitude !== null && settings.weather_longitude !== null ? {
@@ -17,6 +17,7 @@ export default function WeatherLocationSettings({ settings, onSaved }:{ settings
   const selectedLabel = useMemo(() => selected ? [selected.name, selected.admin1, selected.country].filter(Boolean).join(' / ') : '', [selected])
 
   async function search() {
+    if (!canManage) return setError('天気地点を変更する権限がありません。')
     if (query.trim().length < 2) return setError('地名を2文字以上入力してください。')
     setSearching(true); setError(''); setMessage('')
     try {
@@ -28,6 +29,7 @@ export default function WeatherLocationSettings({ settings, onSaved }:{ settings
   }
 
   async function save() {
+    if (!canManage) return setError('天気地点を変更する権限がありません。')
     if (!selected) return setError('地点候補を選択してください。')
     setSaving(true); setError(''); setMessage('')
     try {
@@ -48,15 +50,15 @@ export default function WeatherLocationSettings({ settings, onSaved }:{ settings
   }
 
   return <section className="panel settings-section weather-location-settings">
-    <div className="panel-title"><div><h2>天気の表示地点</h2><p>ダッシュボードに表示する地点を地名から設定します。</p></div><MapPin size={20}/></div>
+    <div className="panel-title"><div><h2>天気の表示地点</h2><p>{canManage?'ダッシュボードに表示する地点を地名から設定します。':'現在の設定地点を表示します。変更権限はありません。'}</p></div><MapPin size={20}/></div>
     <div className="weather-location-search">
-      <div className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void search()}}} placeholder="例：井手町 京都府 / 宇治市 / 京都市"/></div>
-      <button className="secondary-button" type="button" disabled={searching} onClick={()=>void search()}>{searching?'検索中…':'地点を検索'}</button>
+      <div className="search-box"><Search size={17}/><input disabled={!canManage} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(canManage&&e.key==='Enter'){e.preventDefault();void search()}}} placeholder="例：井手町 京都府 / 宇治市 / 京都市"/></div>
+      <button className="secondary-button" type="button" disabled={!canManage||searching} onClick={()=>void search()}>{searching?'検索中…':'地点を検索'}</button>
     </div>
     {error&&<div className="notice error">{error}</div>}
     {message&&<div className="notice success">{message}</div>}
-    {!!results.length&&<div className="weather-location-results">{results.map((r,i)=><button type="button" className={selected?.latitude===r.latitude&&selected?.longitude===r.longitude?'selected':''} key={`${r.latitude}-${r.longitude}-${i}`} onClick={()=>setSelected(r)}><MapPin size={16}/><div><b>{r.name}</b><span>{[r.admin1,r.country].filter(Boolean).join(' / ')}</span></div><small>{r.latitude.toFixed(4)}, {r.longitude.toFixed(4)}</small></button>)}</div>}
+    {!!results.length&&<div className="weather-location-results">{results.map((r,i)=><button disabled={!canManage} type="button" className={selected?.latitude===r.latitude&&selected?.longitude===r.longitude?'selected':''} key={`${r.latitude}-${r.longitude}-${i}`} onClick={()=>setSelected(r)}><MapPin size={16}/><div><b>{r.name}</b><span>{[r.admin1,r.country].filter(Boolean).join(' / ')}</span></div><small>{r.latitude.toFixed(4)}, {r.longitude.toFixed(4)}</small></button>)}</div>}
     <div className="weather-location-current"><span>選択地点</span><b>{selected ? selectedLabel || selected.name : '未設定'}</b>{selected&&<small>{selected.latitude.toFixed(5)}, {selected.longitude.toFixed(5)}</small>}</div>
-    <div className="settings-save-row"><span>天気データはOpen-Meteoから取得します。</span><button className="primary-button compact" type="button" disabled={!selected||saving} onClick={()=>void save()}>{saving?'保存中…':'天気地点を保存'}</button></div>
+    <div className="settings-save-row"><span>天気データはOpen-Meteoから取得します。</span><button className="primary-button compact" type="button" disabled={!canManage||!selected||saving} onClick={()=>void save()}>{saving?'保存中…':'天気地点を保存'}</button></div>
   </section>
 }
