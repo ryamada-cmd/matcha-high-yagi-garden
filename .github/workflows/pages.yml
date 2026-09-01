@@ -24,13 +24,31 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run typecheck
-      - run: npm run build
+
+      - name: Build GitHub Pages staging
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /matcha-high-yagi-garden/
+
+      - name: Preserve staging build
+        run: mv dist dist-pages
+
+      - name: Build Vercel root mirror
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /
+
+      - name: Add Vercel mirror to Pages artifact
+        run: |
+          mkdir -p dist-pages/vercel-build
+          cp -a dist/. dist-pages/vercel-build/
+
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./dist-pages
 
   deploy:
     environment:
