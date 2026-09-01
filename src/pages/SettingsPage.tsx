@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, LockKeyhole, RefreshCw, Save, Search, Settings2, ShieldCheck, SlidersHorizontal, Users } from 'lucide-react'
 import { changeUserRole, loadAdminConsole, loadRolePermissionMatrix, saveAppSettings, saveRolePermissions, type AdminConsoleData, type AuditLogRow, type PermissionDefinition } from '../lib/adminConsole'
+import { useAppPermissions } from '../lib/permissions'
 import WeatherLocationSettings from '../components/WeatherLocationSettings'
 
 function fmtDate(value: string) {
@@ -29,6 +30,12 @@ function JsonBox({value}:{value:unknown}) {
 }
 
 export default function SettingsPage() {
+  const { allowed } = useAppPermissions()
+  const canManageSettings = allowed('settings.manage')
+  const canManageUsers = allowed('users.manage')
+  const canManagePermissions = allowed('permissions.manage')
+  const canViewAudit = allowed('audit.view')
+
   const [data, setData] = useState<AdminConsoleData | null>(null)
   const [permissions, setPermissions] = useState<PermissionDefinition[]>([])
   const [permissionDirty, setPermissionDirty] = useState({ admin:false, worker:false })
@@ -48,7 +55,10 @@ export default function SettingsPage() {
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [next, matrix] = await Promise.all([loadAdminConsole(100), loadRolePermissionMatrix()])
+      const matrixPromise = canManagePermissions
+        ? loadRolePermissionMatrix()
+        : Promise.resolve({ definitions: [] as PermissionDefinition[] })
+      const [next, matrix] = await Promise.all([loadAdminConsole(100), matrixPromise])
       setData(next)
       setPermissions(matrix.definitions)
       setPermissionDirty({admin:false,worker:false})
@@ -79,6 +89,7 @@ export default function SettingsPage() {
   }, [permissions])
 
   async function saveSettings() {
+    if (!canManageSettings) return setError('アプリ設定を変更する権限がありません。')
     const vals = [Number(lowStock), Number(expiryDays), Number(planDays), Number(harvestDays)]
     if (vals.some(v => !Number.isFinite(v) || v < 0)) return setError('設定値は0以上の数字で入力してください。')
     setSaving(true); setError(''); setSuccess('')
@@ -91,6 +102,7 @@ export default function SettingsPage() {
   }
 
   async function updateRole(userId: string, role: 'admin'|'worker') {
+    if (!canManageUsers) return setError('ユーザー役割を変更する権限がありません。')
     if (!window.confirm(`このユーザーの役割を「${role === 'admin' ? '管理者' : '作業者'}」へ変更しますか？`)) return
     setChangingUser(userId); setError(''); setSuccess('')
     try {
@@ -101,12 +113,14 @@ export default function SettingsPage() {
     finally { setChangingUser('') }
   }
 
-  function changePermission(role:'admin'|'worker', key:string, allowed:boolean) {
-    setPermissions(rows => rows.map(row => row.permission_key === key && !row.locked ? {...row,[role === 'admin' ? 'admin_allowed':'worker_allowed']:allowed} : row))
+  function changePermission(role:'admin'|'worker', key:string, allowedValue:boolean) {
+    if (!canManagePermissions) return
+    setPermissions(rows => rows.map(row => row.permission_key === key && !row.locked ? {...row,[role === 'admin' ? 'admin_allowed':'worker_allowed']:allowedValue} : row))
     setPermissionDirty(old => ({...old,[role]:true}))
   }
 
   async function savePermissionMatrix() {
+    if (!canManagePermissions) return setError('機能別権限を変更する権限がありません。')
     if (!permissionDirty.admin && !permissionDirty.worker) return
     setPermissionSaving(true); setError(''); setSuccess('')
     try {
@@ -134,20 +148,20 @@ export default function SettingsPage() {
     {error&&<div className="notice error dashboard-notice">{error}</div>}
     {success&&<div className="notice success dashboard-notice">{success}</div>}
 
-    {data && <WeatherLocationSettings settings={data.settings} onSaved={refresh}/>} 
+    {data && <WeatherLocationSettings settings={data.settings} onSaved={refresh} canManage={canManageSettings}/>} 
 
     <section className="panel settings-section">
-      <div className="panel-title"><div><h2>ダッシュボード警告基準</h2><p>現場に合わせて注意喚起のタイミングを変更できます。</p></div><Settings2 size={20}/></div>
+      <div className="panel-title"><div><h2>ダッシュボード警告基準</h2><p>{canManageSettings?'現場に合わせて注意喚起のタイミングを変更できます。':'現在の警告基準を表示しています。変更権限はありません。'}</p></div><Settings2 size={20}/></div>
       <div className="settings-grid">
-        <label><span>在庫残量警告</span><div className="unit-input"><input type="number" min="0" max="100" step="1" value={lowStock} onChange={e=>setLowStock(e.target.value)}/><b>%以下</b></div><small>購入時数量に対する現在庫の割合</small></label>
-        <label><span>使用期限警告</span><div className="unit-input"><input type="number" min="0" max="3650" step="1" value={expiryDays} onChange={e=>setExpiryDays(e.target.value)}/><b>日前</b></div><small>期限切れ前の注意表示</small></label>
-        <label><span>防除予定の事前通知</span><div className="unit-input"><input type="number" min="0" max="365" step="1" value={planDays} onChange={e=>setPlanDays(e.target.value)}/><b>日前</b></div><small>年間計画の次回予定</small></label>
-        <label><span>摘採予定の事前通知</span><div className="unit-input"><input type="number" min="0" max="365" step="1" value={harvestDays} onChange={e=>setHarvestDays(e.target.value)}/><b>日前</b></div><small>圃場の摘採予定</small></label>
+        <label><span>在庫残量警告</span><div className="unit-input"><input disabled={!canManageSettings} type="number" min="0" max="100" step="1" value={lowStock} onChange={e=>setLowStock(e.target.value)}/><b>%以下</b></div><small>購入時数量に対する現在庫の割合</small></label>
+        <label><span>使用期限警告</span><div className="unit-input"><input disabled={!canManageSettings} type="number" min="0" max="3650" step="1" value={expiryDays} onChange={e=>setExpiryDays(e.target.value)}/><b>日前</b></div><small>期限切れ前の注意表示</small></label>
+        <label><span>防除予定の事前通知</span><div className="unit-input"><input disabled={!canManageSettings} type="number" min="0" max="365" step="1" value={planDays} onChange={e=>setPlanDays(e.target.value)}/><b>日前</b></div><small>年間計画の次回予定</small></label>
+        <label><span>摘採予定の事前通知</span><div className="unit-input"><input disabled={!canManageSettings} type="number" min="0" max="365" step="1" value={harvestDays} onChange={e=>setHarvestDays(e.target.value)}/><b>日前</b></div><small>圃場の摘採予定</small></label>
       </div>
-      <div className="settings-save-row"><span>最終更新：{fmtDate(data?.settings.updated_at || '')}</span><button className="primary-button compact" onClick={()=>void saveSettings()} disabled={saving}><Save size={16}/>{saving?'保存中…':'設定を保存'}</button></div>
+      <div className="settings-save-row"><span>最終更新：{fmtDate(data?.settings.updated_at || '')}</span><button className="primary-button compact" onClick={()=>void saveSettings()} disabled={!canManageSettings||saving}><Save size={16}/>{saving?'保存中…':'設定を保存'}</button></div>
     </section>
 
-    <section className="panel settings-section">
+    {canManageUsers&&<section className="panel settings-section">
       <div className="panel-title"><div><h2>ユーザー役割</h2><p>各ユーザーを「管理者」または「作業者」に割り当てます。実際に使える機能は下の機能別権限で決まります。</p></div><Users size={20}/></div>
       <div className="admin-users-list">
         {(data?.users||[]).map(user=><div className="admin-user-row" key={user.id}>
@@ -158,9 +172,9 @@ export default function SettingsPage() {
         {!loading&&!data?.users.length&&<p className="empty">ユーザーはありません。</p>}
       </div>
       <p className="settings-footnote">最後の管理者1名は作業者へ変更できないようデータベース側で保護しています。</p>
-    </section>
+    </section>}
 
-    <section className="panel settings-section permission-settings-section">
+    {canManagePermissions&&<section className="panel settings-section permission-settings-section">
       <div className="panel-title"><div><h2>機能別権限</h2><p>管理者・作業者それぞれについて、機能と操作項目ごとに許可／不許可を設定します。</p></div><SlidersHorizontal size={20}/></div>
       <div className="permission-help"><ShieldCheck size={18}/><div><b>画面表示だけでなくデータベース側でも制御します。</b><span>不許可の操作はURLから直接開いた場合やAPIを直接呼び出した場合も拒否されます。管理設定に関する項目は安全上「固定」です。</span></div></div>
       <div className="permission-matrix-head"><span>機能・操作</span><b>管理者</b><b>作業者</b></div>
@@ -176,9 +190,9 @@ export default function SettingsPage() {
         {!loading&&!permissionGroups.length&&<p className="empty">権限定義を読み込めませんでした。</p>}
       </div>
       <div className="permission-save-row"><div><b>変更対象</b><span>{permissionDirty.admin?'管理者 ':''}{permissionDirty.worker?'作業者':''}{!permissionDirty.admin&&!permissionDirty.worker?'変更なし':''}</span></div><button className="primary-button" disabled={permissionSaving||(!permissionDirty.admin&&!permissionDirty.worker)} onClick={()=>void savePermissionMatrix()}><Save size={16}/>{permissionSaving?'保存中…':'権限設定を保存'}</button></div>
-    </section>
+    </section>}
 
-    <section className="panel settings-section audit-section">
+    {canViewAudit&&<section className="panel settings-section audit-section">
       <div className="panel-title"><div><h2>監査ログ</h2><p>最新100件の作成・更新・削除・同期・権限変更を表示します。</p></div><span className="audit-count">{filteredLogs.length}件</span></div>
       <div className="audit-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="操作・対象・ユーザー・IDで検索"/></div>
       <div className="audit-list">
@@ -195,6 +209,6 @@ export default function SettingsPage() {
         })}
         {!loading&&!filteredLogs.length&&<p className="empty">該当する監査ログはありません。</p>}
       </div>
-    </section>
+    </section>}
   </div>
 }
