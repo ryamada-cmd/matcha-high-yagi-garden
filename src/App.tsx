@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { Home, SprayCan, Boxes, MapPinned, CalendarDays, ShieldCheck, LogOut, Database, History, Settings, Menu, X, ChevronRight, Leaf, Scissors, Factory, ShoppingCart, Package, PackageCheck, ClipboardList, ReceiptText, BookOpen, Tractor, FileCheck2, LockKeyhole } from 'lucide-react'
+import { Home, SprayCan, Boxes, MapPinned, CalendarDays, ShieldCheck, LogOut, Database, History, Settings, Menu, X, ChevronRight, Leaf, Scissors, Factory, ShoppingCart, Package, PackageCheck, ClipboardList, ReceiptText, BookOpen, Tractor, FileCheck2, LockKeyhole, Tags, FileText } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { AppPermissionProvider, useAppPermissions } from './lib/permissions'
 import HomeDashboardPage from './pages/HomeDashboardPage'
@@ -24,6 +24,8 @@ const ProductionPage = lazy(() => import('./pages/ProductionPage'))
 const SalesPage = lazy(() => import('./pages/SalesPage'))
 const ProductMasterPage = lazy(() => import('./pages/ProductMasterPage'))
 const ProductPackagingPage = lazy(() => import('./pages/ProductPackagingPage'))
+const PriceListPage = lazy(() => import('./pages/PriceListPage'))
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'))
 const DailyReportsPage = lazy(() => import('./pages/DailyReportsPage'))
 const ExpenseClaimsPage = lazy(() => import('./pages/ExpenseClaimsPage'))
 const VendorInvoicesPage = lazy(() => import('./pages/VendorInvoicesPage'))
@@ -77,7 +79,7 @@ function AuthScreen() {
 
   return <div className="auth-page"><div className="auth-card">
     <div className="auth-brand"><ShieldCheck size={34}/><div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理</h1></div></div>
-    <p className="auth-lead">防除・施肥・摘採・製茶・製造・製品在庫・販売・圃場・機械設備・請求書を一元管理します。</p>
+    <p className="auth-lead">防除・施肥・摘採・製茶・製造・製品在庫・販売・帳票・圃場・機械設備を一元管理します。</p>
     <div className="auth-tabs"><button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')} type="button">ログイン</button><button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')} type="button">初回登録</button></div>
     <form onSubmit={submit} className="auth-form">
       {mode === 'signup' && <label>表示名<input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="例：山田"/></label>}
@@ -107,9 +109,9 @@ function AppShell({ session }: { session: Session }) {
 
   const defenseVisible = ['sprays.view','pesticide_inventory.view','pesticides.view','spray_plans.view'].some(allowed)
   const fertilizerVisible = ['fertilizer_applications.view','fertilizer_inventory.view','fertilizers.view','fertilizer_plans.view'].some(allowed)
-  const productionVisible = ['harvest_processing.view','production.view','products.view','packaging.view','sales.view'].some(allowed)
+  const productionVisible = ['harvest_processing.view','production.view','products.view','packaging.view','sales.view','documents.view'].some(allowed)
   const commonVisible = ['daily_reports.view','expenses.view','vendor_invoices.view','fields.view','manual.view','settings.view'].some(allowed)
-  const menuRouteActive = ['/spray-history','/inventory','/pesticides','/plans','/fertilizer-history','/fertilizers','/fertilizer-inventory','/fertilizer-plans','/harvests','/production','/products','/product-packaging','/sales','/equipment','/daily-reports','/expenses','/vendor-invoices','/manual','/settings'].some(p => location.pathname.startsWith(p))
+  const menuRouteActive = ['/spray-history','/inventory','/pesticides','/plans','/fertilizer-history','/fertilizers','/fertilizer-inventory','/fertilizer-plans','/harvests','/production','/products','/price-list','/product-packaging','/sales','/documents','/equipment','/daily-reports','/expenses','/vendor-invoices','/manual','/settings'].some(p => location.pathname.startsWith(p))
 
   if (permissionLoading) return <div className="boot-screen"><ShieldCheck size={36}/><span>権限を確認中…</span></div>
 
@@ -130,18 +132,19 @@ function AppShell({ session }: { session: Session }) {
           {allowed('fertilizers.view')&&<NavLink to="/fertilizers"><Database size={20}/>肥料マスタ</NavLink>}
           {allowed('fertilizer_plans.view')&&<NavLink to="/fertilizer-plans"><CalendarDays size={20}/>年間施肥計画</NavLink>}
         </>}
-        {productionVisible&&<><div className="nav-section-label">収穫・製造</div>
+        {productionVisible&&<><div className="nav-section-label">収穫・製造・販売</div>
           {allowed('harvest_processing.view')&&<NavLink to="/harvests"><Scissors size={20}/>摘採・製茶</NavLink>}
           {allowed('production.view')&&<NavLink to="/production"><Factory size={20}/>製造・製品在庫</NavLink>}
-          {allowed('products.view')&&<NavLink to="/products"><Package size={20}/>商品マスタ</NavLink>}
+          {allowed('products.view')&&<><NavLink to="/products"><Package size={20}/>商品マスタ</NavLink><NavLink to="/price-list"><Tags size={20}/>商品価格表</NavLink></>}
           {allowed('packaging.view')&&<NavLink to="/product-packaging"><PackageCheck size={20}/>商品化・SKU在庫</NavLink>}
           {allowed('sales.view')&&<NavLink to="/sales"><ShoppingCart size={20}/>販売・出庫</NavLink>}
+          {allowed('documents.view')&&<NavLink to="/documents"><FileText size={20}/>請求書・納品書</NavLink>}
         </>}
         {allowed('equipment.view')&&<><div className="nav-section-label">設備</div><NavLink to="/equipment"><Tractor size={20}/>機械設備管理</NavLink></>}
         {commonVisible&&<><div className="nav-section-label">共通</div>
           {allowed('daily_reports.view')&&<NavLink to="/daily-reports"><ClipboardList size={20}/>日報</NavLink>}
           {allowed('expenses.view')&&<NavLink to="/expenses"><ReceiptText size={20}/>経費精算</NavLink>}
-          {allowed('vendor_invoices.view')&&<NavLink to="/vendor-invoices"><FileCheck2 size={20}/>請求書・支払</NavLink>}
+          {allowed('vendor_invoices.view')&&<NavLink to="/vendor-invoices"><FileCheck2 size={20}/>仕入請求書・支払</NavLink>}
           {allowed('fields.view')&&<NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink>}
           {allowed('manual.view')&&<NavLink to="/manual"><BookOpen size={20}/>操作ガイド</NavLink>}
           {allowed('settings.view')&&<NavLink to="/settings"><Settings size={20}/>設定・監査</NavLink>}
@@ -156,7 +159,7 @@ function AppShell({ session }: { session: Session }) {
       <Route path="/" element={<PermissionRoute permission="dashboard.view"><HomeDashboardPage/></PermissionRoute>}/>
       <Route path="/sprays" element={<PermissionRoute permission="sprays.view"><SprayPage/></PermissionRoute>}/><Route path="/spray-history" element={<PermissionRoute permission="sprays.view"><SprayHistoryPage/></PermissionRoute>}/><Route path="/inventory" element={<PermissionRoute permission="pesticide_inventory.view"><InventoryPage/></PermissionRoute>}/><Route path="/pesticides" element={<PermissionRoute permission="pesticides.view"><PesticideCatalogPage/></PermissionRoute>}/><Route path="/plans" element={<PermissionRoute permission="spray_plans.view"><PlansPage/></PermissionRoute>}/>
       <Route path="/fertilizer-applications" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerApplicationPage/></PermissionRoute>}/><Route path="/fertilizer-history" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerHistoryPage/></PermissionRoute>}/><Route path="/fertilizer-inventory" element={<PermissionRoute permission="fertilizer_inventory.view"><FertilizerInventoryPage/></PermissionRoute>}/><Route path="/fertilizers" element={<PermissionRoute permission="fertilizers.view"><FertilizerMasterPage/></PermissionRoute>}/><Route path="/fertilizer-plans" element={<PermissionRoute permission="fertilizer_plans.view"><FertilizerPlansPage/></PermissionRoute>}/>
-      <Route path="/harvests" element={<PermissionRoute permission="harvest_processing.view"><HarvestProcessingPage/></PermissionRoute>}/><Route path="/production" element={<PermissionRoute permission="production.view"><ProductionPage/></PermissionRoute>}/><Route path="/products" element={<PermissionRoute permission="products.view"><ProductMasterPage/></PermissionRoute>}/><Route path="/product-packaging" element={<PermissionRoute permission="packaging.view"><ProductPackagingPage/></PermissionRoute>}/><Route path="/sales" element={<PermissionRoute permission="sales.view"><SalesPage/></PermissionRoute>}/>
+      <Route path="/harvests" element={<PermissionRoute permission="harvest_processing.view"><HarvestProcessingPage/></PermissionRoute>}/><Route path="/production" element={<PermissionRoute permission="production.view"><ProductionPage/></PermissionRoute>}/><Route path="/products" element={<PermissionRoute permission="products.view"><ProductMasterPage/></PermissionRoute>}/><Route path="/price-list" element={<PermissionRoute permission="products.view"><PriceListPage/></PermissionRoute>}/><Route path="/product-packaging" element={<PermissionRoute permission="packaging.view"><ProductPackagingPage/></PermissionRoute>}/><Route path="/sales" element={<PermissionRoute permission="sales.view"><SalesPage/></PermissionRoute>}/><Route path="/documents" element={<PermissionRoute permission="documents.view"><DocumentsPage/></PermissionRoute>}/>
       <Route path="/equipment" element={<PermissionRoute permission="equipment.view"><EquipmentPage/></PermissionRoute>}/><Route path="/daily-reports" element={<PermissionRoute permission="daily_reports.view"><DailyReportsPage/></PermissionRoute>}/><Route path="/expenses" element={<PermissionRoute permission="expenses.view"><ExpenseClaimsPage/></PermissionRoute>}/><Route path="/vendor-invoices" element={<PermissionRoute permission="vendor_invoices.view"><VendorInvoicesPage/></PermissionRoute>}/><Route path="/fields" element={<PermissionRoute permission="fields.view"><FieldsPage/></PermissionRoute>}/><Route path="/fields/:fieldId" element={<PermissionRoute permission="fields.view"><FieldDossierPage/></PermissionRoute>}/><Route path="/manual" element={<PermissionRoute permission="manual.view"><ManualPage/></PermissionRoute>}/><Route path="/settings" element={<PermissionRoute permission="settings.view"><SettingsPage/></PermissionRoute>}/>
     </Routes></Suspense></main>
 
@@ -173,9 +176,9 @@ function AppShell({ session }: { session: Session }) {
       <div className="mobile-more-links">
         {defenseVisible&&<><div className="mobile-menu-label">防除</div>{allowed('sprays.view')&&<NavLink to="/spray-history"><span><History size={20}/>散布履歴</span><ChevronRight size={18}/></NavLink>}{allowed('pesticide_inventory.view')&&<NavLink to="/inventory"><span><Boxes size={20}/>農薬在庫</span><ChevronRight size={18}/></NavLink>}{allowed('pesticides.view')&&<NavLink to="/pesticides"><span><Database size={20}/>農薬検索</span><ChevronRight size={18}/></NavLink>}{allowed('spray_plans.view')&&<NavLink to="/plans"><span><CalendarDays size={20}/>年間防除計画</span><ChevronRight size={18}/></NavLink>}</>}
         {fertilizerVisible&&<><div className="mobile-menu-label">施肥</div>{allowed('fertilizer_applications.view')&&<NavLink to="/fertilizer-history"><span><History size={20}/>施肥履歴</span><ChevronRight size={18}/></NavLink>}{allowed('fertilizer_inventory.view')&&<NavLink to="/fertilizer-inventory"><span><Boxes size={20}/>肥料在庫</span><ChevronRight size={18}/></NavLink>}{allowed('fertilizers.view')&&<NavLink to="/fertilizers"><span><Database size={20}/>肥料マスタ</span><ChevronRight size={18}/></NavLink>}{allowed('fertilizer_plans.view')&&<NavLink to="/fertilizer-plans"><span><CalendarDays size={20}/>年間施肥計画</span><ChevronRight size={18}/></NavLink>}</>}
-        {productionVisible&&<><div className="mobile-menu-label">収穫・製造</div>{allowed('harvest_processing.view')&&<NavLink to="/harvests"><span><Scissors size={20}/>摘採・製茶</span><ChevronRight size={18}/></NavLink>}{allowed('production.view')&&<NavLink to="/production"><span><Factory size={20}/>製造・製品在庫</span><ChevronRight size={18}/></NavLink>}{allowed('products.view')&&<NavLink to="/products"><span><Package size={20}/>商品マスタ</span><ChevronRight size={18}/></NavLink>}{allowed('packaging.view')&&<NavLink to="/product-packaging"><span><PackageCheck size={20}/>商品化・SKU在庫</span><ChevronRight size={18}/></NavLink>}{allowed('sales.view')&&<NavLink to="/sales"><span><ShoppingCart size={20}/>販売・出庫</span><ChevronRight size={18}/></NavLink>}</>}
+        {productionVisible&&<><div className="mobile-menu-label">収穫・製造・販売</div>{allowed('harvest_processing.view')&&<NavLink to="/harvests"><span><Scissors size={20}/>摘採・製茶</span><ChevronRight size={18}/></NavLink>}{allowed('production.view')&&<NavLink to="/production"><span><Factory size={20}/>製造・製品在庫</span><ChevronRight size={18}/></NavLink>}{allowed('products.view')&&<><NavLink to="/products"><span><Package size={20}/>商品マスタ</span><ChevronRight size={18}/></NavLink><NavLink to="/price-list"><span><Tags size={20}/>商品価格表</span><ChevronRight size={18}/></NavLink></>}{allowed('packaging.view')&&<NavLink to="/product-packaging"><span><PackageCheck size={20}/>商品化・SKU在庫</span><ChevronRight size={18}/></NavLink>}{allowed('sales.view')&&<NavLink to="/sales"><span><ShoppingCart size={20}/>販売・出庫</span><ChevronRight size={18}/></NavLink>}{allowed('documents.view')&&<NavLink to="/documents"><span><FileText size={20}/>請求書・納品書</span><ChevronRight size={18}/></NavLink>}</>}
         {allowed('equipment.view')&&<><div className="mobile-menu-label">設備</div><NavLink to="/equipment"><span><Tractor size={20}/>機械設備管理</span><ChevronRight size={18}/></NavLink></>}
-        {commonVisible&&<><div className="mobile-menu-label">共通</div>{allowed('daily_reports.view')&&<NavLink to="/daily-reports"><span><ClipboardList size={20}/>日報</span><ChevronRight size={18}/></NavLink>}{allowed('expenses.view')&&<NavLink to="/expenses"><span><ReceiptText size={20}/>経費精算</span><ChevronRight size={18}/></NavLink>}{allowed('vendor_invoices.view')&&<NavLink to="/vendor-invoices"><span><FileCheck2 size={20}/>請求書・支払</span><ChevronRight size={18}/></NavLink>}{allowed('fields.view')&&<NavLink to="/fields"><span><MapPinned size={20}/>圃場</span><ChevronRight size={18}/></NavLink>}{allowed('manual.view')&&<NavLink to="/manual"><span><BookOpen size={20}/>操作ガイド</span><ChevronRight size={18}/></NavLink>}{allowed('settings.view')&&<><div className="mobile-menu-label">管理</div><NavLink to="/settings"><span><Settings size={20}/>設定・監査</span><ChevronRight size={18}/></NavLink></>}</>}
+        {commonVisible&&<><div className="mobile-menu-label">共通</div>{allowed('daily_reports.view')&&<NavLink to="/daily-reports"><span><ClipboardList size={20}/>日報</span><ChevronRight size={18}/></NavLink>}{allowed('expenses.view')&&<NavLink to="/expenses"><span><ReceiptText size={20}/>経費精算</span><ChevronRight size={18}/></NavLink>}{allowed('vendor_invoices.view')&&<NavLink to="/vendor-invoices"><span><FileCheck2 size={20}/>仕入請求書・支払</span><ChevronRight size={18}/></NavLink>}{allowed('fields.view')&&<NavLink to="/fields"><span><MapPinned size={20}/>圃場</span><ChevronRight size={18}/></NavLink>}{allowed('manual.view')&&<NavLink to="/manual"><span><BookOpen size={20}/>操作ガイド</span><ChevronRight size={18}/></NavLink>}{allowed('settings.view')&&<><div className="mobile-menu-label">管理</div><NavLink to="/settings"><span><Settings size={20}/>設定・監査</span><ChevronRight size={18}/></NavLink></>}</>}
       </div>
       <button className="mobile-logout" type="button" onClick={() => void supabase.auth.signOut()}><LogOut size={18}/>ログアウト</button>
     </section></div>}
