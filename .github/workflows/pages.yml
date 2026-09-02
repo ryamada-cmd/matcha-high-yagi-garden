@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - run: npm run check:manual
       - run: npm run typecheck
 
       - name: Build GitHub Pages staging
