@@ -27,7 +27,8 @@ const missingPermissions=[...permissionKeys].filter(key=>!manual.includes(`'${ke
 
 const requiredCurrentFeatures=[
   {route:'/price-list',label:'商品価格表'},
-  {route:'/documents',label:'請求書・納品書'}
+  {route:'/documents',label:'請求書・納品書'},
+  {route:'/storage',label:'ファイル・OneDrive'}
 ]
 const missingFeatureLabels=requiredCurrentFeatures.filter(x=>!manual.includes(x.route)||!manual.includes(x.label))
 
