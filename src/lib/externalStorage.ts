@@ -40,6 +40,13 @@ export type ExternalFileRow = {
   }>
 }
 
+export type ExternalLinkTarget = {
+  entityType: 'sales_document'|'expense_claim'|'vendor_invoice'|'field'|'equipment'|'general'
+  entityId: string
+  label: string
+  category: string
+}
+
 async function invoke<T>(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('external-storage', { body })
   if (error) throw error
@@ -98,4 +105,23 @@ export async function loadExternalFiles(limit = 250) {
     .limit(limit)
   if (error) throw error
   return (data || []) as ExternalFileRow[]
+}
+
+export async function loadExternalLinkTargets(): Promise<ExternalLinkTarget[]> {
+  const settled = await Promise.allSettled([
+    supabase.from('sales_documents').select('id,document_type,document_no,customer_name').order('issue_date',{ascending:false}).limit(100),
+    supabase.from('expense_claims').select('id,claim_no,purchase_at,vendor').order('purchase_at',{ascending:false}).limit(100),
+    supabase.from('vendor_invoices').select('id,invoice_no,external_invoice_no,vendor,invoice_date').is('deleted_at',null).order('invoice_date',{ascending:false}).limit(100),
+    supabase.from('fields').select('id,legacy_id,name').is('deleted_at',null).eq('status','active').order('legacy_id').limit(100),
+    supabase.from('equipment_assets').select('id,asset_no,name').is('deleted_at',null).order('name').limit(100),
+  ])
+  const rows = settled.map((result) => result.status === 'fulfilled' && !result.value.error ? (result.value.data || []) : [])
+  const [documents, expenses, invoices, fields, equipment] = rows as any[][]
+  return [
+    ...documents.map((x:any)=>({entityType:'sales_document' as const,entityId:String(x.id),label:`${x.document_type==='INVOICE'?'請求書':'納品書'} ${x.document_no}｜${x.customer_name}`,category:'請求書・納品書'})),
+    ...expenses.map((x:any)=>({entityType:'expense_claim' as const,entityId:String(x.id),label:`経費 ${x.claim_no}｜${x.vendor||'購入先未入力'}`,category:'経費・領収書'})),
+    ...invoices.map((x:any)=>({entityType:'vendor_invoice' as const,entityId:String(x.id),label:`仕入 ${x.invoice_no}${x.external_invoice_no?` / ${x.external_invoice_no}`:''}｜${x.vendor}`,category:'仕入請求書'})),
+    ...fields.map((x:any)=>({entityType:'field' as const,entityId:String(x.id),label:`圃場 ${x.legacy_id||''} ${x.name}`.trim(),category:'圃場'})),
+    ...equipment.map((x:any)=>({entityType:'equipment' as const,entityId:String(x.id),label:`設備 ${x.asset_no||''} ${x.name}`.trim(),category:'機械設備'})),
+  ]
 }
