@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CheckCircle2, Cloud, Copy, ExternalLink, FileUp, FolderOpen, HardDrive, RefreshCw, Save, Search, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Cloud, Copy, ExternalLink, FileUp, FolderOpen, HardDrive, Link2, RefreshCw, Save, Search, ShieldCheck } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
 import {
   configureExternalStorage,
   getExternalStorageStatus,
   loadExternalFiles,
+  loadExternalLinkTargets,
   startOneDriveAuthorization,
   uploadExternalFile,
   verifyExternalStorage,
   type ExternalFileRow,
+  type ExternalLinkTarget,
   type ExternalStorageStatus,
 } from '../lib/externalStorage'
 
@@ -28,12 +30,15 @@ function fmtBytes(value: number) {
   return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
+const targetKey = (target: Pick<ExternalLinkTarget,'entityType'|'entityId'>) => `${target.entityType}:${target.entityId}`
+
 export default function StoragePage() {
   const { allowed } = useAppPermissions()
   const canUpload = allowed('storage.upload')
   const canManage = allowed('storage.manage')
   const [status, setStatus] = useState<ExternalStorageStatus | null>(null)
   const [files, setFiles] = useState<ExternalFileRow[]>([])
+  const [targets, setTargets] = useState<ExternalLinkTarget[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
@@ -44,6 +49,7 @@ export default function StoragePage() {
   const [clientSecret, setClientSecret] = useState('')
   const [rootFolder, setRootFolder] = useState('五代目八木一兵衛')
   const [category, setCategory] = useState(categories[0])
+  const [relationKey, setRelationKey] = useState('')
   const [note, setNote] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -52,9 +58,10 @@ export default function StoragePage() {
     if (showLoader) setLoading(true)
     setError('')
     try {
-      const [nextStatus, nextFiles] = await Promise.all([getExternalStorageStatus(), loadExternalFiles()])
+      const [nextStatus, nextFiles, nextTargets] = await Promise.all([getExternalStorageStatus(), loadExternalFiles(), loadExternalLinkTargets()])
       setStatus(nextStatus)
       setFiles(nextFiles)
+      setTargets(nextTargets)
       setTenantId(nextStatus.tenantId)
       setClientId(nextStatus.clientId)
       setRootFolder(nextStatus.rootFolder || '五代目八木一兵衛')
@@ -71,12 +78,30 @@ export default function StoragePage() {
     void refresh()
   }, [])
 
+  const selectedTarget = useMemo(() => targets.find(x => targetKey(x) === relationKey) || null, [targets, relationKey])
+  const targetLabelMap = useMemo(() => new Map(targets.map(x => [targetKey(x), x.label])), [targets])
+  const groupedTargets = useMemo(() => {
+    const groups = new Map<string, ExternalLinkTarget[]>()
+    for (const target of targets) {
+      const list = groups.get(target.category) || []
+      list.push(target)
+      groups.set(target.category, list)
+    }
+    return [...groups.entries()]
+  }, [targets])
+
   const filtered = useMemo(() => {
     const q = query.trim().normalize('NFKC').toLowerCase()
     if (!q) return files
-    return files.filter((file) => [file.file_name,file.folder_path,file.mime_type,...(file.external_file_links || []).flatMap(x=>[x.category,x.note,x.entity_type,x.entity_id])]
+    return files.filter((file) => [file.file_name,file.folder_path,file.mime_type,...(file.external_file_links || []).flatMap(x=>[x.category,x.note,x.entity_type,x.entity_id,targetLabelMap.get(`${x.entity_type}:${x.entity_id}`)])]
       .join(' ').normalize('NFKC').toLowerCase().includes(q))
-  }, [files, query])
+  }, [files, query, targetLabelMap])
+
+  function chooseRelation(value: string) {
+    setRelationKey(value)
+    const target = targets.find(x => targetKey(x) === value)
+    if (target) setCategory(target.category)
+  }
 
   async function saveConfig() {
     if (!canManage) return
@@ -117,8 +142,14 @@ export default function StoragePage() {
     if (!canUpload || !selectedFile) return
     setBusy('upload'); setError(''); setSuccess('')
     try {
-      const result = await uploadExternalFile({ file:selectedFile, category, note, entityType:'general' })
-      setSuccess(`${result.file.file_name} をOneDriveへ保存しました。`)
+      const result = await uploadExternalFile({
+        file:selectedFile,
+        category,
+        note,
+        entityType:selectedTarget?.entityType || 'general',
+        entityId:selectedTarget?.entityId || undefined,
+      })
+      setSuccess(`${result.file.file_name} をOneDriveへ保存${selectedTarget?`し、「${selectedTarget.label}」へ紐付け`:''}しました。`)
       setSelectedFile(null); setNote('')
       if (inputRef.current) inputRef.current.value = ''
       await refresh(false)
@@ -171,24 +202,26 @@ export default function StoragePage() {
     </section>}
 
     {canUpload&&<section className="panel storage-upload-panel">
-      <div className="panel-title"><div><h2>ファイルを保存</h2><p>1ファイル25MBまで。実ファイルはOneDriveへ保存されます。</p></div><FileUp size={20}/></div>
+      <div className="panel-title"><div><h2>ファイルを保存・業務データへ紐付け</h2><p>帳票・経費・仕入請求書・圃場・機械設備を選ぶと、その記録に関連するファイルとして台帳化します。1ファイル25MBまでです。</p></div><FileUp size={20}/></div>
       <div className="storage-upload-grid">
+        <label className="storage-link-target"><span><Link2 size={13}/> 関連する記録</span><select value={relationKey} onChange={e=>chooseRelation(e.target.value)}><option value="">関連付けなし（一般ファイル）</option>{groupedTargets.map(([group,list])=><optgroup key={group} label={group}>{list.map(target=><option key={targetKey(target)} value={targetKey(target)}>{target.label}</option>)}</optgroup>)}</select><small>閲覧権限がある記録だけ候補に表示されます。</small></label>
         <label><span>分類</span><select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select></label>
         <label className="storage-file-input"><span>ファイル</span><input ref={inputRef} type="file" onChange={e=>setSelectedFile(e.target.files?.[0]||null)}/><small>{selectedFile?`${selectedFile.name} / ${fmtBytes(selectedFile.size)}`:'PDF・画像・Officeファイルなど'}</small></label>
         <label className="storage-upload-note"><span>メモ</span><input value={note} onChange={e=>setNote(e.target.value)} placeholder="任意：用途や関連内容"/></label>
       </div>
-      <div className="storage-upload-actions"><span>{status?.enabled?'OneDriveへ直接保存します。':'OneDrive接続後にアップロードできます。'}</span><button className="primary-button" disabled={!status?.enabled||!selectedFile||busy==='upload'} onClick={()=>void upload()}><FileUp size={16}/>{busy==='upload'?'アップロード中…':'OneDriveへ保存'}</button></div>
+      <div className="storage-upload-actions"><span>{status?.enabled?'OneDriveへ直接保存し、Supabaseには台帳と関連付けだけを記録します。':'OneDrive接続後にアップロードできます。'}</span><button className="primary-button" disabled={!status?.enabled||!selectedFile||busy==='upload'} onClick={()=>void upload()}><FileUp size={16}/>{busy==='upload'?'アップロード中…':'OneDriveへ保存'}</button></div>
     </section>}
 
     <section className="panel storage-files-panel">
       <div className="panel-title"><div><h2>ファイル台帳</h2><p>OneDrive上のファイルをアプリから検索・確認できます。削除操作は設けていません。</p></div><FolderOpen size={20}/></div>
-      <div className="storage-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ファイル名・フォルダ・分類・メモで検索"/></div>
+      <div className="storage-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ファイル名・関連記録・フォルダ・分類・メモで検索"/></div>
       <div className="storage-file-list">
         {filtered.map(file=>{
           const link=file.external_file_links?.[0]
+          const linkedLabel=link?.entity_id?targetLabelMap.get(`${link.entity_type}:${link.entity_id}`):''
           return <article key={file.id} className="storage-file-row">
             <div className="storage-file-type"><FolderOpen size={19}/></div>
-            <div className="storage-file-main"><b>{file.file_name}</b><span>{link?.category||'その他'}　・　{fmtBytes(file.size_bytes)}　・　{fmtDate(file.uploaded_at)}</span><small>{file.folder_path||'—'}{link?.note?`｜${link.note}`:''}</small></div>
+            <div className="storage-file-main"><b>{file.file_name}</b><span>{link?.category||'その他'}　・　{fmtBytes(file.size_bytes)}　・　{fmtDate(file.uploaded_at)}</span>{linkedLabel&&<span className="storage-linked-record"><Link2 size={12}/>{linkedLabel}</span>}<small>{file.folder_path||'—'}{link?.note?`｜${link.note}`:''}</small></div>
             {file.web_url?<a className="secondary-button compact" href={file.web_url} target="_blank" rel="noreferrer"><ExternalLink size={15}/>OneDrive</a>:<span className="muted">URLなし</span>}
           </article>
         })}
