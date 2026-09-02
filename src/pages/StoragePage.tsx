@@ -14,7 +14,7 @@ import {
   type ExternalStorageStatus,
 } from '../lib/externalStorage'
 
-const categories = ['請求書・納品書','仕入請求書','経費・領収書','圃場','機械設備','農薬・肥料','その他']
+const categories = ['請求書・納品書','仕入請求書','経費・領収書','圃場','機械設備','農薬','肥料','その他']
 
 function fmtDate(value: string) {
   if (!value) return '—'
@@ -38,6 +38,9 @@ function explainStorageError(value: string) {
   }
   if (message.includes('AADSTS7000215')) {
     return 'Client Secretが正しくありません。Microsoft Entraの「証明書とシークレット」で、Secret IDではなく作成時に表示される「値（Value）」を入力してください。値が分からない場合は新しいClient Secretを作成してください。'
+  }
+  if (message.includes('AADSTS700016')) {
+    return 'Tenant IDとClient IDが同じMicrosoft Entraアプリの組み合わせになっていません。同じアプリの「概要」画面に表示されるDirectory (tenant) IDとApplication (client) IDを使用してください。'
   }
   return message
 }
@@ -144,7 +147,7 @@ export default function StoragePage() {
     try {
       const next = await verifyExternalStorage()
       setStatus(next)
-      setSuccess('OneDriveへの接続を確認しました。')
+      setSuccess('OneDriveへの接続とフォルダ構成を確認しました。')
       await refresh(false)
     } catch (e:any) { setError(explainStorageError(e?.message || '接続確認に失敗しました。')) }
     finally { setBusy('') }
@@ -187,9 +190,9 @@ export default function StoragePage() {
       <div className="storage-status-main">
         <span>{status?.enabled?'OneDrive 接続済み':'OneDrive 未接続'}</span>
         <b>{status?.connectedAccount || 'Microsoft 365 / OneDriveを接続してください'}</b>
-        <small>保存先：{status?.rootFolder || '五代目八木一兵衛'}　/　登録ファイル {status?.fileCount ?? 0}件</small>
+        <small>保存先：{status?.rootFolder || '五代目八木一兵衛'}　/　登録ファイル {status?.fileCount ?? 0}件　/　フォルダ構成：{status?.folderStructure==='v2'?'整理済み':'標準'}</small>
       </div>
-      {status?.enabled&&canManage&&<button className="secondary-button compact" onClick={()=>void verify()} disabled={busy==='verify'}><ShieldCheck size={16}/>{busy==='verify'?'確認中…':'接続確認'}</button>}
+      {status?.enabled&&canManage&&<button className="secondary-button compact" onClick={()=>void verify()} disabled={busy==='verify'}><ShieldCheck size={16}/>{busy==='verify'?'確認中…':'接続・フォルダ確認'}</button>}
     </section>
 
     {canManage&&<section className="panel storage-config-panel">
@@ -215,7 +218,7 @@ export default function StoragePage() {
     </section>}
 
     {canUpload&&<section className="panel storage-upload-panel">
-      <div className="panel-title"><div><h2>ファイルを保存・業務データへ紐付け</h2><p>帳票・経費・仕入請求書・圃場・機械設備を選ぶと、その記録に関連するファイルとして台帳化します。1ファイル25MBまでです。</p></div><FileUp size={20}/></div>
+      <div className="panel-title"><div><h2>ファイルを保存・業務データへ紐付け</h2><p>保存時に帳票・仕入・経費・圃場・機械設備・農薬・肥料へ自動整理し、年月別にOneDriveへ格納します。圃場と機械設備は関連付け先ごとの専用フォルダになります。1ファイル25MBまでです。</p></div><FileUp size={20}/></div>
       <div className="storage-upload-grid">
         <label className="storage-link-target"><span><Link2 size={13}/> 関連する記録</span><select value={relationKey} onChange={e=>chooseRelation(e.target.value)}><option value="">関連付けなし（一般ファイル）</option>{groupedTargets.map(([group,list])=><optgroup key={group} label={group}>{list.map(target=><option key={targetKey(target)} value={targetKey(target)}>{target.label}</option>)}</optgroup>)}</select><small>閲覧権限がある記録だけ候補に表示されます。</small></label>
         <label><span>分類</span><select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select></label>
