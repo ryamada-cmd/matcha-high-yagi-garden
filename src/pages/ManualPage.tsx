@@ -12,15 +12,16 @@ const permissionCoverageKeys=[
   'fertilizer_applications.view','fertilizer_inventory.view','fertilizers.view','fertilizer_plans.view',
   'harvest_processing.view','production.view','products.view','packaging.view','sales.view',
   'documents.view','documents.manage','equipment.view','daily_reports.view','expenses.view',
-  'vendor_invoices.view','fields.view','manual.view','settings.view','products.manage'
+  'vendor_invoices.view','fields.view','storage.view','storage.upload','storage.manage',
+  'manual.view','settings.view','products.manage'
 ] as const
 
 const guideSections:GuideSection[]=[
   {id:'start',label:'はじめに',description:'ログイン、権限、画面の使い方',items:[
     {title:'ログインとユーザー権限',summary:'登録アカウントでログインし、役割と機能別権限に応じて操作します。',steps:['メールアドレスとパスワードでログインします。','初回登録ユーザーは管理者、2人目以降は作業者として登録されます。','管理者は「設定・監査」で管理者／作業者の役割と、役割ごとの機能別権限を設定できます。','閲覧・登録・編集・削除などは機能ごとに独立して許可／不許可を設定できます。','許可されていない機能はPC・スマホのメニューから非表示になり、URLを直接開いても利用できません。'],notes:['権限変更後は画面を再読み込みすると確実に最新状態へ更新されます。','管理系の固定権限は安全のため作業者へ付与できないものがあります。']},
-    {title:'機能別権限の考え方',summary:'画面を見せる権限と、データを変更する権限を分けて運用できます。',steps:['「閲覧」はその機能の画面・履歴を開けるかを決めます。','「登録」「編集」「削除」または「管理」は、その画面内で実行できる操作を決めます。','例：散布は閲覧・登録・編集・削除を分けて設定できます。','例：請求書・納品書は documents.view で閲覧、documents.manage で作成・編集・削除を制御します。','例：商品価格表は products.view で閲覧し、products.manage がある場合に価格を変更できます。'],notes:['権限は画面表示だけでなく、主要データのRLSやRPC側でも確認されます。']},
-    {title:'PC・スマホのメニュー',summary:'PCは左サイドバー、スマホは下部ナビとメニューから、許可された機能だけを開きます。',steps:['PCでは「防除」「施肥」「収穫・製造・販売」「設備」「共通」から選択します。','スマホでは権限のある主要機能を下部ナビから開けます。','その他の許可済み機能は下部の「メニュー」から開きます。','「商品価格表」「請求書・納品書」も収穫・製造・販売グループから開きます。']},
-    {title:'データの基本的な流れ',summary:'マスタ・在庫・作業・販売・帳票が連動するため、実際の業務順に登録します。',steps:['圃場・農薬・肥料・商品・設備など必要な基礎情報を登録します。','購入・取得した在庫や設備を登録します。','散布・施肥・摘採・製造・商品化・販売など実際の作業を記録します。','商品マスタで販売区分別価格を整え、価格表で確認します。','請求書・納品書は商品価格と取引先マスタを使って作成します。','履歴、圃場カルテ、ダッシュボードで振り返ります。']}
+    {title:'機能別権限の考え方',summary:'画面を見せる権限と、データを変更する権限を分けて運用できます。',steps:['「閲覧」はその機能の画面・履歴を開けるかを決めます。','「登録」「編集」「削除」または「管理」は、その画面内で実行できる操作を決めます。','例：請求書・納品書は documents.view で閲覧、documents.manage で作成・編集・削除を制御します。','例：商品価格表は products.view で閲覧し、products.manage がある場合に価格を変更できます。','例：外部ストレージは storage.view で閲覧、storage.upload でファイル保存、storage.manage でMicrosoft接続設定を制御します。'],notes:['権限は画面表示だけでなく、主要データのRLS・RPC・Edge Function側でも確認されます。']},
+    {title:'PC・スマホのメニュー',summary:'PCは左サイドバー、スマホは下部ナビとメニューから、許可された機能だけを開きます。',steps:['PCでは「防除」「施肥」「収穫・製造・販売」「設備」「共通」から選択します。','スマホでは権限のある主要機能を下部ナビから開けます。','その他の許可済み機能は下部の「メニュー」から開きます。','「ファイル・OneDrive」は共通グループから開きます。']},
+    {title:'データの基本的な流れ',summary:'マスタ・在庫・作業・販売・帳票・外部ファイルが連動するため、実際の業務順に登録します。',steps:['圃場・農薬・肥料・商品・設備など必要な基礎情報を登録します。','購入・取得した在庫や設備を登録します。','散布・施肥・摘採・製造・商品化・販売など実際の作業を記録します。','商品マスタで販売区分別価格を整え、価格表で確認します。','請求書・納品書は商品価格と取引先マスタを使って作成します。','PDF・写真・OfficeファイルなどはOneDriveへ保存し、Supabaseには検索用のファイル台帳を保持します。','履歴、圃場カルテ、ダッシュボードで振り返ります。']}
   ]},
   {id:'dashboard',label:'ダッシュボード',description:'今日の判断に必要な情報を確認',items:[
     {title:'ダッシュボード',summary:'天気と、自分に閲覧が許可された作業・予定・在庫・製造・販売・設備の状況を一覧表示します。',path:'/',steps:['ログインするとダッシュボードが開きます。','昨日・今日・先1週間の天気と降水情報を確認します。','自分に権限がある機能だけ、カード・注意事項・クイック操作・次の作業に表示されます。','販売権限がある場合は売上・売上原価・粗利なども確認できます。'],notes:['天気地点や警告基準は「設定・監査」の変更権限を持つ管理者が変更できます。']}
@@ -51,21 +52,22 @@ const guideSections:GuideSection[]=[
   ]},
   {id:'sales',label:'販売・帳票',description:'販売・出庫、商品価格、請求書・納品書を管理',items:[
     {title:'販売・出庫',summary:'製品ロットを販売先・販売チャネルと紐付けて出庫し、売上と粗利を記録します。',path:'/sales',steps:['販売する在庫ロットを選びます。','販売数量・単価・販売先・販売チャネルなどを入力します。','売上、売上原価、粗利を確認して登録します。','取消時は対象在庫が戻ることを確認します。']},
-    {title:'請求書を作成する',summary:'マネーフォワード系の構成に寄せたA4プレビューを見ながら、取引先・明細・税・振込先を入力します。',path:'/documents',adminOnly:true,steps:['「請求書・納品書」を開き「請求書を作成」を押します。','帳票番号、発行日、お支払期限を確認します。','保存済み取引先を選ぶか、取引先名・住所・部署・担当者を直接入力します。','販売区分を「卸・小売・その他」から選択します。','商品を選ぶと商品価格表の対応単価が自動入力されます。必要なら品目名・単価・数量・単位を手入力します。','明細ごとに納品日と税率（8%軽減・10%・0%）を設定します。','右側のA4プレビューで小計・税率別内訳・消費税・合計・振込先・備考を確認します。','途中なら「下書き保存」、確定したら「発行して保存」を押します。','「印刷 / PDF保存」から印刷ダイアログを開き、PDFとして保存できます。'],notes:['documents.view は帳票閲覧、documents.manage は作成・編集・削除、取引先・発行元設定の変更に使用します。','商品マスタにない品目も自由入力できます。']},
+    {title:'請求書を作成する',summary:'A4プレビューを見ながら、取引先・明細・税・振込先を入力します。',path:'/documents',adminOnly:true,steps:['「請求書・納品書」を開き「請求書を作成」を押します。','帳票番号、発行日、お支払期限を確認します。','保存済み取引先を選ぶか、取引先情報を直接入力します。','販売区分を「卸・小売・その他」から選択します。','商品を選ぶと商品価格表の対応単価が自動入力されます。','明細ごとに納品日と税率（8%軽減・10%・0%）を設定します。','A4プレビューで合計・振込先・備考を確認します。','途中なら「下書き保存」、確定したら「発行して保存」を押します。','「印刷 / PDF保存」から印刷ダイアログを開き、PDFとして保存できます。'],notes:['documents.view は帳票閲覧、documents.manage は作成・編集・削除、取引先・発行元設定の変更に使用します。']},
     {title:'納品書を作成する',summary:'請求書と同じ商品・取引先マスタを使い、納品日を含む納品書を作成します。',path:'/documents',adminOnly:true,steps:['「納品書を作成」を押します。','帳票番号、発行日、納品日、取引先を入力します。','販売区分を選び、商品を選択または品目を自由入力します。','各明細の納品日・単価・数量・単位・税率を確認します。','A4プレビューを確認し、下書きまたは発行済みとして保存します。','必要に応じて印刷またはPDF保存します。']},
     {title:'帳票一覧を管理する',summary:'作成済みの請求書・納品書を、帳票番号や取引先から検索して再編集します。',path:'/documents',steps:['「帳票一覧」タブを開きます。','帳票番号または取引先で検索します。','請求書／納品書、発行日、合計、下書き／発行済み状態を確認します。','「開く」から内容を再編集します。','削除権限がある場合は不要な帳票を削除できます。']},
-    {title:'取引先マスタ・発行元・振込先',summary:'帳票で繰り返し使う取引先と、自社の発行情報・振込口座を保存します。',path:'/documents',adminOnly:true,steps:['「取引先・発行元」タブを開きます。','取引先マスタへ会社名、郵便番号、住所、部署、担当者、敬称、メール、電話などを登録します。','発行元に会社名、適格請求書登録番号、住所、TELを設定します。','振込先に銀行名、支店名、口座種別、口座番号、口座名義を設定します。','保存後、新しい請求書・納品書から同じ情報を呼び出せます。']}
+    {title:'取引先マスタ・発行元・振込先',summary:'帳票で繰り返し使う取引先と、自社の発行情報・振込口座を保存します。',path:'/documents',adminOnly:true,steps:['「取引先・発行元」タブを開きます。','取引先マスタへ会社名、住所、部署、担当者などを登録します。','発行元に会社名、適格請求書登録番号、住所、TELを設定します。','振込先に銀行名、支店名、口座種別、口座番号、口座名義を設定します。']}
   ]},
   {id:'equipment',label:'機械設備',description:'農機具・農具・車両と修理・車検・税金を管理',items:[
     {title:'機械設備管理',summary:'農機具・農具・車両を資産台帳へ登録し、修理・整備・点検・期限を管理します。',path:'/equipment',adminOnly:true,steps:['設備区分、名前、メーカー、品番・型番、製造番号、保管場所を入力して登録します。','取得情報、燃料タイプ、現在状態を必要に応じて登録します。','車両の場合は車両番号、車検期限、税金期限、保険期限も登録します。','修理・整備・点検・オイル交換・部品交換などの履歴を追加します。','期限警告と過去の費用を確認します。']}
   ]},
-  {id:'common',label:'日報・経理',description:'日常業務、立替経費、仕入請求書を記録',items:[
+  {id:'common',label:'日報・経理・ファイル',description:'日常業務、立替経費、仕入請求書、外部ファイルを管理',items:[
     {title:'日報',summary:'1日の作業内容、良かった点、課題、次回対応、関連圃場を記録して振り返ります。',path:'/daily-reports',steps:['日付、作業時間、天気・現場状況、関連圃場を入力します。','作業内容、良かった点、課題、次回やることを登録します。','履歴で月・担当者・圃場・キーワードを使って振り返ります。']},
     {title:'経費精算',summary:'社内で立て替えた経費を複数明細で申請し、承認権限を持つユーザーが承認・差戻しします。',path:'/expenses',steps:['購入日時と購入先を入力します。','購入内容、数量、税込単価、税率を明細ごとに追加します。','申請すると承認権限を持つユーザーの確認対象になります。','差戻された場合は内容を修正して再申請します。','CSV出力権限がある場合はエクスポートできます。']},
-    {title:'仕入請求書・支払',summary:'肥料代・農薬代・加工賃など、取引先から届いた請求書と支払いを管理します。',path:'/vendor-invoices',adminOnly:true,steps:['請求元、先方請求書番号、請求日、支払期限、支払予定日、支払方法を入力します。','分類を選び、複数の請求明細をまとめて登録します。','一覧で未払残高、期限超過、今月の支払予定を確認します。','実際に支払ったら、支払日・支払金額・口座・振込番号を支払履歴へ登録します。','一部支払・全額支払・支払い保留を必要に応じて管理します。'],notes:['この機能は「こちらが発行する請求書」ではありません。販売先へ発行する帳票は「請求書・納品書」を使用します。']}
+    {title:'仕入請求書・支払',summary:'肥料代・農薬代・加工賃など、取引先から届いた請求書と支払いを管理します。',path:'/vendor-invoices',adminOnly:true,steps:['請求元、先方請求書番号、請求日、支払期限、支払予定日、支払方法を入力します。','分類を選び、複数の請求明細をまとめて登録します。','一覧で未払残高、期限超過、今月の支払予定を確認します。','実際に支払ったら支払履歴へ登録します。'],notes:['この機能は「こちらが発行する請求書」ではありません。販売先へ発行する帳票は「請求書・納品書」を使用します。']},
+    {title:'ファイル・OneDrive',summary:'PDF・画像・Officeファイル等の実体をOneDriveへ保存し、Supabaseには検索・関連付け用の台帳だけを保存します。',path:'/storage',adminOnly:true,steps:['管理者が「ファイル・OneDrive」を開きます。','Microsoft EntraでWebアプリを登録し、画面に表示されるリダイレクトURIを登録します。','委任アクセス許可として User.Read、Files.ReadWrite、offline_access を設定します。','Tenant ID、Client ID、Client Secret、OneDriveのルートフォルダ名を入力して接続設定を保存します。','Client Secretとrefresh tokenは通常テーブルへ平文保存せず、Supabase Vaultへ暗号化保存されます。','「OneDriveに接続」を押してMicrosoftアカウントを認証します。','接続後、分類とファイルを選択してOneDriveへ保存します。','保存済みファイルはファイル台帳から検索し、「OneDrive」で原本を開きます。'],notes:['既存の散布・施肥・販売・帳票などのデータはOneDriveへ移動しません。これらは従来通りSupabaseに残ります。','storage.view は台帳閲覧、storage.upload はファイル保存、storage.manage はMicrosoft接続設定を制御します。','現行UIにはOneDrive原本を削除する操作を設けていません。']}
   ]},
   {id:'admin',label:'設定・サポート',description:'設定、権限、監査、操作ガイドの整合性を管理',items:[
-    {title:'機能別権限を設定する',summary:'管理者／作業者それぞれについて、機能・操作単位で許可／不許可を設定します。',path:'/settings',adminOnly:true,steps:['「設定・監査」を開き、機能別権限の一覧を表示します。','各機能について管理者・作業者の許可状態を確認します。','必要な項目だけ許可し、閲覧・登録・編集・削除・同期・CSV出力などを業務に合わせて分けます。','請求書・納品書は「閲覧」と「作成・編集・削除」を分けて設定できます。','保存後、対象ユーザーで画面を再読み込みし、メニューと操作ボタンを確認します。']},
+    {title:'機能別権限を設定する',summary:'管理者／作業者それぞれについて、機能・操作単位で許可／不許可を設定します。',path:'/settings',adminOnly:true,steps:['「設定・監査」を開き、機能別権限の一覧を表示します。','各機能について管理者・作業者の許可状態を確認します。','必要な項目だけ許可し、閲覧・登録・編集・削除・同期・CSV出力などを業務に合わせて分けます。','外部ストレージは「閲覧」「アップロード」「接続設定」を分けて設定できます。','保存後、対象ユーザーで画面を再読み込みし、メニューと操作ボタンを確認します。']},
     {title:'設定・監査',summary:'天気地点、警告基準、ユーザー役割、機能別権限、監査ログを管理します。',path:'/settings',adminOnly:true,steps:['天気表示地点を設定します。','在庫・期限・予定の警告基準を調整します。','ユーザーの管理者／作業者の役割を管理します。','役割ごとの機能別権限を設定します。','監査ログで作成・更新・削除・同期操作を確認します。']},
     {title:'操作ガイドの更新と自動照合',summary:'操作ガイドはアプリ本体と同じリリースで配信し、画面追加時の更新漏れをCIで検出します。',path:'/manual',steps:['画面上部の「アプリ更新」と「リビジョン」で現在のリリースを確認します。','新しい画面をルーティングへ追加すると、CIが操作ガイド内の対応項目を検査します。','対応する説明がない場合はCIを失敗させ、本番リリース前に更新漏れを検出します。','主要な画面権限キーもガイド側の照合対象として管理します。','機能更新と操作ガイド更新を同じコミット系列でリリースします。'],notes:['操作ガイドはアプリの実装から文章を自動生成するものではありません。内容の正確性は人が確認し、CIは「追加した画面の説明がない」状態を機械的に防ぎます。']}
   ]}
@@ -79,8 +81,8 @@ export default function ManualPage(){
   const sections=useMemo(()=>guideSections.map(s=>({...s,items:s.items.filter(i=>!q||`${s.label} ${s.description} ${i.title} ${i.summary} ${i.steps.join(' ')} ${(i.notes||[]).join(' ')}`.normalize('NFKC').toLowerCase().includes(q))})).filter(s=>s.items.length>0),[q])
   const resultCount=sections.reduce((n,s)=>n+s.items.length,0)
   return <div className="page manual-page">
-    <div className="page-head manual-page-head"><div><p className="eyebrow">USER GUIDE</p><h1>操作ガイド</h1><p className="sub">現在公開中の茶園管理アプリに対応した説明書です。商品価格表、請求書・納品書を含む現行機能に対応しています。</p></div><div className="manual-version"><span><Clock3 size={13}/>アプリ更新 {formatBuildDate(__APP_BUILD_TIME__)}</span><span><GitBranch size={13}/>リビジョン {__APP_REVISION__||'—'}</span><span><BadgeCheck size={13}/>CI照合 {permissionCoverageKeys.length}権限</span></div></div>
-    <section className="panel manual-intro"><div className="manual-intro-icon"><BookOpen size={23}/></div><div><h2>五代目八木一兵衛｜茶園管理 操作説明書</h2><p>分からない操作は下の検索欄から「請求書」「納品書」「価格表」「権限」「車検」「農薬」「日報」「CSV」などの言葉で探してください。</p></div><span className="manual-policy"><ShieldCheck size={15}/>画面追加をCIで照合</span></section>
+    <div className="page-head manual-page-head"><div><p className="eyebrow">USER GUIDE</p><h1>操作ガイド</h1><p className="sub">現在公開中の茶園管理アプリに対応した説明書です。商品価格表、請求書・納品書、OneDrive外部ストレージを含む現行機能に対応しています。</p></div><div className="manual-version"><span><Clock3 size={13}/>アプリ更新 {formatBuildDate(__APP_BUILD_TIME__)}</span><span><GitBranch size={13}/>リビジョン {__APP_REVISION__||'—'}</span><span><BadgeCheck size={13}/>CI照合 {permissionCoverageKeys.length}権限</span></div></div>
+    <section className="panel manual-intro"><div className="manual-intro-icon"><BookOpen size={23}/></div><div><h2>五代目八木一兵衛｜茶園管理 操作説明書</h2><p>分からない操作は下の検索欄から「請求書」「OneDrive」「ファイル」「価格表」「権限」「車検」「農薬」「日報」などの言葉で探してください。</p></div><span className="manual-policy"><ShieldCheck size={15}/>画面追加をCIで照合</span></section>
     <div className="search-box manual-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="操作・機能・キーワードで説明書を検索"/><span>{resultCount}項目</span></div>
     <div className="manual-layout">
       <aside className="panel manual-index"><div className="manual-index-title"><CircleHelp size={16}/><b>目次</b></div>{sections.map(s=><a key={s.id} href={`#manual-${s.id}`}>{s.label}<ChevronRight size={14}/></a>)}</aside>
