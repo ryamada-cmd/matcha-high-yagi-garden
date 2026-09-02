@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/", "destination": "https://ryamada-cmd.github.io/matcha-high-yagi-garden/vercel-build/index.html" },
     { "source": "/assets/:path*", "destination": "https://ryamada-cmd.github.io/matcha-high-yagi-garden/vercel-build/assets/:path*" },
     { "source": "/yagi-ichibei-logo.svg", "destination": "https://ryamada-cmd.github.io/matcha-high-yagi-garden/vercel-build/yagi-ichibei-logo.svg" },
     { "source": "/:path*", "destination": "https://ryamada-cmd.github.io/matcha-high-yagi-garden/vercel-build/index.html" }
