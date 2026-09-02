@@ -65,13 +65,49 @@ function friendlyExternalStorageError(value: unknown) {
   return message
 }
 
-async function invoke<T>(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('external-storage', { body })
-  if (error) throw new Error(friendlyExternalStorageError(error.message || error))
+async function currentFunctionAuthHeaders(forceRefresh = false) {
+  let session = null
+  if (!forceRefresh) {
+    const { data, error } = await supabase.auth.getSession()
+    if (error) throw new Error('ログイン情報を確認できませんでした。アプリへ再ログインしてください。')
+    session = data.session
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  const expiresSoon = !session || !session.access_token || (session.expires_at != null && session.expires_at <= now + 90)
+  if (forceRefresh || expiresSoon) {
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error || !data.session?.access_token) {
+      throw new Error('ログインの有効期限が切れています。アプリへ再ログインしてから、もう一度お試しください。')
+    }
+    session = data.session
+  }
+
+  if (!session?.access_token) {
+    throw new Error('ログイン情報がありません。アプリへ再ログインしてから、もう一度お試しください。')
+  }
+  return { Authorization: `Bearer ${session.access_token}` }
+}
+
+function isUnauthorizedFunctionError(error: any) {
+  return Number(error?.context?.status || error?.status || 0) === 401
+}
+
+async function invokeFunction<T>(body: BodyInit | Record<string, unknown>, forceRefresh = false): Promise<T> {
+  const headers = await currentFunctionAuthHeaders(forceRefresh)
+  const { data, error } = await supabase.functions.invoke('external-storage', { body, headers })
+  if (error) {
+    if (!forceRefresh && isUnauthorizedFunctionError(error)) return invokeFunction<T>(body, true)
+    throw new Error(friendlyExternalStorageError(error.message || error))
+  }
   const payload = (data || {}) as any
   if (payload.error) throw new Error(friendlyExternalStorageError(payload.error))
   if (typeof payload.lastError === 'string' && payload.lastError) payload.lastError = friendlyExternalStorageError(payload.lastError)
   return payload as T
+}
+
+async function invoke<T>(body: Record<string, unknown>) {
+  return invokeFunction<T>(body)
 }
 
 export function getExternalStorageStatus() { return invoke<ExternalStorageStatus>({ action: 'status' }) }
@@ -96,11 +132,7 @@ export async function uploadExternalFile(input: { file: File; category: string; 
   form.set('entityType', input.entityType || 'general')
   if (input.entityId) form.set('entityId', input.entityId)
   if (input.note) form.set('note', input.note)
-  const { data, error } = await supabase.functions.invoke('external-storage', { body: form })
-  if (error) throw new Error(friendlyExternalStorageError(error.message || error))
-  const payload = (data || {}) as any
-  if (payload.error) throw new Error(friendlyExternalStorageError(payload.error))
-  return payload as { ok: boolean; file: ExternalFileRow }
+  return invokeFunction<{ ok: boolean; file: ExternalFileRow }>(form)
 }
 
 export async function loadExternalFiles(limit = 250) {
