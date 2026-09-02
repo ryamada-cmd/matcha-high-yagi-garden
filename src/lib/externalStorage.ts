@@ -15,6 +15,7 @@ export type ExternalStorageStatus = {
   lastVerifiedAt: string
   lastError: string
   fileCount: number
+  folderStructure?: string
   redirectUri: string
 }
 
@@ -48,15 +49,18 @@ export type ExternalLinkTarget = {
 }
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function looksLikeSecretId(value: string) {
-  return uuidPattern.test(value.trim())
-}
+function looksLikeSecretId(value: string) { return uuidPattern.test(value.trim()) }
 
 function friendlyExternalStorageError(value: unknown) {
   const message = String(value || '')
   if (message.includes('AADSTS7000215') || message.includes('Invalid client secret')) {
-    return 'Microsoft EntraのClient Secretが正しくありません。「Secret ID」ではなく「値（Value）」を入力してください。値が分からない場合は、新しいClient Secretを作成して表示されたValueをコピーしてください。'
+    return 'Microsoft EntraのClient Secretが正しくありません。「Secret ID」ではなく「値（Value）」を入力してください。'
+  }
+  if (message.includes('AADSTS700025') || message.includes('Client is public')) {
+    return 'Microsoft Entraでアプリが公開クライアント扱いになっています。認証のプラットフォームを「Web」にし、パブリック クライアント フローを「いいえ」にしてください。'
+  }
+  if (message.includes('AADSTS700016') || message.includes('was not found in the directory')) {
+    return 'Microsoft EntraのTenant IDとClient IDの組み合わせが一致していません。同じアプリの「概要」画面に表示されるDirectory (tenant) IDとApplication (client) IDを使用してください。'
   }
   return message
 }
@@ -70,16 +74,9 @@ async function invoke<T>(body: Record<string, unknown>) {
   return payload as T
 }
 
-export function getExternalStorageStatus() {
-  return invoke<ExternalStorageStatus>({ action: 'status' })
-}
+export function getExternalStorageStatus() { return invoke<ExternalStorageStatus>({ action: 'status' }) }
 
-export function configureExternalStorage(input: {
-  tenantId: string
-  clientId: string
-  clientSecret?: string
-  rootFolder: string
-}) {
+export function configureExternalStorage(input: { tenantId: string; clientId: string; clientSecret?: string; rootFolder: string }) {
   if (input.clientSecret && looksLikeSecretId(input.clientSecret)) {
     return Promise.reject(new Error('Client Secretに「Secret ID」が入力されている可能性があります。Microsoft Entraの「値（Value）」を入力してください。'))
   }
@@ -89,18 +86,10 @@ export function configureExternalStorage(input: {
 export async function startOneDriveAuthorization(returnTo: string) {
   return invoke<{ url: string; redirectUri: string }>({ action: 'authorize', returnTo })
 }
+export function verifyExternalStorage() { return invoke<ExternalStorageStatus & { ok: boolean }>({ action: 'verify' }) }
+export function organizeExternalStorage() { return invoke<ExternalStorageStatus & { ok: boolean }>({ action: 'organize' }) }
 
-export function verifyExternalStorage() {
-  return invoke<ExternalStorageStatus & { ok: boolean }>({ action: 'verify' })
-}
-
-export async function uploadExternalFile(input: {
-  file: File
-  category: string
-  entityType?: string
-  entityId?: string
-  note?: string
-}) {
+export async function uploadExternalFile(input: { file: File; category: string; entityType?: string; entityId?: string; note?: string }) {
   const form = new FormData()
   form.set('file', input.file)
   form.set('category', input.category)
