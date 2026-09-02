@@ -1,0 +1,13 @@
+/* UI refresh safety guards. Loaded after ui-refresh.css. */
+/* Generic modal styling must not leak into modal backdrops or internal header/action rows. */
+[class*="modal-backdrop"]{
+  max-height:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+[class*="-modal-"]:not([class*="modal-backdrop"]){
+  max-height:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
