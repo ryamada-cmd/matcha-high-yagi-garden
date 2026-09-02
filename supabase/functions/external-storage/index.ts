@@ -21,7 +21,6 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
   status,
   headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
 })
-
 const errorJson = (message: string, status = 400) => json({ error: message }, status)
 
 function cleanSegment(value: string, fallback = 'その他') {
@@ -51,10 +50,22 @@ function safeReturnTo(value: unknown) {
       || url.origin === 'https://ryamada-cmd.github.io'
       || url.hostname === 'localhost'
       || url.hostname === '127.0.0.1'
-    if (!allowed) return `${DEFAULT_APP_ORIGIN}/storage`
-    return url.toString()
+    return allowed ? url.toString() : `${DEFAULT_APP_ORIGIN}/storage`
   } catch {
     return `${DEFAULT_APP_ORIGIN}/storage`
+  }
+}
+
+function japanYearMonth(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(date)
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return {
+    year: map.year || String(date.getUTCFullYear()),
+    month: map.month || String(date.getUTCMonth() + 1).padStart(2, '0'),
   }
 }
 
@@ -161,6 +172,75 @@ async function ensureFolderPath(accessToken: string, driveId: string, segments: 
   }
 }
 
+async function ensureBaseFolderStructure(accessToken: string, driveId: string, rootFolder: string) {
+  const root = cleanSegment(rootFolder || '五代目八木一兵衛')
+  const paths = [
+    [root, '01_帳票', '請求書'],
+    [root, '01_帳票', '納品書'],
+    [root, '02_仕入', '仕入請求書'],
+    [root, '03_経費'],
+    [root, '04_圃場'],
+    [root, '05_機械設備'],
+    [root, '06_農薬・肥料', '農薬'],
+    [root, '06_農薬・肥料', '肥料'],
+    [root, '99_その他'],
+  ]
+  for (const path of paths) await ensureFolderPath(accessToken, driveId, path)
+}
+
+async function resolveEntityFolder(entityType: string, entityId: string | null) {
+  if (!entityId) return null
+  if (entityType === 'sales_document') {
+    const { data } = await admin.from('sales_documents').select('document_type,document_no,customer_name').eq('id', entityId).maybeSingle()
+    if (!data) return null
+    const subtype = data.document_type === 'INVOICE' ? '請求書' : '納品書'
+    return { category: subtype, segments: ['01_帳票', subtype] }
+  }
+  if (entityType === 'vendor_invoice') {
+    const { data } = await admin.from('vendor_invoices').select('invoice_no,vendor').eq('id', entityId).maybeSingle()
+    if (!data) return null
+    return { category: '仕入請求書', segments: ['02_仕入', '仕入請求書'] }
+  }
+  if (entityType === 'expense_claim') {
+    const { data } = await admin.from('expense_claims').select('claim_no,vendor').eq('id', entityId).maybeSingle()
+    if (!data) return null
+    return { category: '経費・領収書', segments: ['03_経費'] }
+  }
+  if (entityType === 'field') {
+    const { data } = await admin.from('fields').select('legacy_id,name').eq('id', entityId).maybeSingle()
+    if (!data) return null
+    const label = cleanSegment(`${data.legacy_id || ''} ${data.name || ''}`.trim(), '圃場未設定')
+    return { category: '圃場', segments: ['04_圃場', label] }
+  }
+  if (entityType === 'equipment') {
+    const { data } = await admin.from('equipment_assets').select('asset_no,name').eq('id', entityId).maybeSingle()
+    if (!data) return null
+    const label = cleanSegment(`${data.asset_no || ''} ${data.name || ''}`.trim(), '設備未設定')
+    return { category: '機械設備', segments: ['05_機械設備', label] }
+  }
+  return null
+}
+
+async function resolveUploadDestination(root: string, requestedCategory: string, entityType: string, entityId: string | null) {
+  const { year, month } = japanYearMonth()
+  const entity = await resolveEntityFolder(entityType, entityId)
+  if (entity) return { category: entity.category, folders: [root, ...entity.segments, year, month] }
+
+  const category = cleanSegment(requestedCategory || 'その他')
+  if (category === '請求書・納品書' || category === '請求書' || category === '納品書') {
+    const subtype = category === '請求書' || category === '納品書' ? category : '未分類'
+    return { category, folders: [root, '01_帳票', subtype, year, month] }
+  }
+  if (category === '仕入請求書') return { category, folders: [root, '02_仕入', '仕入請求書', year, month] }
+  if (category === '経費・領収書') return { category, folders: [root, '03_経費', year, month] }
+  if (category === '圃場') return { category, folders: [root, '04_圃場', '未分類', year, month] }
+  if (category === '機械設備') return { category, folders: [root, '05_機械設備', '未分類', year, month] }
+  if (category === '農薬') return { category, folders: [root, '06_農薬・肥料', '農薬', year, month] }
+  if (category === '肥料') return { category, folders: [root, '06_農薬・肥料', '肥料', year, month] }
+  if (category === '農薬・肥料') return { category, folders: [root, '06_農薬・肥料', '共通', year, month] }
+  return { category: 'その他', folders: [root, '99_その他', year, month] }
+}
+
 async function statusPayload() {
   const { data, error } = await admin.from('external_storage_settings').select('*').eq('id', 1).single()
   if (error) throw error
@@ -180,6 +260,7 @@ async function statusPayload() {
     lastVerifiedAt: data.last_verified_at || '',
     lastError: data.last_error || '',
     fileCount: count || 0,
+    folderStructure: 'v2',
     redirectUri: `${FUNCTION_BASE}/callback`,
   }
 }
@@ -215,12 +296,15 @@ async function handleCallback(url: URL) {
       scope: 'offline_access User.Read Files.ReadWrite',
     })
     const tokenResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: tokenBody,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenBody,
     })
     const token = await tokenResponse.json().catch(() => ({})) as Record<string, unknown>
     if (!tokenResponse.ok || !token.access_token || !token.refresh_token) {
       throw new Error(String(token.error_description || token.error || 'Microsoft認証に失敗しました。'))
     }
+
     const accessToken = String(token.access_token)
     const [driveResponse, meResponse] = await Promise.all([
       graphFetch(accessToken, '/me/drive'),
@@ -232,8 +316,9 @@ async function handleCallback(url: URL) {
     const driveId = String(drive.id || '')
     if (!driveId) throw new Error('OneDrive Drive IDを取得できませんでした。')
     const account = String(me.mail || me.userPrincipalName || me.displayName || 'Microsoft account')
+    const root = String(config.root_folder || '五代目八木一兵衛')
 
-    await ensureFolderPath(accessToken, driveId, [String(config.root_folder || '五代目八木一兵衛')])
+    await ensureBaseFolderStructure(accessToken, driveId, root)
     const { error: saveError } = await admin.rpc('external_storage_set_connection', {
       p_drive_id: driveId,
       p_drive_type: String(drive.driveType || ''),
@@ -271,15 +356,15 @@ Deno.serve(async (req) => {
       const accessToken = await refreshAccessToken(config)
       const driveId = String(config.drive_id)
       const root = cleanSegment(String(config.root_folder || '五代目八木一兵衛'))
-      const category = cleanSegment(String(form.get('category') || 'その他'))
-      const now = new Date()
-      const year = String(now.getUTCFullYear())
-      const month = String(now.getUTCMonth() + 1).padStart(2, '0')
-      const folders = [root, category, year, month]
-      await ensureFolderPath(accessToken, driveId, folders)
+      const requestedCategory = String(form.get('category') || 'その他')
+      const entityType = cleanSegment(String(form.get('entityType') || 'general'), 'general').toLowerCase().replace(/\s+/g, '_')
+      const entityId = String(form.get('entityId') || '').trim() || null
+      const note = String(form.get('note') || '').trim() || null
+      const destination = await resolveUploadDestination(root, requestedCategory, entityType, entityId)
+      await ensureFolderPath(accessToken, driveId, destination.folders)
 
       const fileName = cleanFileName(file.name)
-      const uploadPath = graphPath([...folders, fileName])
+      const uploadPath = graphPath([...destination.folders, fileName])
       const bytes = await file.arrayBuffer()
       const uploadResponse = await graphFetch(accessToken, `/drives/${encodeURIComponent(driveId)}/root:/${uploadPath}:/content?@microsoft.graph.conflictBehavior=rename`, {
         method: 'PUT',
@@ -296,22 +381,19 @@ Deno.serve(async (req) => {
         file_name: String(item.name || fileName),
         mime_type: file.type || item.file?.mimeType || null,
         size_bytes: Number(item.size || file.size),
-        folder_path: folders.join('/'),
+        folder_path: destination.folders.join('/'),
         web_url: String(item.webUrl || ''),
         sha1_hash: String(item.file?.hashes?.sha1Hash || ''),
         uploaded_by: user.id,
-        metadata: { eTag: item.eTag || null, cTag: item.cTag || null },
+        metadata: { eTag: item.eTag || null, cTag: item.cTag || null, folderStructure: 'v2' },
       }).select('id,provider,drive_id,provider_item_id,file_name,mime_type,size_bytes,folder_path,web_url,uploaded_at').single()
       if (fileError || !fileRow) throw fileError || new Error('ファイル台帳を保存できませんでした。')
 
-      const entityType = cleanSegment(String(form.get('entityType') || 'general'), 'general').toLowerCase().replace(/\s+/g, '_')
-      const entityId = String(form.get('entityId') || '').trim() || null
-      const note = String(form.get('note') || '').trim() || null
       const { error: linkError } = await admin.from('external_file_links').insert({
         file_id: fileRow.id,
         entity_type: entityType,
         entity_id: entityId,
-        category,
+        category: destination.category,
         note,
         created_by: user.id,
       })
@@ -375,8 +457,19 @@ Deno.serve(async (req) => {
       const driveResponse = await graphFetch(accessToken, '/me/drive')
       if (!driveResponse.ok) throw new Error(`OneDrive接続確認に失敗しました (${driveResponse.status})`)
       const drive = await driveResponse.json() as Record<string, unknown>
+      await ensureBaseFolderStructure(accessToken, String(config.drive_id || drive.id || ''), String(config.root_folder || '五代目八木一兵衛'))
       await admin.from('external_storage_settings').update({ last_verified_at: new Date().toISOString(), last_error: null }).eq('id', 1)
       return json({ ok: true, drive: { id: drive.id, driveType: drive.driveType, name: drive.name }, ...(await statusPayload()) })
+    }
+
+    if (action === 'organize') {
+      await userContext(req, 'storage.manage')
+      const config = await privateConfig()
+      if (!config.enabled || !config.drive_id) return errorJson('OneDriveが未接続です。', 409)
+      const accessToken = await refreshAccessToken(config)
+      await ensureBaseFolderStructure(accessToken, String(config.drive_id), String(config.root_folder || '五代目八木一兵衛'))
+      await admin.from('external_storage_settings').update({ last_verified_at: new Date().toISOString(), last_error: null }).eq('id', 1)
+      return json({ ok: true, ...(await statusPayload()) })
     }
 
     return errorJson('Unknown action', 400)
