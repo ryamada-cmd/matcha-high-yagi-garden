@@ -12,6 +12,9 @@ export type ProductMaster = {
   contentUnit: string
   packageType: string
   standardPriceYen: number
+  wholesalePriceYen: number
+  retailPriceYen: number
+  otherPriceYen: number
   packagingCostYen: number
   status: 'ACTIVE' | 'INACTIVE'
   note: string
@@ -30,7 +33,7 @@ export async function loadProductRole() {
 export async function loadProducts(): Promise<ProductMaster[]> {
   const { data, error } = await supabase
     .from('product_master')
-    .select('id,sku,product_name,category,brand_name,jan_code,net_content,content_unit,package_type,standard_price_yen,packaging_cost_yen,status,note,created_at,updated_at')
+    .select('id,sku,product_name,category,brand_name,jan_code,net_content,content_unit,package_type,standard_price_yen,wholesale_price_yen,retail_price_yen,other_price_yen,packaging_cost_yen,status,note,created_at,updated_at')
     .order('category', { ascending: true })
     .order('product_name', { ascending: true })
   if (error) throw error
@@ -45,6 +48,9 @@ export async function loadProducts(): Promise<ProductMaster[]> {
     contentUnit: r.content_unit || 'g',
     packageType: r.package_type || '',
     standardPriceYen: n(r.standard_price_yen),
+    wholesalePriceYen: n(r.wholesale_price_yen),
+    retailPriceYen: n(r.retail_price_yen),
+    otherPriceYen: n(r.other_price_yen),
     packagingCostYen: n(r.packaging_cost_yen),
     status: r.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
     note: r.note || '',
@@ -64,6 +70,9 @@ export async function saveProduct(input: ProductInput) {
     content_unit: input.contentUnit,
     package_type: input.packageType,
     standard_price_yen: input.standardPriceYen,
+    wholesale_price_yen: input.wholesalePriceYen,
+    retail_price_yen: input.retailPriceYen,
+    other_price_yen: input.otherPriceYen,
     packaging_cost_yen: input.packagingCostYen,
     status: input.status,
     note: input.note,
