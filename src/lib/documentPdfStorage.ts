@@ -49,32 +49,97 @@ async function waitForImages(element: HTMLElement) {
   }))
 }
 
+/**
+ * html2canvas internally clones the document and can re-evaluate responsive CSS
+ * against a different viewport. That made an archived PDF look different from
+ * the A4 preview that the user approved on screen (especially on mobile).
+ *
+ * Freeze every computed style from the visible preview onto an off-screen clone
+ * so the PDF renderer receives the exact same typography, spacing, table layout,
+ * borders and colors regardless of device width or later global CSS changes.
+ */
+function createFrozenPreviewClone(source: HTMLElement) {
+  const clone = source.cloneNode(true) as HTMLElement
+  const sourceNodes: Element[] = [source, ...Array.from(source.querySelectorAll('*'))]
+  const cloneNodes: Element[] = [clone, ...Array.from(clone.querySelectorAll('*'))]
+
+  sourceNodes.forEach((sourceNode, index) => {
+    const cloneNode = cloneNodes[index]
+    if (!(cloneNode instanceof HTMLElement || cloneNode instanceof SVGElement)) return
+    const computed = window.getComputedStyle(sourceNode)
+    for (const property of Array.from(computed)) {
+      cloneNode.style.setProperty(property, computed.getPropertyValue(property), 'important')
+    }
+  })
+
+  // The preview's outer shadow is application chrome, not part of the invoice.
+  clone.style.setProperty('box-shadow', 'none', 'important')
+  clone.style.setProperty('margin', '0', 'important')
+  clone.style.setProperty('transform', 'none', 'important')
+  clone.style.setProperty('transform-origin', 'top left', 'important')
+
+  const sandbox = document.createElement('div')
+  sandbox.setAttribute('aria-hidden', 'true')
+  sandbox.style.cssText = [
+    'position:fixed',
+    'left:-100000px',
+    'top:0',
+    'z-index:-2147483648',
+    'pointer-events:none',
+    'overflow:visible',
+    'background:#fff',
+    `width:${Math.max(source.scrollWidth, Math.ceil(source.getBoundingClientRect().width))}px`,
+  ].join(';')
+  sandbox.appendChild(clone)
+  document.body.appendChild(sandbox)
+
+  return { clone, sandbox }
+}
+
 export async function createDocumentPdfBlob(element: HTMLElement) {
   if ('fonts' in document) {
     try { await document.fonts.ready } catch { /* font fallback is acceptable */ }
   }
   await waitForImages(element)
 
-  const canvas = await html2canvas(element, {
-    backgroundColor: '#ffffff',
-    scale: Math.min(2, Math.max(1.4, window.devicePixelRatio || 1)),
-    useCORS: true,
-    logging: false,
-    scrollX: 0,
-    scrollY: -window.scrollY,
-  })
+  const { clone, sandbox } = createFrozenPreviewClone(element)
+  try {
+    await waitForImages(clone)
+    // Give the browser one paint cycle after inserting the frozen clone.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
-  const pageWidth = pdf.internal.pageSize.getWidth()
-  const pageHeight = pdf.internal.pageSize.getHeight()
-  const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height)
-  const width = canvas.width * ratio
-  const height = canvas.height * ratio
-  const x = Math.max(0, (pageWidth - width) / 2)
-  const y = Math.max(0, (pageHeight - height) / 2)
-  const image = canvas.toDataURL('image/jpeg', 0.94)
-  pdf.addImage(image, 'JPEG', x, y, width, height, undefined, 'FAST')
-  return pdf.output('blob')
+    const captureWidth = Math.max(1, clone.scrollWidth, Math.ceil(clone.getBoundingClientRect().width))
+    const captureHeight = Math.max(1, clone.scrollHeight, Math.ceil(clone.getBoundingClientRect().height))
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#ffffff',
+      scale: Math.min(2, Math.max(1.5, window.devicePixelRatio || 1)),
+      useCORS: true,
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      width: captureWidth,
+      height: captureHeight,
+      windowWidth: captureWidth,
+      windowHeight: captureHeight,
+    })
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const renderedHeight = canvas.height * pageWidth / canvas.width
+    const pageCount = Math.max(1, Math.ceil(renderedHeight / pageHeight - 0.0001))
+    const image = canvas.toDataURL('image/png')
+
+    // Preserve A4 preview scale. Do not shrink the whole document to fit one page.
+    for (let page = 0; page < pageCount; page += 1) {
+      if (page > 0) pdf.addPage('a4', 'portrait')
+      pdf.addImage(image, 'PNG', 0, -(page * pageHeight), pageWidth, renderedHeight, undefined, 'FAST')
+    }
+
+    return pdf.output('blob')
+  } finally {
+    sandbox.remove()
+  }
 }
 
 export async function loadSalesDocumentStorageMap(limit = 500): Promise<DocumentStorageMap> {
@@ -119,7 +184,7 @@ export async function saveDocumentPdfToOneDrive(input: {
     category: typeLabel,
     entityType: 'sales_document',
     entityId: input.documentId,
-    note: input.isRevision ? '帳票再発行時PDF自動保存' : '帳票発行時PDF自動保存',
+    note: input.isRevision ? '帳票再発行時PDF自動保存（プレビュー同一レイアウト）' : '帳票発行時PDF自動保存（プレビュー同一レイアウト）',
   })
   return toStorageLink(result.file)
 }
