@@ -47,11 +47,26 @@ export type ExternalLinkTarget = {
   category: string
 }
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function looksLikeSecretId(value: string) {
+  return uuidPattern.test(value.trim())
+}
+
+function friendlyExternalStorageError(value: unknown) {
+  const message = String(value || '')
+  if (message.includes('AADSTS7000215') || message.includes('Invalid client secret')) {
+    return 'Microsoft EntraのClient Secretが正しくありません。「Secret ID」ではなく「値（Value）」を入力してください。値が分からない場合は、新しいClient Secretを作成して表示されたValueをコピーしてください。'
+  }
+  return message
+}
+
 async function invoke<T>(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('external-storage', { body })
-  if (error) throw error
+  if (error) throw new Error(friendlyExternalStorageError(error.message || error))
   const payload = (data || {}) as any
-  if (payload.error) throw new Error(String(payload.error))
+  if (payload.error) throw new Error(friendlyExternalStorageError(payload.error))
+  if (typeof payload.lastError === 'string' && payload.lastError) payload.lastError = friendlyExternalStorageError(payload.lastError)
   return payload as T
 }
 
@@ -65,6 +80,9 @@ export function configureExternalStorage(input: {
   clientSecret?: string
   rootFolder: string
 }) {
+  if (input.clientSecret && looksLikeSecretId(input.clientSecret)) {
+    return Promise.reject(new Error('Client Secretに「Secret ID」が入力されている可能性があります。Microsoft Entraの「値（Value）」を入力してください。'))
+  }
   return invoke<ExternalStorageStatus & { ok: boolean }>({ action: 'configure', ...input })
 }
 
@@ -90,9 +108,9 @@ export async function uploadExternalFile(input: {
   if (input.entityId) form.set('entityId', input.entityId)
   if (input.note) form.set('note', input.note)
   const { data, error } = await supabase.functions.invoke('external-storage', { body: form })
-  if (error) throw error
+  if (error) throw new Error(friendlyExternalStorageError(error.message || error))
   const payload = (data || {}) as any
-  if (payload.error) throw new Error(String(payload.error))
+  if (payload.error) throw new Error(friendlyExternalStorageError(payload.error))
   return payload as { ok: boolean; file: ExternalFileRow }
 }
 
