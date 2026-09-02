@@ -30,6 +30,18 @@ function fmtBytes(value: number) {
   return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
+function explainStorageError(value: string) {
+  const message = String(value || '').trim()
+  if (!message) return ''
+  if (message.includes('AADSTS700025')) {
+    return 'Microsoft Entra側でこのアプリが「公開クライアント」として登録されています。認証 → プラットフォーム構成で、この画面に表示されているリダイレクトURIを「Web」として登録してください。SPA／モバイル／デスクトップ側に同じURIがある場合は削除し、「パブリック クライアント フローを許可する」は「いいえ」にしてください。設定保存後、OneDriveに接続をもう一度実行してください。'
+  }
+  if (message.includes('AADSTS7000215')) {
+    return 'Client Secretが正しくありません。Microsoft Entraの「証明書とシークレット」で、Secret IDではなく作成時に表示される「値（Value）」を入力してください。値が分からない場合は新しいClient Secretを作成してください。'
+  }
+  return message
+}
+
 const targetKey = (target: Pick<ExternalLinkTarget,'entityType'|'entityId'>) => `${target.entityType}:${target.entityId}`
 
 export default function StoragePage() {
@@ -66,7 +78,7 @@ export default function StoragePage() {
       setClientId(nextStatus.clientId)
       setRootFolder(nextStatus.rootFolder || '五代目八木一兵衛')
     } catch (e:any) {
-      setError(e?.message || '外部ストレージ情報を読み込めませんでした。')
+      setError(explainStorageError(e?.message || '外部ストレージ情報を読み込めませんでした。'))
     } finally { if (showLoader) setLoading(false) }
   }
 
@@ -74,7 +86,7 @@ export default function StoragePage() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('storage_connected') === '1') setSuccess('OneDriveとの接続が完了しました。')
     const storageError = params.get('storage_error')
-    if (storageError) setError(storageError)
+    if (storageError) setError(explainStorageError(storageError))
     void refresh()
   }, [])
 
@@ -111,7 +123,7 @@ export default function StoragePage() {
       setStatus(next)
       setClientSecret('')
       setSuccess('Microsoft接続設定を安全に保存しました。Client SecretはVaultへ暗号化保存されています。')
-    } catch (e:any) { setError(e?.message || '接続設定を保存できませんでした。') }
+    } catch (e:any) { setError(explainStorageError(e?.message || '接続設定を保存できませんでした。')) }
     finally { setBusy('') }
   }
 
@@ -122,7 +134,7 @@ export default function StoragePage() {
       const result = await startOneDriveAuthorization(`${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/,'')}/storage`)
       window.location.assign(result.url)
     } catch (e:any) {
-      setError(e?.message || 'Microsoft認証を開始できませんでした。')
+      setError(explainStorageError(e?.message || 'Microsoft認証を開始できませんでした。'))
       setBusy('')
     }
   }
@@ -134,7 +146,7 @@ export default function StoragePage() {
       setStatus(next)
       setSuccess('OneDriveへの接続を確認しました。')
       await refresh(false)
-    } catch (e:any) { setError(e?.message || '接続確認に失敗しました。') }
+    } catch (e:any) { setError(explainStorageError(e?.message || '接続確認に失敗しました。')) }
     finally { setBusy('') }
   }
 
@@ -153,7 +165,7 @@ export default function StoragePage() {
       setSelectedFile(null); setNote('')
       if (inputRef.current) inputRef.current.value = ''
       await refresh(false)
-    } catch (e:any) { setError(e?.message || 'ファイルをアップロードできませんでした。') }
+    } catch (e:any) { setError(explainStorageError(e?.message || 'ファイルをアップロードできませんでした。')) }
     finally { setBusy('') }
   }
 
@@ -185,7 +197,8 @@ export default function StoragePage() {
       <div className="storage-setup-guide">
         <div><b>1</b><span>Microsoft EntraでWebアプリを登録</span></div>
         <div><b>2</b><span>委任アクセス許可：User.Read / Files.ReadWrite / offline_access</span></div>
-        <div><b>3</b><span>下記リダイレクトURIをWebとして登録</span></div>
+        <div><b>3</b><span>下記リダイレクトURIを「Web」として登録（SPA／モバイル／デスクトップではない）</span></div>
+        <div><b>4</b><span>認証の詳細設定で「パブリック クライアント フローを許可する」＝ いいえ</span></div>
       </div>
       <div className="storage-redirect-row"><code>{status?.redirectUri || '読み込み中…'}</code><button type="button" className="icon-button" disabled={!status?.redirectUri} onClick={()=>status?.redirectUri&&void copy(status.redirectUri)}><Copy size={16}/></button></div>
       <div className="storage-config-grid">
@@ -198,7 +211,7 @@ export default function StoragePage() {
         <button className="secondary-button" onClick={()=>void saveConfig()} disabled={!tenantId.trim()||!clientId.trim()||busy==='config'}><Save size={16}/>{busy==='config'?'保存中…':'接続設定を保存'}</button>
         <button className="primary-button" onClick={()=>void connect()} disabled={!status?.clientSecretConfigured||busy==='connect'}><Cloud size={16}/>{busy==='connect'?'認証開始中…':status?.enabled?'Microsoftアカウントを再接続':'OneDriveに接続'}</button>
       </div>
-      {status?.lastError&&<p className="storage-last-error">前回エラー：{status.lastError}</p>}
+      {status?.lastError&&<p className="storage-last-error">前回エラー：{explainStorageError(status.lastError)}</p>}
     </section>}
 
     {canUpload&&<section className="panel storage-upload-panel">
