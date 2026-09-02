@@ -24,7 +24,8 @@ export async function loadPackagingProducts():Promise<ProductMaster[]>{
   if(error)throw error
   return(data||[]).map((r:any)=>({
     id:r.id,sku:r.sku||'',productName:r.product_name||'',category:r.category||'',brandName:r.brand_name||'',janCode:r.jan_code||'',
-    netContent:n(r.net_content),contentUnit:r.content_unit||'g',packageType:r.package_type||'',standardPriceYen:n(r.standard_price_yen),packagingCostYen:n(r.packaging_cost_yen),
+    netContent:n(r.net_content),contentUnit:r.content_unit||'g',packageType:r.package_type||'',standardPriceYen:n(r.standard_price_yen),
+    wholesalePriceYen:n(r.wholesale_price_yen),retailPriceYen:n(r.retail_price_yen||r.standard_price_yen),otherPriceYen:n(r.other_price_yen),packagingCostYen:n(r.packaging_cost_yen),
     status:r.status==='INACTIVE'?'INACTIVE':'ACTIVE',note:r.note||'',createdAt:r.created_at||'',updatedAt:r.updated_at||''
   }))
 }
