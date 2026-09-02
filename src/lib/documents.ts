@@ -58,7 +58,21 @@ export async function loadSalesDocuments():Promise<SalesDocument[]> {
 
 export async function saveSalesDocument(input:Omit<SalesDocument,'id'|'subtotalYen'|'taxYen'|'totalYen'|'createdAt'|'updatedAt'> & {id?:string}){
   const payload={document_type:input.documentType,document_no:input.documentNo,status:input.status,issue_date:input.issueDate,due_date:input.dueDate,delivery_date:input.deliveryDate,customer_id:input.customerId,customer_name:input.customerName,customer_postal_code:input.customerPostalCode,customer_address1:input.customerAddress1,customer_address2:input.customerAddress2,customer_department:input.customerDepartment,customer_contact_name:input.customerContactName,customer_honorific:input.customerHonorific,seller_company_name:input.sellerCompanyName,seller_registration_no:input.sellerRegistrationNo,seller_postal_code:input.sellerPostalCode,seller_address1:input.sellerAddress1,seller_address2:input.sellerAddress2,seller_phone:input.sellerPhone,bank_name:input.bankName,bank_branch:input.bankBranch,bank_account_type:input.bankAccountType,bank_account_no:input.bankAccountNo,bank_account_name:input.bankAccountName,note:input.note,items:input.items.map(i=>({product_id:i.productId,item_name:i.itemName,unit_price_yen:i.unitPriceYen,quantity:i.quantity,unit:i.unit,tax_rate:i.taxRate,delivery_date:i.deliveryDate}))}
-  const {data,error}=await supabase.rpc('save_sales_document',{p_document_id:input.id||null,p_payload:payload});if(error)throw error;return String(data)
+  const {data,error}=await supabase.rpc('save_sales_document',{p_document_id:input.id||null,p_payload:payload})
+  if(error) throw error
+  const id=String(data)
+  if(input.status==='ISSUED' && typeof document!=='undefined'){
+    try{
+      const {archiveSalesDocumentPdf}=await import('./documentPdf')
+      await archiveSalesDocumentPdf(id,{documentType:input.documentType,documentNo:input.documentNo,customerName:input.customerName})
+      window.dispatchEvent(new CustomEvent('sales-document-pdf-archived',{detail:{documentId:id}}))
+    }catch(archiveError){
+      const message=archiveError instanceof Error?archiveError.message:String(archiveError)
+      console.warn('帳票PDFのOneDrive自動保存に失敗しました:',message)
+      window.dispatchEvent(new CustomEvent('sales-document-pdf-archive-error',{detail:{documentId:id,message}}))
+    }
+  }
+  return id
 }
 
 export async function deleteSalesDocument(id:string){const {error}=await supabase.rpc('delete_sales_document',{p_document_id:id});if(error)throw error}
