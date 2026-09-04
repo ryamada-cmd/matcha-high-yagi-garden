@@ -6,6 +6,7 @@ import { loadPhotoGallery, loadPhotoTargets, loadPhotoThumbnails, uploadPhoto, t
 const categories: PhotoCategory[] = ['茶摘み','イベント','圃場','機械設備','作業記録','商品・制作','その他']
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Tokyo', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date())
 const targetKey = (target: PhotoTarget) => `${target.entityType}:${target.entityId}`
+const selectedFileKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}:${file.type}`
 
 function fmtDate(value: string) {
   if (!value) return '—'
@@ -34,6 +35,7 @@ export default function PhotoGallerySection() {
   const [progress,setProgress] = useState('')
   const [error,setError] = useState('')
   const [success,setSuccess] = useState('')
+  const [pickerStatus,setPickerStatus] = useState('')
   const [category,setCategory] = useState<PhotoCategory>('茶摘み')
   const [album,setAlbum] = useState('')
   const [takenAt,setTakenAt] = useState(today())
@@ -48,6 +50,7 @@ export default function PhotoGallerySection() {
   const [largeThumb,setLargeThumb] = useState('')
   const pickerRef = useRef<HTMLInputElement|null>(null)
   const cameraRef = useRef<HTMLInputElement|null>(null)
+  const pickerOpenRef = useRef<'library'|'camera'|''>('')
 
   async function refresh(showLoader = true) {
     if (showLoader) setLoading(true)
@@ -93,24 +96,89 @@ export default function PhotoGallerySection() {
     return()=>{cancelled=true}
   },[visibleKey])
 
-  function addFiles(list: FileList|null) {
-    if(!list || !list.length) return
+  function addFiles(list: FileList|null, source = '写真選択') {
+    const received=list?.length||0
+    if(!received){
+      setPickerStatus(`${source}：Safariから受信 0件`)
+      return 0
+    }
     setSuccess('')
-    const allFiles=Array.from(list)
+    const allFiles=Array.from(list||[])
     const incoming=allFiles.filter(isImageFile)
     const unsupported=allFiles.filter(file=>!isImageFile(file))
     const tooLarge=incoming.filter(file=>file.size>25*1024*1024)
     const accepted=incoming.filter(file=>file.size<=25*1024*1024)
 
     if(accepted.length){
-      setSelectedFiles(prev=>[...prev,...accepted].slice(0,50))
+      setSelectedFiles(prev=>{
+        const known=new Set(prev.map(selectedFileKey))
+        const unique=accepted.filter(file=>{
+          const key=selectedFileKey(file)
+          if(known.has(key))return false
+          known.add(key)
+          return true
+        })
+        return [...prev,...unique].slice(0,50)
+      })
     }
 
     const messages:string[]=[]
     if(unsupported.length) messages.push(`画像として認識できないファイル：${unsupported.map(x=>x.name).join('、')}`)
     if(tooLarge.length) messages.push(`25MBを超える写真：${tooLarge.map(x=>x.name).join('、')}`)
     setError(messages.join(' / '))
+    setPickerStatus(`${source}：Safariから受信 ${received}件 / 保存候補 ${accepted.length}件`)
+    return accepted.length
   }
+
+  function consumeInput(input:HTMLInputElement|null, source:string) {
+    if(!input?.files?.length)return 0
+    const accepted=addFiles(input.files,source)
+    pickerOpenRef.current=''
+    window.setTimeout(()=>{ input.value='' },0)
+    return accepted
+  }
+
+  function handlePickerResult(input:HTMLInputElement, source:string) {
+    consumeInput(input,source)
+  }
+
+  useEffect(()=>{
+    const picker=pickerRef.current
+    const camera=cameraRef.current
+    const handleCancel=(event:Event)=>{
+      const input=event.currentTarget as HTMLInputElement
+      const label=input===camera?'カメラ':'写真ライブラリ'
+      pickerOpenRef.current=''
+      setPickerStatus(`${label}：Safariから受信 0件（キャンセル、またはSafari側で写真データを返せませんでした）`)
+    }
+    picker?.addEventListener('cancel',handleCancel)
+    camera?.addEventListener('cancel',handleCancel)
+
+    const recover=()=>{
+      if(!pickerOpenRef.current)return
+      window.setTimeout(()=>{
+        const active=pickerOpenRef.current
+        if(!active)return
+        const input=active==='camera'?cameraRef.current:pickerRef.current
+        const label=active==='camera'?'カメラ復帰':'写真ライブラリ復帰'
+        if(input?.files?.length){
+          consumeInput(input,label)
+        }else{
+          pickerOpenRef.current=''
+          setPickerStatus(`${label}：Safariから受信 0件。写真を確定したのにこの表示の場合、Safari側でFileが生成されていません。`)
+        }
+      },700)
+    }
+    const visibility=()=>{if(document.visibilityState==='visible')recover()}
+    window.addEventListener('focus',recover)
+    document.addEventListener('visibilitychange',visibility)
+    return()=>{
+      picker?.removeEventListener('cancel',handleCancel)
+      camera?.removeEventListener('cancel',handleCancel)
+      window.removeEventListener('focus',recover)
+      document.removeEventListener('visibilitychange',visibility)
+    }
+  },[])
 
   function removeSelected(index:number){setSelectedFiles(prev=>prev.filter((_,i)=>i!==index))}
 
@@ -133,7 +201,7 @@ export default function PhotoGallerySection() {
         completed+=1
       }
       setSuccess(`${completed}枚の写真をOneDriveへ保存しました。`)
-      setSelectedFiles([]);setNote('');setProgress('')
+      setSelectedFiles([]);setNote('');setProgress('');setPickerStatus('')
       if(pickerRef.current)pickerRef.current.value=''
       if(cameraRef.current)cameraRef.current.value=''
       setThumbs({})
@@ -175,14 +243,15 @@ export default function PhotoGallerySection() {
       <div className="photo-source-actions">
         <label className="secondary-button" aria-disabled={uploading} style={{position:'relative',overflow:'hidden',cursor:uploading?'not-allowed':'pointer'}}>
           <Images size={17}/>写真を選ぶ
-          <input ref={pickerRef} type="file" accept="image/*,.heic,.heif" multiple disabled={uploading} aria-label="写真ライブラリから写真を選ぶ" style={directInputStyle} onClick={e=>{e.currentTarget.value=''}} onChange={e=>addFiles(e.currentTarget.files)}/>
+          <input ref={pickerRef} type="file" accept="image/*,.heic,.heif" multiple disabled={uploading} aria-label="写真ライブラリから写真を選ぶ" style={directInputStyle} onClick={()=>{pickerOpenRef.current='library';setPickerStatus('写真ライブラリ：選択待ち…')}} onInput={e=>handlePickerResult(e.currentTarget,'写真ライブラリ input')} onChange={e=>handlePickerResult(e.currentTarget,'写真ライブラリ change')}/>
         </label>
         <label className="secondary-button" aria-disabled={uploading} style={{position:'relative',overflow:'hidden',cursor:uploading?'not-allowed':'pointer'}}>
           <Camera size={17}/>カメラで撮る
-          <input ref={cameraRef} type="file" accept="image/*" capture="environment" disabled={uploading} aria-label="カメラで写真を撮る" style={directInputStyle} onClick={e=>{e.currentTarget.value=''}} onChange={e=>addFiles(e.currentTarget.files)}/>
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" disabled={uploading} aria-label="カメラで写真を撮る" style={directInputStyle} onClick={()=>{pickerOpenRef.current='camera';setPickerStatus('カメラ：撮影待ち…')}} onInput={e=>handlePickerResult(e.currentTarget,'カメラ input')} onChange={e=>handlePickerResult(e.currentTarget,'カメラ change')}/>
         </label>
         <span>JPEG / PNG / HEICなど・1枚25MBまで・最大50枚/回</span>
       </div>
+      {pickerStatus&&<div style={{marginTop:8,fontSize:12,lineHeight:1.5,color:'#64748b',overflowWrap:'anywhere'}}>選択診断：{pickerStatus}</div>}
       {selectedFiles.length>0&&<div className="photo-selected-list">{selectedFiles.map((file,index)=><div key={`${file.name}-${file.lastModified}-${index}`}><ImageIcon size={15}/><span>{file.name}</span><small>{fmtBytes(file.size)}</small><button type="button" onClick={()=>removeSelected(index)} disabled={uploading} aria-label={`${file.name}を外す`}><X size={14}/></button></div>)}</div>}
       <div className="photo-upload-footer"><span>{progress||`${selectedFiles.length}枚選択中${selectedTarget?`・${selectedTarget.label}へ関連付け`:''}`}</span><button type="button" className="primary-button" onClick={()=>void uploadSelected()} disabled={!selectedFiles.length||uploading}><Upload size={17}/>{uploading?'OneDriveへ保存中…':'写真をOneDriveへ保存'}</button></div>
     </div>}
