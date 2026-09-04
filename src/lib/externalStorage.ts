@@ -31,6 +31,7 @@ export type ExternalFileRow = {
   web_url: string | null
   uploaded_by: string | null
   uploaded_at: string
+  metadata?: { kind?: string } | null
   external_file_links?: Array<{
     id: string
     entity_type: string
@@ -138,12 +139,12 @@ export async function uploadExternalFile(input: { file: File; category: string; 
 export async function loadExternalFiles(limit = 250) {
   const { data, error } = await supabase
     .from('external_files')
-    .select('id,provider,drive_id,provider_item_id,file_name,mime_type,size_bytes,folder_path,web_url,uploaded_by,uploaded_at,external_file_links(id,entity_type,entity_id,category,note,created_at)')
+    .select('id,provider,drive_id,provider_item_id,file_name,mime_type,size_bytes,folder_path,web_url,uploaded_by,uploaded_at,metadata,external_file_links(id,entity_type,entity_id,category,note,created_at)')
     .is('archived_at', null)
     .order('uploaded_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return (data || []) as ExternalFileRow[]
+  return ((data || []) as ExternalFileRow[]).filter(row => row.metadata?.kind !== 'photo')
 }
 
 export async function loadExternalLinkTargets(): Promise<ExternalLinkTarget[]> {
