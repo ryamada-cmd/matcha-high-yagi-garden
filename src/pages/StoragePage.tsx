@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, Cloud, Copy, ExternalLink, FileUp, FolderOpen, HardDrive, Link2, RefreshCw, Save, Search, ShieldCheck } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
+import PhotoGallerySection from './PhotoGallerySection'
 import {
   configureExternalStorage,
   getExternalStorageStatus,
@@ -178,12 +179,14 @@ export default function StoragePage() {
 
   return <div className="page storage-page">
     <div className="page-head">
-      <div><p className="eyebrow">EXTERNAL STORAGE</p><h1>ファイル・OneDrive</h1><p className="sub">PDF・画像・添付ファイルはOneDrive、業務データと検索用台帳はSupabaseで管理します。</p></div>
+      <div><p className="eyebrow">EXTERNAL STORAGE</p><h1>ファイル・OneDrive</h1><p className="sub">写真・PDF・添付ファイルはOneDrive、業務データと検索用台帳はSupabaseで管理します。</p></div>
       <button className="icon-button" onClick={()=>void refresh()} disabled={loading||!!busy}><RefreshCw size={18} className={loading?'spin':''}/></button>
     </div>
 
     {error&&<div className="notice error dashboard-notice">{error}</div>}
     {success&&<div className="notice success dashboard-notice">{success}</div>}
+
+    <PhotoGallerySection/>
 
     <section className={`panel storage-status ${status?.enabled?'connected':'disconnected'}`}>
       <div className="storage-status-icon">{status?.enabled?<CheckCircle2 size={25}/>:<Cloud size={25}/>}</div>
@@ -218,7 +221,7 @@ export default function StoragePage() {
     </section>}
 
     {canUpload&&<section className="panel storage-upload-panel">
-      <div className="panel-title"><div><h2>ファイルを保存・業務データへ紐付け</h2><p>保存時に帳票・仕入・経費・圃場・機械設備・農薬・肥料へ自動整理し、年月別にOneDriveへ格納します。圃場と機械設備は関連付け先ごとの専用フォルダになります。1ファイル25MBまでです。</p></div><FileUp size={20}/></div>
+      <div className="panel-title"><div><h2>一般ファイルを保存・業務データへ紐付け</h2><p>PDF・Officeファイルなどを、帳票・仕入・経費・圃場・機械設備・農薬・肥料へ整理して保存します。写真は上の写真ギャラリーから保存できます。1ファイル25MBまでです。</p></div><FileUp size={20}/></div>
       <div className="storage-upload-grid">
         <label className="storage-link-target"><span><Link2 size={13}/> 関連する記録</span><select value={relationKey} onChange={e=>chooseRelation(e.target.value)}><option value="">関連付けなし（一般ファイル）</option>{groupedTargets.map(([group,list])=><optgroup key={group} label={group}>{list.map(target=><option key={targetKey(target)} value={targetKey(target)}>{target.label}</option>)}</optgroup>)}</select><small>閲覧権限がある記録だけ候補に表示されます。</small></label>
         <label><span>分類</span><select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select></label>
