@@ -94,12 +94,22 @@ export default function PhotoGallerySection() {
   },[visibleKey])
 
   function addFiles(list: FileList|null) {
-    if(!list)return
-    const incoming=Array.from(list).filter(isImageFile)
+    if(!list || !list.length) return
+    setSuccess('')
+    const allFiles=Array.from(list)
+    const incoming=allFiles.filter(isImageFile)
+    const unsupported=allFiles.filter(file=>!isImageFile(file))
     const tooLarge=incoming.filter(file=>file.size>25*1024*1024)
-    if(tooLarge.length){setError(`25MBを超える写真は追加できません：${tooLarge.map(x=>x.name).join('、')}`)}
     const accepted=incoming.filter(file=>file.size<=25*1024*1024)
-    setSelectedFiles(prev=>[...prev,...accepted].slice(0,50))
+
+    if(accepted.length){
+      setSelectedFiles(prev=>[...prev,...accepted].slice(0,50))
+    }
+
+    const messages:string[]=[]
+    if(unsupported.length) messages.push(`画像として認識できないファイル：${unsupported.map(x=>x.name).join('、')}`)
+    if(tooLarge.length) messages.push(`25MBを超える写真：${tooLarge.map(x=>x.name).join('、')}`)
+    setError(messages.join(' / '))
   }
 
   function removeSelected(index:number){setSelectedFiles(prev=>prev.filter((_,i)=>i!==index))}
@@ -140,6 +150,10 @@ export default function PhotoGallerySection() {
     }catch{/* OneDrive原本リンクをフォールバックとして残す */}
   }
 
+  const directInputStyle = {
+    position:'absolute', inset:0, width:'100%', height:'100%', opacity:0, cursor:uploading?'not-allowed':'pointer', zIndex:2,
+  } as const
+
   return <section className="photo-gallery-feature">
     <div className="photo-gallery-hero">
       <div><p className="eyebrow">PHOTO LIBRARY</p><h2><Images size={22}/>写真ギャラリー</h2><p>茶摘み・イベント・圃場・機械設備などの写真をOneDriveへ整理して保存し、アプリでは軽量なサムネイルだけを表示します。</p></div>
@@ -159,10 +173,14 @@ export default function PhotoGallerySection() {
         <label className="photo-note-field"><span>メモ</span><input value={note} onChange={e=>setNote(e.target.value)} placeholder="例：手摘み初日、イベント設営、修理前の状態"/></label>
       </div>
       <div className="photo-source-actions">
-        <input ref={pickerRef} hidden type="file" accept="image/*,.heic,.heif" multiple onChange={e=>addFiles(e.target.files)}/>
-        <input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={e=>addFiles(e.target.files)}/>
-        <button type="button" className="secondary-button" onClick={()=>pickerRef.current?.click()} disabled={uploading}><Images size={17}/>写真を選ぶ</button>
-        <button type="button" className="secondary-button" onClick={()=>cameraRef.current?.click()} disabled={uploading}><Camera size={17}/>カメラで撮る</button>
+        <label className="secondary-button" aria-disabled={uploading} style={{position:'relative',overflow:'hidden',cursor:uploading?'not-allowed':'pointer'}}>
+          <Images size={17}/>写真を選ぶ
+          <input ref={pickerRef} type="file" accept="image/*,.heic,.heif" multiple disabled={uploading} aria-label="写真ライブラリから写真を選ぶ" style={directInputStyle} onClick={e=>{e.currentTarget.value=''}} onChange={e=>addFiles(e.currentTarget.files)}/>
+        </label>
+        <label className="secondary-button" aria-disabled={uploading} style={{position:'relative',overflow:'hidden',cursor:uploading?'not-allowed':'pointer'}}>
+          <Camera size={17}/>カメラで撮る
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" disabled={uploading} aria-label="カメラで写真を撮る" style={directInputStyle} onClick={e=>{e.currentTarget.value=''}} onChange={e=>addFiles(e.currentTarget.files)}/>
+        </label>
         <span>JPEG / PNG / HEICなど・1枚25MBまで・最大50枚/回</span>
       </div>
       {selectedFiles.length>0&&<div className="photo-selected-list">{selectedFiles.map((file,index)=><div key={`${file.name}-${file.lastModified}-${index}`}><ImageIcon size={15}/><span>{file.name}</span><small>{fmtBytes(file.size)}</small><button type="button" onClick={()=>removeSelected(index)} disabled={uploading} aria-label={`${file.name}を外す`}><X size={14}/></button></div>)}</div>}
