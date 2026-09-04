@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { CheckCircle2, Cloud, Copy, ExternalLink, FileUp, FolderOpen, HardDrive, Link2, RefreshCw, Save, Search, ShieldCheck } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
 import PhotoGallerySection from './PhotoGallerySection'
@@ -49,6 +50,8 @@ function explainStorageError(value: string) {
 const targetKey = (target: Pick<ExternalLinkTarget,'entityType'|'entityId'>) => `${target.entityType}:${target.entityId}`
 
 export default function StoragePage() {
+  const location = useLocation()
+  const photoMode = new URLSearchParams(location.search).get('view') === 'photos'
   const { allowed } = useAppPermissions()
   const canUpload = allowed('storage.upload')
   const canManage = allowed('storage.manage')
@@ -71,6 +74,10 @@ export default function StoragePage() {
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   async function refresh(showLoader = true) {
+    if (photoMode) {
+      if (showLoader) setLoading(false)
+      return
+    }
     if (showLoader) setLoading(true)
     setError('')
     try {
@@ -87,12 +94,13 @@ export default function StoragePage() {
   }
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
+    if (photoMode) { setLoading(false); return }
+    const params = new URLSearchParams(location.search)
     if (params.get('storage_connected') === '1') setSuccess('OneDriveとの接続が完了しました。')
     const storageError = params.get('storage_error')
     if (storageError) setError(explainStorageError(storageError))
     void refresh()
-  }, [])
+  }, [photoMode, location.search])
 
   const selectedTarget = useMemo(() => targets.find(x => targetKey(x) === relationKey) || null, [targets, relationKey])
   const targetLabelMap = useMemo(() => new Map(targets.map(x => [targetKey(x), x.label])), [targets])
@@ -177,16 +185,23 @@ export default function StoragePage() {
     try { await navigator.clipboard.writeText(value); setSuccess('コピーしました。') } catch { setError('コピーできませんでした。') }
   }
 
+  if (photoMode) {
+    return <div className="page photo-library-page">
+      <div className="page-head">
+        <div><p className="eyebrow">PHOTO LIBRARY</p><h1>写真ギャラリー</h1><p className="sub">茶摘み・イベント・圃場・機械設備などの写真をOneDriveへ整理して保存し、アプリからいつでも閲覧できます。</p></div>
+      </div>
+      <PhotoGallerySection/>
+    </div>
+  }
+
   return <div className="page storage-page">
     <div className="page-head">
-      <div><p className="eyebrow">EXTERNAL STORAGE</p><h1>ファイル・OneDrive</h1><p className="sub">写真・PDF・添付ファイルはOneDrive、業務データと検索用台帳はSupabaseで管理します。</p></div>
+      <div><p className="eyebrow">EXTERNAL STORAGE</p><h1>ファイル・OneDrive</h1><p className="sub">PDF・Office・帳票・添付ファイルをOneDriveへ保存し、業務データと検索用台帳をSupabaseで管理します。</p></div>
       <button className="icon-button" onClick={()=>void refresh()} disabled={loading||!!busy}><RefreshCw size={18} className={loading?'spin':''}/></button>
     </div>
 
     {error&&<div className="notice error dashboard-notice">{error}</div>}
     {success&&<div className="notice success dashboard-notice">{success}</div>}
-
-    <PhotoGallerySection/>
 
     <section className={`panel storage-status ${status?.enabled?'connected':'disconnected'}`}>
       <div className="storage-status-icon">{status?.enabled?<CheckCircle2 size={25}/>:<Cloud size={25}/>}</div>
@@ -221,18 +236,18 @@ export default function StoragePage() {
     </section>}
 
     {canUpload&&<section className="panel storage-upload-panel">
-      <div className="panel-title"><div><h2>一般ファイルを保存・業務データへ紐付け</h2><p>PDF・Officeファイルなどを、帳票・仕入・経費・圃場・機械設備・農薬・肥料へ整理して保存します。写真は上の写真ギャラリーから保存できます。1ファイル25MBまでです。</p></div><FileUp size={20}/></div>
+      <div className="panel-title"><div><h2>一般ファイルを保存・業務データへ紐付け</h2><p>PDF・Officeファイルなどを、帳票・仕入・経費・圃場・機械設備・農薬・肥料へ整理して保存します。写真は独立した「写真ギャラリー」から保存します。1ファイル25MBまでです。</p></div><FileUp size={20}/></div>
       <div className="storage-upload-grid">
         <label className="storage-link-target"><span><Link2 size={13}/> 関連する記録</span><select value={relationKey} onChange={e=>chooseRelation(e.target.value)}><option value="">関連付けなし（一般ファイル）</option>{groupedTargets.map(([group,list])=><optgroup key={group} label={group}>{list.map(target=><option key={targetKey(target)} value={targetKey(target)}>{target.label}</option>)}</optgroup>)}</select><small>閲覧権限がある記録だけ候補に表示されます。</small></label>
         <label><span>分類</span><select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select></label>
-        <label className="storage-file-input"><span>ファイル</span><input ref={inputRef} type="file" onChange={e=>setSelectedFile(e.target.files?.[0]||null)}/><small>{selectedFile?`${selectedFile.name} / ${fmtBytes(selectedFile.size)}`:'PDF・画像・Officeファイルなど'}</small></label>
+        <label className="storage-file-input"><span>ファイル</span><input ref={inputRef} type="file" onChange={e=>setSelectedFile(e.target.files?.[0]||null)}/><small>{selectedFile?`${selectedFile.name} / ${fmtBytes(selectedFile.size)}`:'PDF・Office・一般添付ファイルなど'}</small></label>
         <label className="storage-upload-note"><span>メモ</span><input value={note} onChange={e=>setNote(e.target.value)} placeholder="任意：用途や関連内容"/></label>
       </div>
       <div className="storage-upload-actions"><span>{status?.enabled?'OneDriveへ直接保存し、Supabaseには台帳と関連付けだけを記録します。':'OneDrive接続後にアップロードできます。'}</span><button className="primary-button" disabled={!status?.enabled||!selectedFile||busy==='upload'} onClick={()=>void upload()}><FileUp size={16}/>{busy==='upload'?'アップロード中…':'OneDriveへ保存'}</button></div>
     </section>}
 
     <section className="panel storage-files-panel">
-      <div className="panel-title"><div><h2>ファイル台帳</h2><p>OneDrive上のファイルをアプリから検索・確認できます。削除操作は設けていません。</p></div><FolderOpen size={20}/></div>
+      <div className="panel-title"><div><h2>ファイル台帳</h2><p>OneDrive上の一般ファイルをアプリから検索・確認できます。削除操作は設けていません。</p></div><FolderOpen size={20}/></div>
       <div className="storage-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ファイル名・関連記録・フォルダ・分類・メモで検索"/></div>
       <div className="storage-file-list">
         {filtered.map(file=>{
