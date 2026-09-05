@@ -35,7 +35,7 @@ export default function PhotoGallerySection() {
   const [progress,setProgress] = useState('')
   const [error,setError] = useState('')
   const [success,setSuccess] = useState('')
-  const [pickerStatus,setPickerStatus] = useState('')
+  const [pickerStatus,setPickerStatus] = useState('iPhone互換 v4：待機中。写真を1枚選んでください。')
   const [category,setCategory] = useState<PhotoCategory>('茶摘み')
   const [album,setAlbum] = useState('')
   const [takenAt,setTakenAt] = useState(today())
@@ -131,7 +131,14 @@ export default function PhotoGallerySection() {
   }
 
   function consumeInput(input:HTMLInputElement|null, source:string) {
-    if(!input?.files?.length)return 0
+    if(!input){
+      setPickerStatus(`${source}：inputを取得できませんでした`)
+      return 0
+    }
+    if(!input.files?.length){
+      setPickerStatus(`${source}：Safariから受信 0件`)
+      return 0
+    }
     const accepted=addFiles(input.files,source)
     pickerOpenRef.current=''
     window.setTimeout(()=>{ input.value='' },0)
@@ -145,12 +152,29 @@ export default function PhotoGallerySection() {
   useEffect(()=>{
     const picker=pickerRef.current
     const camera=cameraRef.current
+
+    const handleNativeResult=(event:Event)=>{
+      const input=event.currentTarget as HTMLInputElement
+      const label=input===camera?'カメラ':'写真ライブラリ'
+      const count=input.files?.length||0
+      if(count){
+        consumeInput(input,`${label} native ${event.type}`)
+      }else{
+        setPickerStatus(`${label} native ${event.type}：Safariから受信 0件`)
+      }
+    }
+
     const handleCancel=(event:Event)=>{
       const input=event.currentTarget as HTMLInputElement
       const label=input===camera?'カメラ':'写真ライブラリ'
       pickerOpenRef.current=''
       setPickerStatus(`${label}：Safariから受信 0件（キャンセル、またはSafari側で写真データを返せませんでした）`)
     }
+
+    picker?.addEventListener('input',handleNativeResult)
+    picker?.addEventListener('change',handleNativeResult)
+    camera?.addEventListener('input',handleNativeResult)
+    camera?.addEventListener('change',handleNativeResult)
     picker?.addEventListener('cancel',handleCancel)
     camera?.addEventListener('cancel',handleCancel)
 
@@ -173,6 +197,10 @@ export default function PhotoGallerySection() {
     window.addEventListener('focus',recover)
     document.addEventListener('visibilitychange',visibility)
     return()=>{
+      picker?.removeEventListener('input',handleNativeResult)
+      picker?.removeEventListener('change',handleNativeResult)
+      camera?.removeEventListener('input',handleNativeResult)
+      camera?.removeEventListener('change',handleNativeResult)
       picker?.removeEventListener('cancel',handleCancel)
       camera?.removeEventListener('cancel',handleCancel)
       window.removeEventListener('focus',recover)
@@ -201,7 +229,7 @@ export default function PhotoGallerySection() {
         completed+=1
       }
       setSuccess(`${completed}枚の写真をOneDriveへ保存しました。`)
-      setSelectedFiles([]);setNote('');setProgress('');setPickerStatus('')
+      setSelectedFiles([]);setNote('');setProgress('');setPickerStatus('iPhone互換 v4：保存完了。次の写真を選べます。')
       if(pickerRef.current)pickerRef.current.value=''
       if(cameraRef.current)cameraRef.current.value=''
       setThumbs({})
@@ -251,7 +279,7 @@ export default function PhotoGallerySection() {
         </label>
         <span>JPEG / PNG / HEICなど・1枚25MBまで・最大50枚/回</span>
       </div>
-      {pickerStatus&&<div style={{marginTop:8,fontSize:12,lineHeight:1.5,color:'#64748b',overflowWrap:'anywhere'}}>選択診断：{pickerStatus}</div>}
+      <div style={{marginTop:8,fontSize:12,lineHeight:1.5,color:'#64748b',overflowWrap:'anywhere'}}>選択診断（PhotoGallery v4）：{pickerStatus}</div>
       {selectedFiles.length>0&&<div className="photo-selected-list">{selectedFiles.map((file,index)=><div key={`${file.name}-${file.lastModified}-${index}`}><ImageIcon size={15}/><span>{file.name}</span><small>{fmtBytes(file.size)}</small><button type="button" onClick={()=>removeSelected(index)} disabled={uploading} aria-label={`${file.name}を外す`}><X size={14}/></button></div>)}</div>}
       <div className="photo-upload-footer"><span>{progress||`${selectedFiles.length}枚選択中${selectedTarget?`・${selectedTarget.label}へ関連付け`:''}`}</span><button type="button" className="primary-button" onClick={()=>void uploadSelected()} disabled={!selectedFiles.length||uploading}><Upload size={17}/>{uploading?'OneDriveへ保存中…':'写真をOneDriveへ保存'}</button></div>
     </div>}
