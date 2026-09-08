@@ -37,8 +37,8 @@ export function AppPermissionProvider({ userId, children }: { userId: string; ch
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
+  const loadPermissions = useCallback(async (showLoading: boolean, clearOnError: boolean) => {
+    if (showLoading) setLoading(true)
     setError('')
     try {
       const next = await loadMyAppPermissions()
@@ -46,24 +46,37 @@ export function AppPermissionProvider({ userId, children }: { userId: string; ch
       setPermissions(next.permissions)
     } catch (e: any) {
       setError(e?.message || '権限情報を読み込めませんでした。')
-      setRole('')
-      setPermissions({})
+      if (clearOnError) {
+        setRole('')
+        setPermissions({})
+      }
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }, [])
 
+  const refresh = useCallback(async () => {
+    await loadPermissions(true, true)
+  }, [loadPermissions])
+
+  const refreshSilently = useCallback(async () => {
+    await loadPermissions(false, false)
+  }, [loadPermissions])
+
   useEffect(() => { void refresh() }, [userId, refresh])
   useEffect(() => {
-    const onChanged = () => void refresh()
-    const onFocus = () => void refresh()
+    // Returning from the camera / photo library / file picker fires window.focus.
+    // Re-check permissions without toggling the global loading state so active forms
+    // and selected File objects are not unmounted and lost.
+    const onChanged = () => void refreshSilently()
+    const onFocus = () => void refreshSilently()
     window.addEventListener('app-permissions-changed', onChanged)
     window.addEventListener('focus', onFocus)
     return () => {
       window.removeEventListener('app-permissions-changed', onChanged)
       window.removeEventListener('focus', onFocus)
     }
-  }, [refresh])
+  }, [refreshSilently])
 
   const value = useMemo<PermissionState>(() => ({
     role,
