@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Check, Download, Edit3, ExternalLink, FileImage, Paperclip, Plus, RefreshCw, RotateCcw, Search, Trash2, Upload, X } from 'lucide-react'
+import { Camera, Check, Download, Edit3, ExternalLink, FileImage, Paperclip, Plus, RefreshCw, RotateCcw, Search, Trash2, Upload, X } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
 import { loadExpenseClaims, loadExpenseUser, reviewExpenseClaim, saveExpenseClaim, type ExpenseClaim, type ExpenseUser } from '../lib/expenseClaims'
 import { loadExpenseReceiptMap, uploadExpenseReceipt, type ExpenseReceipt, type ExpenseReceiptMap } from '../lib/expenseReceipts'
@@ -116,8 +116,11 @@ export default function ExpenseClaimsPage(){
 
       <section className="expense-receipt-upload">
         <div className="expense-receipt-upload-head"><div><Paperclip size={18}/><div><b>領収書を添付</b><span>画像・写真またはPDF／1件25MBまで／最大10件</span></div></div>{form.id&&(receiptMap[form.id]?.length||0)>0&&<strong>保存済み {receiptMap[form.id].length}件</strong>}</div>
-        <input key={receiptInputKey} className="expense-receipt-input" type="file" accept="image/*,.heic,.heif,application/pdf" multiple onChange={e=>{const files=Array.from(e.currentTarget.files||[]);chooseReceipts(files);e.currentTarget.value=''}}/>
-        {receiptFiles.length>0?<div className="expense-receipt-selected">{receiptFiles.map((f,index)=><div key={`${f.name}-${f.size}-${f.lastModified}-${index}`} className="expense-receipt-chip"><FileImage size={15}/><span>{f.name}</span><small>{fileSize(f.size)}</small><button type="button" onClick={()=>setReceiptFiles(v=>v.filter((_,i)=>i!==index))} aria-label="選択解除"><X size={15}/></button></div>)}</div>:<p className="expense-receipt-help">「ファイルを選択」から領収書を選んでください。スマホでは写真ライブラリ・カメラ・ファイルから選択できます。</p>}
+        <div className="expense-receipt-actions">
+          <label className="expense-receipt-action camera"><Camera size={17}/><span>写真を撮る</span><input key={`camera-${receiptInputKey}`} type="file" accept="image/*" capture="environment" onChange={e=>{const files=Array.from(e.currentTarget.files||[]);chooseReceipts(files);e.currentTarget.value=''}}/></label>
+          <label className="expense-receipt-action"><Paperclip size={17}/><span>写真/PDFを選ぶ</span><input key={`files-${receiptInputKey}`} type="file" accept="image/*,.heic,.heif,application/pdf" multiple onChange={e=>{const files=Array.from(e.currentTarget.files||[]);chooseReceipts(files);e.currentTarget.value=''}}/></label>
+        </div>
+        {receiptFiles.length>0?<div className="expense-receipt-selected">{receiptFiles.map((f,index)=><div key={`${f.name}-${f.size}-${f.lastModified}-${index}`} className="expense-receipt-chip"><FileImage size={15}/><span>{f.name}</span><small>{fileSize(f.size)}</small><button type="button" onClick={()=>setReceiptFiles(v=>v.filter((_,i)=>i!==index))} aria-label="選択解除"><X size={15}/></button></div>)}</div>:<p className="expense-receipt-help">iPhoneでは「写真を撮る」でカメラを直接起動できます。既存の写真やPDFは「写真/PDFを選ぶ」から追加してください。</p>}
       </section>
 
       <label className="full-label">備考<textarea rows={3} value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="精算に必要な補足があれば入力"/></label>
