@@ -257,14 +257,14 @@ export default function SprayPage() {
             <h2>1. 基本情報</h2>
             <div className="form-grid three">
               <label>散布日<input type="date" value={sprayDate} onChange={(e) => setSprayDate(e.target.value)}/></label>
-              <label>調製量（L）<input type="number" min="0" step="0.1" value={preparedL} onChange={(e) => setPreparedL(e.target.value)}/></label>
+              <label>調製量（L）<input type="number" inputMode="decimal" min="0" step="0.1" value={preparedL} onChange={(e) => setPreparedL(e.target.value)}/></label>
               <label>担当者<input value={operator} onChange={(e) => setOperator(e.target.value)} placeholder="例：山田"/></label>
             </div>
             <div className="quick-buttons"><button type="button" onClick={() => setPreparedL('1000')}>1000L</button><button type="button" onClick={() => setPreparedL('300')}>300L</button><button type="button" onClick={() => setPreparedL('1200')}>1200L</button></div>
             <div className="form-grid three">
               <label>目的 / 対象病害虫<input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="例：カンザワハダニ"/></label>
               <label>天候<input value={weather} onChange={(e) => setWeather(e.target.value)} placeholder="例：晴"/></label>
-              <label>気温（℃）<input type="number" step="0.1" value={temperature} onChange={(e) => setTemperature(e.target.value)}/></label>
+              <label>気温（℃）<input type="number" inputMode="decimal" step="0.1" value={temperature} onChange={(e) => setTemperature(e.target.value)}/></label>
             </div>
           </section>
 
@@ -279,7 +279,7 @@ export default function SprayPage() {
                   <div className="chemical-row">
                     <div className="chem-no">{index + 1}</div>
                     <label>農薬 / 在庫ロット<select value={c.lotId} onChange={(e) => updateChem(c.key, { lotId: e.target.value })}><option value="">選択してください</option>{lots.map((l) => <option key={l.lotId} value={l.lotId}>{l.pesticideName}｜利用可 {l.balance.toLocaleString()}{l.unit}{l.editRestored ? `（編集戻し ${l.editRestored.toLocaleString()}${l.unit} 含む）` : ''}｜{l.legacyId}</option>)}</select></label>
-                    <label>希釈倍率<input type="number" min="1" value={c.dilution} onChange={(e) => updateChem(c.key, { dilution: e.target.value })} placeholder="2000"/></label>
+                    <label>希釈倍率<input type="number" inputMode="numeric" min="1" value={c.dilution} onChange={(e) => updateChem(c.key, { dilution: e.target.value })} placeholder="2000"/></label>
                     <div className="required-qty"><span>必要量</span><b>{qty ? `${Math.round(qty * 1000) / 1000}${lot?.unit || ''}` : '—'}</b>{lot && qty > lot.balance && <em>在庫不足</em>}</div>
                     {chemicals.length > 1 && <button type="button" className="danger-icon" onClick={() => setChemicals((r) => r.filter((x) => x.key !== c.key))}><Trash2 size={17}/></button>}
                   </div>
