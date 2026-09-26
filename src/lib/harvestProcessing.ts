@@ -27,9 +27,16 @@ export async function loadProcessingBatches(limit=200):Promise<ProcessingBatch[]
  const{data:batches,error:e1}=await supabase.from('tea_processing_batches').select('*').is('deleted_at',null).order('processing_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit);if(e1)throw e1
  const ids=(batches||[]).map((b:any)=>b.id);if(!ids.length)return[]
  const{data:sources,error:e2}=await supabase.from('tea_processing_batch_harvests').select('id,processing_batch_id,harvest_record_id,input_kg,harvest_records(legacy_id,harvest_date,field_id,fields(legacy_id,name))').in('processing_batch_id',ids);if(e2)throw e2
- const by=new Map<string,ProcessingSource[]>();for(const s of sources||[]){const h=one((s as any).harvest_records);const f=one(h?.fields);const arr=by.get((s as any).processing_batch_id)||[];arr.push({id:(s as any).id,harvestId:(s as any).harvest_record_id,harvestLegacyId:h?.legacy_id||'',fieldId:h?.field_id||'',fieldLegacyId:f?.legacy_id||'',fieldName:f?.name||'圃場',harvestDate:h?.harvest_date||'',inputKg:n((s as any).input_kg)});by.set((s as any).processing_batch_id,arr)}
+ const by=new Map<string,ProcessingSource[]>();for(const s of sources||[]){const h=one((s as any).harvest_records);const f=one(h?.fields);const arr=by.get((s as any).processing_batch_id)||[];arr.push({id:(s as any).id,harvestId:(s as any).harvest_record_id,harvestLegacyId:h?.legacy_id||'',fieldId:h?.field_id||'',fieldLegacyId:f?.legacy_id||'未特定',fieldName:f?.name||'圃場未特定',harvestDate:h?.harvest_date||'',inputKg:n((s as any).input_kg)});by.set((s as any).processing_batch_id,arr)}
  return(batches||[]).map((b:any)=>{const ss=by.get(b.id)||[];const input=ss.reduce((sum,x)=>sum+x.inputKg,0);const leaf=n(b.output_kg),stem=n(b.stem_output_kg),total=leaf+stem;return{id:b.id,legacyId:b.legacy_id||'',date:b.processing_date||'',processType:b.process_type||'',outputMaterial:b.output_material||'',outputKg:leaf,stemOutputKg:stem,totalOutputKg:total,sourceLotNo:b.source_lot_no||'',variety:b.variety_snapshot||'',facility:b.facility||'',costYen:n(b.processing_cost_yen),operator:b.operator_name_snapshot||'',note:b.note||'',sources:ss,inputKg:input,yieldPct:input>0?total/input*100:0,leafYieldPct:input>0?leaf/input*100:0}})
 }
 
 export async function saveProcessingBatch(input:{id?:string;date:string;processType:string;outputMaterial:string;outputKg:number;facility:string;costYen:number;operator:string;note:string;sources:Array<{harvestId:string;inputKg:number}>}){const{data,error}=await supabase.rpc('save_tea_processing_batch',{p_payload:{id:input.id||'',processing_date:input.date,process_type:input.processType,output_material:input.outputMaterial,output_kg:input.outputKg,facility:input.facility,processing_cost_yen:input.costYen,operator_name:input.operator,note:input.note,sources:input.sources.map(x=>({harvest_record_id:x.harvestId,input_kg:x.inputKg}))}});if(error)throw error;return data as string}
 export async function deleteProcessingBatch(id:string,reason:string){const{error}=await supabase.rpc('delete_tea_processing_batch',{p_id:id,p_reason:reason});if(error)throw error}
+
+
+export async function finalizeImportedHarvestSource(id:string,fieldId:string,harvestDate?:string){
+ const{data,error}=await supabase.rpc('finalize_imported_harvest_source',{p_id:id,p_field_id:fieldId,p_harvest_date:harvestDate||null})
+ if(error)throw error
+ return data
+}
