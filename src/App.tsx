@@ -47,6 +47,15 @@ function PermissionRoute({ permission, children }: { permission:string; children
   return allowed(permission) ? <>{children}</> : <AccessDenied/>
 }
 
+function PendingApprovalScreen({ session }: { session: Session }) {
+  return <div className="auth-page"><div className="auth-card">
+    <div className="auth-brand"><LockKeyhole size={34}/><div><p className="eyebrow">ACCOUNT APPROVAL</p><h1>利用承認待ち</h1></div></div>
+    <p className="auth-lead">アカウント登録は完了しています。管理者が「作業者」または「管理者」へ変更すると、茶園管理機能を利用できるようになります。</p>
+    <div className="notice">登録アカウント：{session.user.email || 'メールアドレス未取得'}</div>
+    <button className="secondary-button" type="button" onClick={() => void supabase.auth.signOut()}><LogOut size={17}/>ログアウト</button>
+  </div></div>
+}
+
 function AuthScreen() {
   const [mode, setMode] = useState<'signin'|'signup'>('signin')
   const [email, setEmail] = useState('')
@@ -66,7 +75,7 @@ function AuthScreen() {
         })
         if (signUpError) throw signUpError
         if (!data.session) {
-          setMessage('登録しました。確認メールのリンクを開くと、このアプリへ戻ります。')
+          setMessage('登録しました。確認メールのリンクを開いた後、管理者の利用承認をお待ちください。')
           setMode('signin')
         }
       } else {
@@ -81,7 +90,7 @@ function AuthScreen() {
   return <div className="auth-page"><div className="auth-card">
     <div className="auth-brand"><ShieldCheck size={34}/><div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理</h1></div></div>
     <p className="auth-lead">防除・施肥・摘採・製茶・製造・製品在庫・販売・帳票・圃場・機械設備・写真・ファイルを一元管理します。</p>
-    <div className="auth-tabs"><button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')} type="button">ログイン</button><button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')} type="button">初回登録</button></div>
+    <div className="auth-tabs"><button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')} type="button">ログイン</button><button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')} type="button">新規登録</button></div>
     <form onSubmit={submit} className="auth-form">
       {mode === 'signup' && <label>表示名<input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="例：山田"/></label>}
       <label>メールアドレス<input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}/></label>
@@ -89,12 +98,12 @@ function AuthScreen() {
       {error && <div className="notice error">{error}</div>}{message && <div className="notice success">{message}</div>}
       <button className="primary-button" disabled={busy}>{busy ? '処理中…' : mode === 'signin' ? 'ログイン' : 'アカウントを作成'}</button>
     </form>
-    <p className="auth-foot">初回登録ユーザーは管理者、2人目以降は作業者として登録されます。</p>
+    <p className="auth-foot">新規登録後は「承認待ち」となり、管理者の承認後に利用できます。</p>
   </div></div>
 }
 
 function AppShell({ session }: { session: Session }) {
-  const { allowed, loading: permissionLoading, error: permissionError } = useAppPermissions()
+  const { role, allowed, loading: permissionLoading, error: permissionError } = useAppPermissions()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
 
@@ -117,6 +126,7 @@ function AppShell({ session }: { session: Session }) {
   const fileStorageActive = location.pathname === '/storage' && !photoGalleryActive
 
   if (permissionLoading) return <div className="boot-screen"><ShieldCheck size={36}/><span>権限を確認中…</span></div>
+  if (role === 'viewer') return <PendingApprovalScreen session={session}/>
 
   return <div className="app-shell">
     <aside className="sidebar desktop-sidebar">
