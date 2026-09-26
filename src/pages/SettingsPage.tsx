@@ -101,9 +101,10 @@ export default function SettingsPage() {
     finally { setSaving(false) }
   }
 
-  async function updateRole(userId: string, role: 'admin'|'worker') {
+  async function updateRole(userId: string, role: 'admin'|'worker'|'viewer') {
     if (!canManageUsers) return setError('ユーザー役割を変更する権限がありません。')
-    if (!window.confirm(`このユーザーの役割を「${role === 'admin' ? '管理者' : '作業者'}」へ変更しますか？`)) return
+    const roleName = role === 'admin' ? '管理者' : role === 'worker' ? '作業者' : '承認待ち'
+    if (!window.confirm(`このユーザーの役割を「${roleName}」へ変更しますか？`)) return
     setChangingUser(userId); setError(''); setSuccess('')
     try {
       await changeUserRole(userId, role)
@@ -162,16 +163,16 @@ export default function SettingsPage() {
     </section>
 
     {canManageUsers&&<section className="panel settings-section">
-      <div className="panel-title"><div><h2>ユーザー役割</h2><p>各ユーザーを「管理者」または「作業者」に割り当てます。実際に使える機能は下の機能別権限で決まります。</p></div><Users size={20}/></div>
+      <div className="panel-title"><div><h2>ユーザー役割</h2><p>新規登録者は「承認待ち」で権限0件です。管理者が「作業者」または「管理者」へ変更すると利用を開始できます。</p></div><Users size={20}/></div>
       <div className="admin-users-list">
         {(data?.users||[]).map(user=><div className="admin-user-row" key={user.id}>
           <div className="admin-user-avatar"><ShieldCheck size={18}/></div>
           <div className="admin-user-main"><b>{user.display_name || user.email || 'ユーザー'}</b><span>{user.email || 'メール未取得'}｜登録 {fmtDate(user.created_at)}</span></div>
-          <select value={user.role} disabled={changingUser===user.id} onChange={e=>void updateRole(user.id,e.target.value as 'admin'|'worker')}><option value="admin">管理者</option><option value="worker">作業者</option></select>
+          <select value={user.role} disabled={changingUser===user.id} onChange={e=>void updateRole(user.id,e.target.value as 'admin'|'worker'|'viewer')}><option value="viewer">承認待ち</option><option value="worker">作業者</option><option value="admin">管理者</option></select>
         </div>)}
         {!loading&&!data?.users.length&&<p className="empty">ユーザーはありません。</p>}
       </div>
-      <p className="settings-footnote">最後の管理者1名は作業者へ変更できないようデータベース側で保護しています。</p>
+      <p className="settings-footnote">「承認待ち」は業務権限0件です。最後の管理者1名は作業者・承認待ちへ変更できないようデータベース側で保護しています。</p>
     </section>}
 
     {canManagePermissions&&<section className="panel settings-section permission-settings-section">
