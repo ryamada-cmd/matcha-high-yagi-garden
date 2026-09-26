@@ -17,7 +17,7 @@ export type AdminUser = {
   id: string
   email: string | null
   display_name: string | null
-  role: 'admin' | 'worker'
+  role: 'admin' | 'worker' | 'viewer'
   created_at: string
 }
 
@@ -143,7 +143,7 @@ export async function saveAppSettings(input: {
   return normalizeSettings(data)
 }
 
-export async function changeUserRole(userId: string, role: 'admin' | 'worker') {
+export async function changeUserRole(userId: string, role: 'admin' | 'worker' | 'viewer') {
   const { data, error } = await supabase.rpc('update_profile_role', {
     p_user_id: userId,
     p_role: role,
