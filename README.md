@@ -63,7 +63,7 @@
 ## Authorization model
 
 - Supabase Auth is used for sign-in.
-- Application roles are `admin` and `worker`.
+- Application roles are `admin`, `worker`, and `viewer` (`viewer` = pending approval, zero permissions).
 - Feature-level permissions are stored in `app_permission_definitions` and `role_permissions`.
 - UI permission checks are backed by database-side permission checks.
 - Exposed business tables use RLS.
@@ -99,6 +99,8 @@ npm run dev
 ```
 
 Before changing production database authorization, RLS, RPCs or Edge Functions, review Supabase security advisors and verify the affected workflow after deployment.
+
+See `docs/PRODUCTION_STATUS.md` for the latest verified production state, smoke-test coverage, and remaining work.
 
 ## Archived one-time functions
 
