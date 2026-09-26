@@ -11,3 +11,103 @@
   border-radius:0!important;
   box-shadow:none!important;
 }
+
+
+/* Field-work usability additions. Loaded last so mobile controls stay predictable. */
+.field-group-head,
+.fertilizer-field-group-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:7px;
+}
+.field-group-head h3,
+.fertilizer-field-group-head>b{margin:0}
+.field-group-head>div,
+.fertilizer-field-group-head>div{display:flex;gap:6px}
+.field-group-head button,
+.fertilizer-field-group-head button{
+  min-height:34px;
+  border:1px solid #d6e1d8;
+  border-radius:8px;
+  background:#fff;
+  color:#315f45;
+  padding:5px 9px;
+  font-size:10px;
+  font-weight:750;
+  cursor:pointer;
+}
+.field-group-head button:disabled,
+.fertilizer-field-group-head button:disabled{opacity:.38;cursor:default}
+
+.expense-receipt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.expense-receipt-action{
+  min-height:46px;
+  border:1px solid #c9d8cd;
+  border-radius:10px;
+  background:#fff;
+  color:#315f45;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:9px 11px;
+  font-size:11px;
+  font-weight:750;
+  cursor:pointer;
+  position:relative;
+}
+.expense-receipt-action.camera{background:#173f2b;color:#fff;border-color:#173f2b}
+.expense-receipt-action input{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+@media(max-width:800px){
+  .page button,
+  .page a,
+  .page label,
+  .mobile-bottom-nav a,
+  .mobile-bottom-nav button{touch-action:manipulation}
+
+  .page input,
+  .page select,
+  .page textarea{scroll-margin-top:78px}
+
+  .field-group-head,
+  .fertilizer-field-group-head{align-items:center}
+  .field-group-head button,
+  .fertilizer-field-group-head button{min-height:40px;padding:7px 10px;font-size:11px}
+
+  .expense-receipt-actions{grid-template-columns:1fr}
+  .expense-receipt-action{min-height:50px;font-size:13px}
+
+  .expense-claim-form{padding-bottom:96px!important}
+  .expense-submit-row{
+    position:sticky;
+    bottom:calc(70px + env(safe-area-inset-bottom));
+    z-index:24;
+    margin:0 -4px -4px;
+    padding:10px 10px 9px!important;
+    border:1px solid #dce5de!important;
+    border-radius:13px;
+    background:rgba(255,255,255,.97);
+    backdrop-filter:blur(10px);
+    box-shadow:0 8px 28px rgba(18,49,32,.18);
+  }
+  .expense-submit-row>div:first-child{
+    display:flex!important;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .expense-submit-row>div:first-child strong{font-size:23px!important}
+
+  .save-spray,
+  .fertilizer-submit,
+  .harvest-save{bottom:calc(70px + env(safe-area-inset-bottom))!important}
+}
