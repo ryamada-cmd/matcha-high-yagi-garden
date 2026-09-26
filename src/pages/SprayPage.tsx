@@ -17,24 +17,28 @@ import {
 type ChemRow = { key: string; lotId: string; dilution: string }
 const uid = () => Math.random().toString(36).slice(2, 9)
 const today = () => new Date().toLocaleDateString('sv-SE')
+const SPRAY_DRAFT_KEY='yagi:spray-draft:v1'
+type SprayDraft={savedDate:string;sprayDate:string;preparedL:string;target:string;weather:string;temperature:string;operator:string;note:string;selectedFields:string[];chemicals:ChemRow[]}
+function loadSprayDraft():SprayDraft|null{try{const raw=localStorage.getItem(SPRAY_DRAFT_KEY);if(!raw)return null;const d=JSON.parse(raw) as SprayDraft;if(d.savedDate!==today()){localStorage.removeItem(SPRAY_DRAFT_KEY);return null}return d}catch{return null}}
 
 export default function SprayPage() {
   const { allowed } = useAppPermissions()
   const canCreate = allowed('sprays.create')
   const canEdit = allowed('sprays.edit')
   const canDelete = allowed('sprays.delete')
+  const initialDraft=useMemo(loadSprayDraft,[])
   const [lots, setLots] = useState<SprayLot[]>([])
   const [fields, setFields] = useState<SprayField[]>([])
   const [history, setHistory] = useState<SprayHistoryRow[]>([])
-  const [chemicals, setChemicals] = useState<ChemRow[]>([{ key: uid(), lotId: '', dilution: '' }])
-  const [selectedFields, setSelectedFields] = useState<string[]>([])
-  const [sprayDate, setSprayDate] = useState(today())
-  const [preparedL, setPreparedL] = useState('1000')
-  const [target, setTarget] = useState('')
-  const [weather, setWeather] = useState('')
-  const [temperature, setTemperature] = useState('')
-  const [operator, setOperator] = useState('')
-  const [note, setNote] = useState('')
+  const [chemicals, setChemicals] = useState<ChemRow[]>(initialDraft?.chemicals?.length?initialDraft.chemicals:[{ key: uid(), lotId: '', dilution: '' }])
+  const [selectedFields, setSelectedFields] = useState<string[]>(initialDraft?.selectedFields||[])
+  const [sprayDate, setSprayDate] = useState(initialDraft?.sprayDate||today())
+  const [preparedL, setPreparedL] = useState(initialDraft?.preparedL||'1000')
+  const [target, setTarget] = useState(initialDraft?.target||'')
+  const [weather, setWeather] = useState(initialDraft?.weather||'')
+  const [temperature, setTemperature] = useState(initialDraft?.temperature||'')
+  const [operator, setOperator] = useState(initialDraft?.operator||'')
+  const [note, setNote] = useState(initialDraft?.note||'')
   const [preCheck, setPreCheck] = useState(false)
   const [countCheck, setCountCheck] = useState(false)
   const [mixCheck, setMixCheck] = useState(false)
@@ -62,6 +66,7 @@ export default function SprayPage() {
   }
 
   useEffect(() => { void refresh() }, [])
+  useEffect(()=>{if(editingId)return;const draft:SprayDraft={savedDate:today(),sprayDate,preparedL,target,weather,temperature,operator,note,selectedFields,chemicals};localStorage.setItem(SPRAY_DRAFT_KEY,JSON.stringify(draft))},[editingId,sprayDate,preparedL,target,weather,temperature,operator,note,selectedFields,chemicals])
 
   const prepared = Number(preparedL) || 0
   const chosen = useMemo(() => fields.filter((f) => selectedFields.includes(f.id)), [fields, selectedFields])
@@ -99,6 +104,7 @@ export default function SprayPage() {
   }
 
   function resetForm() {
+    localStorage.removeItem(SPRAY_DRAFT_KEY)
     setEditingId('')
     setEditingLegacy('')
     setSprayDate(today())
