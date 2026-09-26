@@ -13,6 +13,9 @@ const MAX_RECEIPTS=10
 type FormItem={key:string;description:string;quantity:string;unitPrice:string;taxRate:string;note:string}
 const newItem=():FormItem=>({key:`${Date.now()}-${Math.random()}`,description:'',quantity:'1',unitPrice:'',taxRate:'10',note:''})
 const blank=()=>({id:'',purchaseAt:localInput(),vendor:'',note:'',items:[newItem()]})
+const EXPENSE_DRAFT_KEY='yagi:expense-draft:v1'
+type ExpenseForm=ReturnType<typeof blank>
+function loadExpenseDraft():ExpenseForm{try{const raw=sessionStorage.getItem(EXPENSE_DRAFT_KEY);if(!raw)return blank();const d=JSON.parse(raw) as Partial<ExpenseForm>;return{...blank(),...d,items:Array.isArray(d.items)&&d.items.length?d.items.map(i=>({...newItem(),...i,key:i.key||newItem().key})): [newItem()]}}catch{return blank()}}
 const statusLabel=(s:string)=>s==='APPROVED'?'承認済':s==='REJECTED'?'差戻し':'申請中'
 const csvCell=(v:unknown)=>`"${String(v??'').replace(/"/g,'""')}"`
 const fileSize=(v:number)=>v>=1024*1024?`${(v/1024/1024).toFixed(1)} MB`:`${Math.max(1,Math.round(v/1024))} KB`
@@ -32,7 +35,7 @@ function validateReceipts(files:File[],existingCount=0){
 export default function ExpenseClaimsPage(){
   const{allowed}=useAppPermissions(),canOwnManage=allowed('expenses.manage_own'),canReview=allowed('expenses.review'),canExport=allowed('expenses.export')
   const[claims,setClaims]=useState<ExpenseClaim[]>([]),[me,setMe]=useState<ExpenseUser|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
-  const[form,setForm]=useState(blank),[month,setMonth]=useState(currentMonth()),[status,setStatus]=useState(''),[applicant,setApplicant]=useState(''),[query,setQuery]=useState('')
+  const[form,setForm]=useState<ExpenseForm>(loadExpenseDraft),[month,setMonth]=useState(currentMonth()),[status,setStatus]=useState(''),[applicant,setApplicant]=useState(''),[query,setQuery]=useState('')
   const[receiptMap,setReceiptMap]=useState<ExpenseReceiptMap>({}),[receiptFiles,setReceiptFiles]=useState<File[]>([]),[receiptInputKey,setReceiptInputKey]=useState(0),[receiptBusyClaim,setReceiptBusyClaim]=useState('')
 
   async function refresh(){
@@ -43,8 +46,9 @@ export default function ExpenseClaimsPage(){
     }catch(e:any){setError(e?.message||'経費精算を読み込めませんでした。')}finally{setLoading(false)}
   }
   useEffect(()=>{void refresh()},[])
+  useEffect(()=>{try{sessionStorage.setItem(EXPENSE_DRAFT_KEY,JSON.stringify(form))}catch{}},[form])
 
-  function resetForm(clear=true){setForm(blank());setReceiptFiles([]);setReceiptInputKey(v=>v+1);setError('');if(clear)setSuccess('')}
+  function resetForm(clear=true){try{sessionStorage.removeItem(EXPENSE_DRAFT_KEY)}catch{}setForm(blank());setReceiptFiles([]);setReceiptInputKey(v=>v+1);setError('');if(clear)setSuccess('')}
   function updateItem(key:string,patch:Partial<FormItem>){setForm(v=>({...v,items:v.items.map(i=>i.key===key?{...i,...patch}:i)}))}
   function removeItem(key:string){setForm(v=>({...v,items:v.items.length===1?v.items:v.items.filter(i=>i.key!==key)}))}
   function chooseReceipts(files:File[]){
@@ -112,7 +116,7 @@ export default function ExpenseClaimsPage(){
       <div className="panel-title"><div><h2>{form.id?'差戻し申請を修正':'経費を申請'}</h2><p>領収書を添付してから申請します。写真・画像・PDFの原本はOneDriveへ保存され、アプリには軽量な紐付け情報だけを保持します。</p></div>{form.id&&<span>再申請</span>}</div>
       <div className="form-grid two"><label>購入日時<input type="datetime-local" required value={form.purchaseAt} onChange={e=>setForm({...form,purchaseAt:e.target.value})}/></label><label>購入先<input required value={form.vendor} onChange={e=>setForm({...form,vendor:e.target.value})} placeholder="例：JA京都やましろ"/></label></div>
       <div className="expense-items-head"><div><b>購入明細</b><span>複数点を一括申請できます</span></div><button type="button" className="secondary-button" onClick={()=>setForm(v=>({...v,items:[...v.items,newItem()]}))}><Plus size={16}/>明細を追加</button></div>
-      <div className="expense-item-list">{form.items.map((i,index)=>{const line=Math.round((Number(i.quantity)||0)*(Number(i.unitPrice)||0));return <section className="expense-item-row" key={i.key}><div className="expense-item-no">{index+1}</div><label className="expense-desc">購入内容<input value={i.description} onChange={e=>updateItem(i.key,{description:e.target.value})} required placeholder="例：肥料20kg袋"/></label><label>数量<input type="number" min="0.001" step="0.001" value={i.quantity} onChange={e=>updateItem(i.key,{quantity:e.target.value})}/></label><label>税込単価<input type="number" min="0" step="1" inputMode="decimal" value={i.unitPrice} onChange={e=>updateItem(i.key,{unitPrice:e.target.value})} placeholder="0"/></label><label>税率<select value={i.taxRate} onChange={e=>updateItem(i.key,{taxRate:e.target.value})}><option value="10">10%</option><option value="8">8%</option><option value="0">0%</option></select></label><div className="expense-line-total"><span>合計</span><strong>{yen.format(line)}</strong></div><button type="button" className="expense-remove" disabled={form.items.length===1} onClick={()=>removeItem(i.key)} aria-label="明細を削除"><Trash2 size={17}/></button></section>})}</div>
+      <div className="expense-item-list">{form.items.map((i,index)=>{const line=Math.round((Number(i.quantity)||0)*(Number(i.unitPrice)||0));return <section className="expense-item-row" key={i.key}><div className="expense-item-no">{index+1}</div><label className="expense-desc">購入内容<input value={i.description} onChange={e=>updateItem(i.key,{description:e.target.value})} required placeholder="例：肥料20kg袋"/></label><label>数量<input type="number" inputMode="decimal" min="0.001" step="0.001" value={i.quantity} onChange={e=>updateItem(i.key,{quantity:e.target.value})}/></label><label>税込単価<input type="number" min="0" step="1" inputMode="numeric" value={i.unitPrice} onChange={e=>updateItem(i.key,{unitPrice:e.target.value})} placeholder="0"/></label><label>税率<select value={i.taxRate} onChange={e=>updateItem(i.key,{taxRate:e.target.value})}><option value="10">10%</option><option value="8">8%</option><option value="0">0%</option></select></label><div className="expense-line-total"><span>合計</span><strong>{yen.format(line)}</strong></div><button type="button" className="expense-remove" disabled={form.items.length===1} onClick={()=>removeItem(i.key)} aria-label="明細を削除"><Trash2 size={17}/></button></section>})}</div>
 
       <section className="expense-receipt-upload">
         <div className="expense-receipt-upload-head"><div><Paperclip size={18}/><div><b>領収書を添付</b><span>画像・写真またはPDF／1件25MBまで／最大10件</span></div></div>{form.id&&(receiptMap[form.id]?.length||0)>0&&<strong>保存済み {receiptMap[form.id].length}件</strong>}</div>
