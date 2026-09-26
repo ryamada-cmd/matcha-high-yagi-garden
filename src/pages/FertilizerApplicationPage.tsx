@@ -5,13 +5,17 @@ import { useAppPermissions } from '../lib/permissions'
 import { deleteFertilizerApplication, loadFertilizerApplication, loadFertilizerApplications, loadFertilizerFields, loadFertilizerLots, loadFertilizers, registerFertilizerApplication, updateFertilizerApplication, type Fertilizer, type FertilizerApplication, type FertilizerField, type FertilizerLot } from '../lib/fertilizers'
 
 const today=()=>new Intl.DateTimeFormat('sv-SE').format(new Date());const num=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:3})
+const FERTILIZER_DRAFT_KEY='yagi:fertilizer-draft:v1'
+type FertilizerDraft={savedDate:string;date:string;operator:string;method:string;weather:string;note:string;fertilizerId:string;lotId:string;rate:string;selectedFields:string[]}
+function loadFertilizerDraft():FertilizerDraft|null{try{const raw=localStorage.getItem(FERTILIZER_DRAFT_KEY);if(!raw)return null;const d=JSON.parse(raw) as FertilizerDraft;if(d.savedDate!==today()){localStorage.removeItem(FERTILIZER_DRAFT_KEY);return null}return d}catch{return null}}
 export default function FertilizerApplicationPage(){
  const{allowed}=useAppPermissions(),canCreate=allowed('fertilizer_applications.create'),canEdit=allowed('fertilizer_applications.edit'),canDelete=allowed('fertilizer_applications.delete')
  const navigate=useNavigate(),[searchParams]=useSearchParams();const editParam=searchParams.get('edit')||''
+ const initialDraft=useMemo(loadFertilizerDraft,[])
  const[fertilizers,setFertilizers]=useState<Fertilizer[]>([]),[lots,setLots]=useState<FertilizerLot[]>([]),[fields,setFields]=useState<FertilizerField[]>([]),[history,setHistory]=useState<FertilizerApplication[]>([]),[editing,setEditing]=useState<FertilizerApplication|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
- const[date,setDate]=useState(today()),[operator,setOperator]=useState(''),[method,setMethod]=useState('株元・畝間施用'),[weather,setWeather]=useState(''),[note,setNote]=useState(''),[fertilizerId,setFertilizerId]=useState(''),[lotId,setLotId]=useState(''),[rate,setRate]=useState('40'),[selectedFields,setSelectedFields]=useState<string[]>([])
+ const[date,setDate]=useState(initialDraft?.date||today()),[operator,setOperator]=useState(initialDraft?.operator||''),[method,setMethod]=useState(initialDraft?.method||'株元・畝間施用'),[weather,setWeather]=useState(initialDraft?.weather||''),[note,setNote]=useState(initialDraft?.note||''),[fertilizerId,setFertilizerId]=useState(initialDraft?.fertilizerId||''),[lotId,setLotId]=useState(initialDraft?.lotId||''),[rate,setRate]=useState(initialDraft?.rate||'40'),[selectedFields,setSelectedFields]=useState<string[]>(initialDraft?.selectedFields||[])
 
- function resetForm(){setEditing(null);setDate(today());setOperator('');setMethod('株元・畝間施用');setWeather('');setNote('');setFertilizerId('');setLotId('');setRate('40');setSelectedFields([])}
+ function resetForm(){localStorage.removeItem(FERTILIZER_DRAFT_KEY);setEditing(null);setDate(today());setOperator('');setMethod('株元・畝間施用');setWeather('');setNote('');setFertilizerId('');setLotId('');setRate('40');setSelectedFields([])}
  function applyEdit(a:FertilizerApplication){
    if(!canEdit)throw new Error('施肥記録を編集する権限がありません。')
    if(!a.lines.length)throw new Error('施肥明細がないため編集できません。')
@@ -20,6 +24,7 @@ export default function FertilizerApplicationPage(){
    setEditing(a);setDate(a.date);setOperator(a.operator);setMethod(a.method||'株元・畝間施用');setWeather(a.weather);setNote(a.note);setFertilizerId(first.fertilizerId);setLotId(first.lotId);setRate(String(first.rateKgPer10a));setSelectedFields(a.lines.map(l=>l.fieldId));window.scrollTo({top:0,behavior:'smooth'})
  }
  async function refresh(){setLoading(true);setError('');try{const[f,l,fi,h]=await Promise.all([loadFertilizers(),loadFertilizerLots(),loadFertilizerFields(),loadFertilizerApplications(5)]);setFertilizers(f.filter(x=>x.active));setLots(l);setFields(fi);setHistory(h);if(editParam){if(!canEdit)throw new Error('施肥記録を編集する権限がありません。');const a=await loadFertilizerApplication(editParam);if(!a)throw new Error('編集する施肥記録が見つかりません。');applyEdit(a)}}catch(e:any){setError(e?.message||'施肥データを読み込めませんでした。')}finally{setLoading(false)}} useEffect(()=>{void refresh()},[editParam,canEdit])
+ useEffect(()=>{if(editParam||editing)return;const draft:FertilizerDraft={savedDate:today(),date,operator,method,weather,note,fertilizerId,lotId,rate,selectedFields};localStorage.setItem(FERTILIZER_DRAFT_KEY,JSON.stringify(draft))},[editParam,editing,date,operator,method,weather,note,fertilizerId,lotId,rate,selectedFields])
 
  const editOldByLot=useMemo(()=>{const m=new Map<string,number>();for(const l of editing?.lines||[])m.set(l.lotId,(m.get(l.lotId)||0)+l.amountKg);return m},[editing])
  const availableLots=lots.filter(l=>l.fertilizerId===fertilizerId&&(l.balanceKg>0||editOldByLot.has(l.id)))
