@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 
-export type AppRole = 'admin' | 'worker' | ''
+export type AppRole = 'admin' | 'worker' | 'viewer' | ''
 export type PermissionMap = Record<string, boolean>
 
 type PermissionState = {
@@ -20,7 +20,7 @@ export async function loadMyAppPermissions(): Promise<{ role: AppRole; permissio
   if (error) throw error
   const raw = (data || {}) as any
   return {
-    role: raw.role === 'admin' ? 'admin' : raw.role === 'worker' ? 'worker' : '',
+    role: raw.role === 'admin' ? 'admin' : raw.role === 'worker' ? 'worker' : raw.role === 'viewer' ? 'viewer' : '',
     permissions: raw.permissions && typeof raw.permissions === 'object' ? raw.permissions as PermissionMap : {},
   }
 }
