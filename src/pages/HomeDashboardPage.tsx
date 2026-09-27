@@ -44,6 +44,7 @@ export default function HomeDashboardPage() {
   const [data, setData] = useState<HomeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [taskBusy,setTaskBusy]=useState('')
 
   const canSprays = allowed('sprays.view')
   const canCreateSprays = allowed('sprays.create')
@@ -66,11 +67,14 @@ export default function HomeDashboardPage() {
   const canManageSales = allowed('sales.manage')
   const canEquipment = allowed('equipment.view')
   const canFields = allowed('fields.view')
+  const canCalendar = allowed('calendar.view')
+  const canManageCalendar = allowed('calendar.manage')
 
   async function refresh() {
     setLoading(true); setError(''); setData(null)
     try {
-      const [defense, fertilizer, harvests, processing, lots, manufacturing, sales, equipment] = await Promise.all([
+      const calToday=today(),calEnd=addDays(calToday,31)
+      const [defense, fertilizer, harvests, processing, lots, manufacturing, sales, equipment, calendar] = await Promise.all([
         canDefense ? loadDashboard() : Promise.resolve(null),
         canFertilizer ? loadFertilizerDashboard() : Promise.resolve(null),
         canHarvest ? loadHarvestRecords(300) : Promise.resolve([] as HarvestRecord[]),
@@ -79,14 +83,15 @@ export default function HomeDashboardPage() {
         canProduction ? loadManufacturingBatches(100) : Promise.resolve([] as ManufacturingBatch[]),
         canSales ? loadSalesDashboard() : Promise.resolve(null),
         canEquipment ? loadEquipmentDashboard() : Promise.resolve(null),
+        canCalendar ? loadCalendarData(calToday,calEnd) : Promise.resolve(null),
       ])
-      setData({ defense, fertilizer, harvests, processing, lots, manufacturing, sales, equipment })
+      setData({ defense, fertilizer, harvests, processing, lots, manufacturing, sales, equipment, calendar })
     } catch (e: any) {
       setError(e?.message || '茶園ダッシュボードを読み込めませんでした。')
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { void refresh() }, [canDefense, canFertilizer, canHarvest, canProduction, canPackaging, canSales, canEquipment])
+  useEffect(() => { void refresh() }, [canDefense, canFertilizer, canHarvest, canProduction, canPackaging, canSales, canEquipment, canCalendar])
 
   const year = currentYear()
   const summary = useMemo(() => {
@@ -145,9 +150,9 @@ export default function HomeDashboardPage() {
     topCards.push({ label: '今月粗利', value: data?.sales ? yen.format(data.sales.monthGrossProfitYen) : '—', note: data?.sales ? `粗利率 ${data.sales.monthGrossMarginPct.toFixed(1)}%` : '' })
   }
 
-  const hasQuickActions = canCreateSprays || canCreateFertilizerApplications || canManageHarvest || canManageProduction || canManageSales
+  const hasQuickActions = canCalendar || canCreateSprays || canCreateFertilizerApplications || canManageHarvest || canManageProduction || canManageSales
   const hasModules = canDefense || canFertilizer || canHarvest || canProduction || canPackaging || canSales || canEquipment
-  const hasNextWork = canSprayPlans || canFertilizerPlans || canFields || canEquipment
+  const hasNextWork = canCalendar || canSprayPlans || canFertilizerPlans || canFields || canEquipment
 
   return <div className="page home-dashboard">
     <div className="page-head home-dashboard-head">
