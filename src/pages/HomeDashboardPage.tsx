@@ -199,7 +199,24 @@ export default function HomeDashboardPage() {
       {topCards.map(card => <article className={`home-overview-card ${card.tone || ''}`} key={card.label}><span>{card.label}</span><strong>{loading && !data ? '…' : card.value}</strong><small>{card.note}</small></article>)}
     </div>}
 
+    {canCalendar&&<section className="panel home-workboard">
+      <div className="panel-title home-workboard-title"><div><h2>今日・今週のやること</h2><p>担当・期限付きの作業を、期限の近い順に確認</p></div><Link to="/calendar">作業カレンダー<ArrowRight size={15}/></Link></div>
+      <div className="home-workboard-metrics">
+        <Link to="/calendar" className={workSummary.overdue.length?'danger':''}><span>期限超過</span><strong>{workSummary.overdue.length}</strong><small>未完了</small></Link>
+        <Link to="/calendar"><span>今日まで</span><strong>{workSummary.today.length}</strong><small>今日の作業</small></Link>
+        <Link to="/calendar"><span>7日以内</span><strong>{workSummary.week.length}</strong><small>今週の作業</small></Link>
+        <Link to="/calendar" className={workSummary.unassigned?'warning':''}><span>担当未設定</span><strong>{workSummary.unassigned}</strong><small>割当が必要</small></Link>
+      </div>
+      <div className="home-work-columns">
+        <div className="home-work-column overdue"><div className="home-work-column-head"><b>期限超過</b><span>{workSummary.overdue.length}件</span></div>{workSummary.overdue.slice(0,5).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueDate+(t.dueTime?' '+t.dueTime.slice(0,5):'')}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={taskBusy===t.id} onClick={()=>void completeTask(t)}><Check size={15}/>完了</button>}</article>)}{!workSummary.overdue.length&&<p className="empty">期限超過はありません。</p>}</div>
+        <div className="home-work-column today"><div className="home-work-column-head"><b>今日やること</b><span>{workSummary.today.length}件</span></div>{workSummary.today.slice(0,6).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueTime?'今日 '+t.dueTime.slice(0,5):'今日'}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={taskBusy===t.id} onClick={()=>void completeTask(t)}><Check size={15}/>完了</button>}</article>)}{!workSummary.today.length&&<p className="empty">今日が期限の作業はありません。</p>}</div>
+        <div className="home-work-column week"><div className="home-work-column-head"><b>今週やること</b><span>{workSummary.week.length}件</span></div>{workSummary.week.slice(0,6).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueDate}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={taskBusy===t.id} onClick={()=>void completeTask(t)}><Check size={15}/>完了</button>}</article>)}{!workSummary.week.length&&<p className="empty">7日以内の作業はありません。</p>}</div>
+      </div>
+      {weekPlans.length>0&&<div className="home-week-plans"><div className="home-work-column-head"><b>7日以内の年間計画</b><span>{weekPlans.length}件</span></div><div>{weekPlans.map((p,i)=><Link key={p.kind+'-'+p.date+'-'+i} to={p.href}><time>{p.date}</time><span>{p.kind}</span><b>{p.title}</b><small>{p.field}</small></Link>)}</div></div>}
+    </section>}
+
     {hasQuickActions && <section className="home-quick-actions" aria-label="主要作業">
+      {canCalendar && <Link to="/calendar"><span className="home-action-icon calendar"><CalendarClock size={20}/></span><div><b>やること・予定</b><small>担当・期限・年間計画</small></div><ArrowRight size={17}/></Link>}
       {canCreateSprays && <Link to="/sprays"><span className="home-action-icon spray"><SprayCan size={20}/></span><div><b>散布を記録</b><small>農薬・圃場・散布量</small></div><ArrowRight size={17}/></Link>}
       {canCreateFertilizerApplications && <Link to="/fertilizer-applications"><span className="home-action-icon fertilizer"><Leaf size={20}/></span><div><b>施肥を記録</b><small>肥料・施肥量・N/P/K</small></div><ArrowRight size={17}/></Link>}
       {canManageHarvest && <Link to="/harvests"><span className="home-action-icon harvest"><Scissors size={20}/></span><div><b>摘採・製茶</b><small>生葉収量・歩留</small></div><ArrowRight size={17}/></Link>}
