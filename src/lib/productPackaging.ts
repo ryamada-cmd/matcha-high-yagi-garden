@@ -49,7 +49,8 @@ export async function loadProductPackagingBatches(limit=200):Promise<ProductPack
     netContent:n(r.net_content_snapshot),contentUnit:r.content_unit_snapshot||'',packageType:r.package_type_snapshot||'',standardPriceYen:n(r.standard_price_snapshot_yen),packagingCostPerUnitYen:n(r.packaging_cost_per_unit_snapshot_yen),unitsProduced:n(r.units_produced),
     sourceLotId:r.source_lot_id||'',sourceLotLegacyId:r.source_lot_legacy_id||'',sourceMaterialName:r.source_material_name||'',contentInputQty:n(r.content_input_qty),contentInputUnit:r.content_input_unit||'',
     processingCostYen:n(r.processing_cost_yen),packagingCostYen:n(r.packaging_cost_yen),otherCostYen:n(r.other_cost_yen),inheritedInputCostYen:n(r.inherited_input_cost_yen),totalCostYen:n(r.total_manufacturing_cost_yen),unitCostYen:n(r.unit_cost_yen),
-    outputLotId:r.output_lot_id||'',stockUnits:n(r.stock_units),facility:r.facility||'',operator:r.operator_name_snapshot||'',note:r.note||''
+    outputLotId:r.output_lot_id||'',stockUnits:n(r.stock_units),facility:r.facility||'',operator:r.operator_name_snapshot||'',note:r.note||'',
+    sourceType:r.source_lot_source_type||'',sourceTeaType:r.source_tea_type||'',sourceOrigin:r.source_origin||'',sourceVariety:r.source_variety||'',sourceGrade:r.source_grade||'',sourceSupplier:r.source_supplier||'',sourceSupplierLotNo:r.source_supplier_lot_no||''
   }))
 }
 
