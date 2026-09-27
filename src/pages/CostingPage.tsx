@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Calculator, CheckCircle2, CircleDollarSign, Leaf, Package, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
+import { ArrowDownToLine, Calculator, CheckCircle2, CircleDollarSign, FileCheck2, Leaf, Package, Pencil, Plus, ReceiptText, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
-import { deleteCostingPeriod, loadCostingDashboard, saveCostingPeriod, type CostingCostItem, type CostingDashboard, type CostingPeriod, type CostingStatus } from '../lib/costing'
+import { deleteCostingPeriod, loadCostingDashboard, saveCostingPeriod, type CostingCostItem, type CostingDashboard, type CostingPeriod, type CostingSourceCandidate, type CostingStatus } from '../lib/costing'
 
 const currentYear=()=>new Date().getFullYear()
 const yen=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0})
@@ -32,6 +32,9 @@ export default function CostingPage(){
  const[data,setData]=useState<CostingDashboard|null>(null)
  const[form,setForm]=useState<FormState>(()=>blank())
  const[selectedId,setSelectedId]=useState('')
+ const[sourceFilter,setSourceFilter]=useState<'ALL'|'EXPENSE_CLAIM'|'VENDOR_INVOICE'>('ALL')
+ const[sourceQuery,setSourceQuery]=useState('')
+ const[sourceBaseline,setSourceBaseline]=useState<Record<string,number>>({})
  const[loading,setLoading]=useState(true),[busy,setBusy]=useState(false)
  const[error,setError]=useState(''),[success,setSuccess]=useState('')
 
@@ -57,9 +60,12 @@ export default function CostingPage(){
  const activeRate=denominator>0?activeTotal/denominator:0
  const thirtyGram=activeRate*.03
 
- function newPeriod(){setSelectedId('');setForm(blank(year));setError('');setSuccess('')}
+ function sourceKey(type:string,id:string){return type+':'+id}
+ function sourceTypeLabel(type:string){return type==='EXPENSE_CLAIM'?'経費精算':'仕入請求書'}
+ function newPeriod(){setSelectedId('');setSourceBaseline({});setForm(blank(year));setError('');setSuccess('')}
  function editPeriod(p:CostingPeriod,scroll=true){
    setSelectedId(p.id)
+   setSourceBaseline(Object.fromEntries(p.costItems.filter(x=>x.sourceType&&x.sourceItemId).map(x=>[sourceKey(x.sourceType||'',x.sourceItemId||''),x.actualAmountYen])))
    setForm({id:p.id,fiscalYear:p.fiscalYear,name:p.name,scopeLabel:p.scopeLabel,harvestSeason:p.harvestSeason,status:p.status,plannedOutputKg:p.plannedOutputKg?String(p.plannedOutputKg):'',note:p.note,
      costItems:p.costItems.length?p.costItems.map(x=>({...x})):defaultCosts(),
      lots:Object.fromEntries(p.lots.map(x=>[x.lotId,String(x.allocatedQtyKg)]))})
@@ -68,6 +74,14 @@ export default function CostingPage(){
  function updateCost(index:number,patch:Partial<CostingCostItem>){setForm(f=>({...f,costItems:f.costItems.map((x,i)=>i===index?{...x,...patch}:x)}))}
  function removeCost(index:number){setForm(f=>({...f,costItems:f.costItems.filter((_,i)=>i!==index)}))}
  function addCost(){setForm(f=>({...f,costItems:[...f.costItems,{category:'OTHER',description:'',plannedAmountYen:0,actualAmountYen:0}]}))}
+ function importSourceCandidate(source:CostingSourceCandidate){
+   const key=sourceKey(source.sourceType,source.sourceItemId)
+   if(form.costItems.some(x=>sourceKey(x.sourceType||'',x.sourceItemId||'')===key))return
+   const available=Math.max(0,source.remainingAmountYen+(sourceBaseline[key]||0))
+   if(available<=0){setError('この明細はすでに全額を原価へ配賦済みです。');return}
+   setForm(v=>({...v,costItems:[...v.costItems,{category:source.suggestedCategory||'OTHER',description:source.vendor+' / '+source.description,plannedAmountYen:available,actualAmountYen:available,sourceType:source.sourceType,sourceItemId:source.sourceItemId,sourceParentId:source.sourceParentId,sourceRef:source.sourceRef,sourceDate:source.sourceDate,sourceVendor:source.vendor,sourceTotalAmountYen:source.totalAmountYen}]}))
+   setError('');setSuccess(sourceTypeLabel(source.sourceType)+' '+source.sourceRef+' の明細を原価プールへ追加しました。金額と費目を確認して保存してください。')
+ }
  function toggleLot(id:string,maxKg:number){setForm(f=>{const lots={...f.lots};if(lots[id]!==undefined)delete lots[id];else lots[id]=String(maxKg);return{...f,lots}})}
 
  async function submit(e:FormEvent){
@@ -117,12 +131,17 @@ export default function CostingPage(){
        <div className="form-grid four"><label>年度<input type="number" value={form.fiscalYear} onChange={e=>setForm({...form,fiscalYear:Number(e.target.value)})}/></label><label>原価期間名<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>茶園・範囲<input value={form.scopeLabel} onChange={e=>setForm({...form,scopeLabel:e.target.value})} placeholder="例：井手町"/></label><label>茶期<input value={form.harvestSeason} onChange={e=>setForm({...form,harvestSeason:e.target.value})} placeholder="例：一番茶"/></label></div>
        <div className="form-grid three"><label>状態<select value={form.status} onChange={e=>setForm({...form,status:e.target.value as CostingStatus})}><option value="DRAFT">暫定原価</option><option value="FINAL">確定原価</option></select></label><label>予定出来高 kg<input type="number" inputMode="decimal" min="0" step="0.001" value={form.plannedOutputKg} onChange={e=>setForm({...form,plannedOutputKg:e.target.value})}/></label><label>実績対象重量<input readOnly value={num.format(actualOutputKg)+' kg'}/></label></div>
 
-       <section className="costing-section"><div className="section-head"><div><h3>① 原価プール</h3><p>追える費用は直接入力し、燃料・人件費・減価償却などは年度単位でまとめます。</p></div>{canManage&&<button type="button" className="secondary-button" onClick={addCost}><Plus size={14}/>費用追加</button>}</div>
-         <div className="costing-cost-table"><div className="costing-cost-header"><span>区分</span><span>内容</span><span>予定額</span><span>実績額</span><span/></div>{form.costItems.map((x,i)=><div key={x.id||i}><select disabled={!canManage} value={x.category} onChange={e=>updateCost(i,{category:e.target.value})}>{categoryOptions.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><input disabled={!canManage} value={x.description} onChange={e=>updateCost(i,{description:e.target.value})}/><input disabled={!canManage} type="number" inputMode="numeric" min="0" step="1" value={x.plannedAmountYen} onChange={e=>updateCost(i,{plannedAmountYen:Number(e.target.value)})}/><input disabled={!canManage} type="number" inputMode="numeric" min="0" step="1" value={x.actualAmountYen} onChange={e=>updateCost(i,{actualAmountYen:Number(e.target.value)})}/>{canManage&&<button type="button" onClick={()=>removeCost(i)}><Trash2 size={14}/></button>}</div>)}</div>
+       <section className="costing-section costing-source-import"><div className="section-head"><div><h3>① 経費・請求書から取り込み</h3><p>明細単位で原価プールへ追加します。既に配賦した金額は差し引き、元明細額を超える二重計上はできません。</p></div><span>{(data?.sourceCandidates||[]).filter(x=>x.remainingAmountYen>0).length}件 未配賦</span></div>
+         <div className="costing-source-toolbar"><div className="costing-source-tabs"><button type="button" className={sourceFilter==='ALL'?'active':''} onClick={()=>setSourceFilter('ALL')}>すべて</button><button type="button" className={sourceFilter==='EXPENSE_CLAIM'?'active':''} onClick={()=>setSourceFilter('EXPENSE_CLAIM')}><ReceiptText size={13}/>経費精算</button><button type="button" className={sourceFilter==='VENDOR_INVOICE'?'active':''} onClick={()=>setSourceFilter('VENDOR_INVOICE')}><FileCheck2 size={13}/>仕入請求書</button></div><div className="search-box"><Search size={14}/><input value={sourceQuery} onChange={e=>setSourceQuery(e.target.value)} placeholder="購入先・内容・番号で検索"/></div></div>
+         <div className="costing-source-grid">{(data?.sourceCandidates||[]).filter(x=>sourceFilter==='ALL'||x.sourceType===sourceFilter).filter(x=>{const q=sourceQuery.trim().normalize('NFKC').toLowerCase();return !q||[x.vendor,x.description,x.sourceRef,x.sourceCategory].join(' ').normalize('NFKC').toLowerCase().includes(q)}).map(source=>{const key=sourceKey(source.sourceType,source.sourceItemId);const already=form.costItems.some(x=>sourceKey(x.sourceType||'',x.sourceItemId||'')===key);const available=Math.max(0,source.remainingAmountYen+(sourceBaseline[key]||0));const caution=['PACKAGING','SHIPPING','FRESH_LEAF'].includes(source.sourceCategory);return <article key={key} className={already?'selected':available<=0?'used':''}><div className="costing-source-head"><span>{sourceTypeLabel(source.sourceType)}</span><small>{source.sourceDate} / {source.sourceRef}</small></div><b>{source.vendor}</b><p>{source.description}</p><div className="costing-source-meta"><span>元明細 {yen.format(source.totalAmountYen)}</span>{source.usedAmountYen>0&&<span>配賦済 {yen.format(source.usedAmountYen)}</span>}<strong>未配賦 {yen.format(available)}</strong></div><div className="costing-source-foot"><span>推奨費目：{categoryOptions.find(([v])=>v===source.suggestedCategory)?.[1]||'その他'}</span>{caution&&<em>通常は直接原価・販管費扱いを確認</em>}{canManage&&<button type="button" disabled={already||available<=0} onClick={()=>importSourceCandidate(source)}><ArrowDownToLine size={13}/>{already?'追加済み':available<=0?'配賦済み':'原価へ追加'}</button>}</div></article>})}</div>
+       </section>
+
+       <section className="costing-section"><div className="section-head"><div><h3>② 原価プール</h3><p>取り込んだ実績明細に加え、燃料・人件費・減価償却など必要な費用を手入力できます。</p></div>{canManage&&<button type="button" className="secondary-button" onClick={addCost}><Plus size={14}/>費用追加</button>}</div>
+         <div className="costing-cost-table"><div className="costing-cost-header"><span>区分</span><span>内容</span><span>予定額</span><span>実績額</span><span/></div>{form.costItems.map((x,i)=><div key={x.id||i}><select disabled={!canManage} value={x.category} onChange={e=>updateCost(i,{category:e.target.value})}>{categoryOptions.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><div className="costing-cost-description"><input disabled={!canManage} value={x.description} onChange={e=>updateCost(i,{description:e.target.value})}/>{x.sourceType&&<small>{sourceTypeLabel(x.sourceType)} / {x.sourceDate} / {x.sourceRef}{x.sourceTotalAmountYen?' / 元明細 '+yen.format(x.sourceTotalAmountYen):''}</small>}</div><input disabled={!canManage} type="number" inputMode="numeric" min="0" step="1" value={x.plannedAmountYen} onChange={e=>updateCost(i,{plannedAmountYen:Number(e.target.value)})}/><input disabled={!canManage} type="number" inputMode="numeric" min="0" step="1" max={x.sourceTotalAmountYen||undefined} value={x.actualAmountYen} onChange={e=>updateCost(i,{actualAmountYen:Number(e.target.value)})}/>{canManage&&<button type="button" onClick={()=>removeCost(i)}><Trash2 size={14}/></button>}</div>)}</div>
          <div className="costing-totals"><span>予定合計 <b>{yen.format(plannedTotal)}</b></span><span>実績合計 <b>{yen.format(actualTotal)}</b></span></div>
        </section>
 
-       <section className="costing-section"><div className="section-head"><div><h3>② 配賦対象ロット</h3><p>製茶後の販売可能重量を選択します。外部調達茶は選べません。</p></div><span>{selectedLots.length}ロット / {num.format(actualOutputKg)}kg</span></div>
+       <section className="costing-section"><div className="section-head"><div><h3>③ 配賦対象ロット</h3><p>製茶後の販売可能重量を選択します。外部調達茶は選べません。</p></div><span>{selectedLots.length}ロット / {num.format(actualOutputKg)}kg</span></div>
          <div className="costing-lot-grid">{(data?.eligibleLots||[]).map(l=>{const selected=form.lots[l.id]!==undefined;const locked=!!l.costingPeriodId&&l.costingPeriodId!==form.id;return <article key={l.id} className={selected?'selected':locked?'locked':''}><button type="button" disabled={!canManage||locked} onClick={()=>toggleLot(l.id,l.initialQtyKg)}><span>{l.receivedDate}</span><b>{l.materialName}</b><small>{l.legacyId} / {[l.teaType,l.origin,l.variety].filter(Boolean).join(' / ')}</small><strong>{num.format(l.initialQtyKg)}kg</strong>{locked&&<em>他の原価期間へ配賦済み</em>}</button>{selected&&<label>配賦対象kg<input disabled={!canManage} type="number" inputMode="decimal" min="0.001" max={l.initialQtyKg} step="0.001" value={form.lots[l.id]} onChange={e=>setForm(f=>({...f,lots:{...f.lots,[l.id]:e.target.value}}))}/></label>}</article>})}</div>
        </section>
 
