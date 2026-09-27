@@ -3,7 +3,8 @@ import { hasPermission } from './permissions'
 
 export type ProductionLot={
  id:string;legacyId:string;materialName:string;category:string;unit:string;receivedDate:string;initialQty:number;balance:number;
- totalCostYen:number;unitCostYen:number;inventoryValueYen:number;sourceType:string;sourceId:string;supplier:string;storageLocation:string;note:string
+ totalCostYen:number;unitCostYen:number;inventoryValueYen:number;sourceType:string;sourceId:string;supplier:string;storageLocation:string;note:string;
+ teaType:string;origin:string;variety:string;grade:string;supplierLotNo:string;purchaseDocumentNo:string
 }
 export type ManufacturingInput={id:string;lotId:string;lotLegacyId:string;materialName:string;inputQty:number;unit:string;unitCostYen:number;inputCostYen:number}
 export type ManufacturingBatch={
@@ -20,11 +21,11 @@ export async function loadProductionRole(){const{data:{user}}=await supabase.aut
 export async function loadProductionLots():Promise<ProductionLot[]>{
  if(await hasPermission('production.view')){
   const{data,error}=await supabase.from('production_inventory_balances').select('*').is('deleted_at',null).order('received_date',{ascending:false}).order('legacy_id',{ascending:false});if(error)throw error
-  return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',supplier:r.supplier||'',storageLocation:r.storage_location||'',note:r.note||''}))
+  return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',supplier:r.supplier||'',storageLocation:r.storage_location||'',note:r.note||'',teaType:r.tea_type||'',origin:r.origin||'',variety:r.variety||'',grade:r.grade||'',supplierLotNo:r.supplier_lot_no||'',purchaseDocumentNo:r.purchase_document_no||''}))
  }
  if(await hasPermission('packaging.view')){
   const{data,error}=await supabase.from('product_stock_lots').select('*').order('received_date',{ascending:false}).order('legacy_id',{ascending:false});if(error)throw error
-  return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.product_name||'',category:'製品',unit:'個',receivedDate:r.received_date||'',initialQty:n(r.units_produced),balance:n(r.stock_units),totalCostYen:n(r.unit_cost_yen)*n(r.units_produced),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:'MANUFACTURING',sourceId:r.manufacturing_batch_id||'',supplier:'',storageLocation:r.storage_location||'',note:''}))
+  return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.product_name||'',category:'製品',unit:'個',receivedDate:r.received_date||'',initialQty:n(r.units_produced),balance:n(r.stock_units),totalCostYen:n(r.unit_cost_yen)*n(r.units_produced),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:'MANUFACTURING',sourceId:r.manufacturing_batch_id||'',supplier:'',storageLocation:r.storage_location||'',note:'',teaType:'',origin:'',variety:'',grade:'',supplierLotNo:'',purchaseDocumentNo:''}))
  }
  return[]
 }
@@ -52,3 +53,15 @@ export async function saveManufacturingBatch(input:{id?:string;date:string;proce
  const{data,error}=await supabase.rpc('save_manufacturing_batch',{p_payload:{id:input.id||'',manufacturing_date:input.date,process_type:input.processType,output_material:input.outputMaterial,output_qty:input.outputQty,output_unit:input.outputUnit,category:input.category,facility:input.facility,processing_cost_yen:input.processingCostYen,packaging_cost_yen:input.packagingCostYen,other_cost_yen:input.otherCostYen,operator_name:input.operator,note:input.note,inputs:input.inputs.map(x=>({lot_id:x.lotId,input_qty:x.inputQty}))}});if(error)throw error;return data as string
 }
 export async function deleteManufacturingBatch(id:string,reason:string){const{error}=await supabase.rpc('delete_manufacturing_batch',{p_id:id,p_reason:reason});if(error)throw error}
+
+export async function receiveProcuredTeaLot(input:{materialName:string;teaType:string;origin:string;variety:string;grade:string;supplier:string;supplierLotNo:string;purchaseDocumentNo:string;receivedDate:string;quantity:number;unit:string;totalCostYen:number;storageLocation:string;note:string}){
+ const{data,error}=await supabase.rpc('admin_receive_procured_tea_lot',{p_payload:{material_name:input.materialName,tea_type:input.teaType,origin:input.origin,variety:input.variety,grade:input.grade,supplier:input.supplier,supplier_lot_no:input.supplierLotNo,purchase_document_no:input.purchaseDocumentNo,received_date:input.receivedDate,quantity:input.quantity,unit:input.unit,total_cost_yen:input.totalCostYen,storage_location:input.storageLocation,note:input.note}})
+ if(error)throw error
+ return data as string
+}
+
+export async function saveTeaBlendBatch(input:{id?:string;date:string;outputMaterial:string;outputQty:number;outputUnit:string;teaType:string;origin:string;variety:string;grade:string;facility:string;processingCostYen:number;otherCostYen:number;operator:string;note:string;inputs:Array<{lotId:string;inputQty:number}>}){
+ const{data,error}=await supabase.rpc('save_tea_blend_batch',{p_payload:{id:input.id||'',manufacturing_date:input.date,output_material:input.outputMaterial,output_qty:input.outputQty,output_unit:input.outputUnit,tea_type:input.teaType,origin:input.origin,variety:input.variety,grade:input.grade,facility:input.facility,processing_cost_yen:input.processingCostYen,other_cost_yen:input.otherCostYen,operator_name:input.operator,note:input.note,inputs:input.inputs.map(x=>({lot_id:x.lotId,input_qty:x.inputQty}))}})
+ if(error)throw error
+ return data as string
+}
