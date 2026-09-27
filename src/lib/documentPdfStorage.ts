@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { loadExternalFiles, uploadExternalFile, type ExternalFileRow } from './externalStorage'
-import type { DocumentType } from './documents'
+import type { DocumentLanguage, DocumentType } from './documents'
 
 export type DocumentStorageLink = {
   fileId: string
@@ -167,13 +167,14 @@ function toStorageLink(file: ExternalFileRow): DocumentStorageLink {
 export async function saveDocumentPdfToOneDrive(input: {
   documentId: string
   documentType: DocumentType
+  documentLanguage: DocumentLanguage
   documentNo: string
   customerName: string
   previewElement: HTMLElement
   isRevision?: boolean
 }) {
   const blob = await createDocumentPdfBlob(input.previewElement)
-  const typeLabel = input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書'
+  const typeLabel = input.documentLanguage==='EN' ? (input.documentType==='ESTIMATE'?'Estimate':input.documentType==='INVOICE'?'Invoice':'Delivery_Note') : (input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書')
   const customer = safeFilePart(input.customerName, '取引先')
   const number = safeFilePart(input.documentNo, '番号未設定')
   const revision = input.isRevision ? `_更新_${revisionStamp()}` : ''
