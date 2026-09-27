@@ -7,7 +7,8 @@ export type ProductPackagingBatch={
   netContent:number;contentUnit:string;packageType:string;standardPriceYen:number;packagingCostPerUnitYen:number;unitsProduced:number;
   sourceLotId:string;sourceLotLegacyId:string;sourceMaterialName:string;contentInputQty:number;contentInputUnit:string;
   processingCostYen:number;packagingCostYen:number;otherCostYen:number;inheritedInputCostYen:number;totalCostYen:number;unitCostYen:number;
-  outputLotId:string;stockUnits:number;facility:string;operator:string;note:string
+  outputLotId:string;stockUnits:number;facility:string;operator:string;note:string;
+  sourceType:string;sourceTeaType:string;sourceOrigin:string;sourceVariety:string;sourceGrade:string;sourceSupplier:string;sourceSupplierLotNo:string
 }
 
 export type ProductStockLot={
@@ -36,7 +37,7 @@ export async function loadPackagingSourceLots():Promise<ProductionLot[]>{
   return(data||[]).map((r:any)=>({
     id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),
     balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',
-    supplier:'',storageLocation:r.storage_location||'',note:''
+    supplier:r.supplier||'',storageLocation:r.storage_location||'',note:'',teaType:r.tea_type||'',origin:r.origin||'',variety:r.variety||'',grade:r.grade||'',supplierLotNo:r.supplier_lot_no||'',purchaseDocumentNo:r.purchase_document_no||''
   }))
 }
 
