@@ -173,7 +173,7 @@ export async function saveDocumentPdfToOneDrive(input: {
   isRevision?: boolean
 }) {
   const blob = await createDocumentPdfBlob(input.previewElement)
-  const typeLabel = input.documentType === 'INVOICE' ? '請求書' : '納品書'
+  const typeLabel = input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書'
   const customer = safeFilePart(input.customerName, '取引先')
   const number = safeFilePart(input.documentNo, '番号未設定')
   const revision = input.isRevision ? `_更新_${revisionStamp()}` : ''
