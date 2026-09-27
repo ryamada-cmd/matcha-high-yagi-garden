@@ -7,6 +7,9 @@ import { loadDailyReportPhotos, loadPhotoThumbnails, uploadPhoto, type PhotoGall
 const today=()=>new Intl.DateTimeFormat('sv-SE').format(new Date())
 const thisMonth=()=>today().slice(0,7)
 const blank=()=>({id:'',reportDate:today(),weatherNote:'',workHours:'',workSummary:'',goodPoints:'',issues:'',nextActions:'',fieldIds:[] as string[]})
+const DAILY_REPORT_DRAFT_KEY='yagi:daily-report-draft:v1'
+type DailyReportForm=ReturnType<typeof blank>
+function loadDailyReportDraft():DailyReportForm{try{const raw=sessionStorage.getItem(DAILY_REPORT_DRAFT_KEY);if(!raw)return blank();const d=JSON.parse(raw) as Partial<DailyReportForm>;return{...blank(),...d,fieldIds:Array.isArray(d.fieldIds)?d.fieldIds.map(String):[]}}catch{return blank()}}
 const nf=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1})
 const MAX_REPORT_PHOTOS=10
 const MAX_PHOTO_BYTES=25*1024*1024
@@ -18,7 +21,7 @@ export default function DailyReportsPage(){
   const[reports,setReports]=useState<DailyReport[]>([]),[fields,setFields]=useState<DailyReportFieldOption[]>([]),[me,setMe]=useState<DailyReportUser|null>(null)
   const[reportPhotos,setReportPhotos]=useState<PhotoGalleryFile[]>([]),[photoThumbs,setPhotoThumbs]=useState<Record<string,string>>({}),[photoFiles,setPhotoFiles]=useState<File[]>([])
   const[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
-  const[form,setForm]=useState(blank),[month,setMonth]=useState(thisMonth()),[query,setQuery]=useState(''),[author,setAuthor]=useState(''),[fieldFilter,setFieldFilter]=useState('')
+  const[form,setForm]=useState<DailyReportForm>(loadDailyReportDraft),[month,setMonth]=useState(thisMonth()),[query,setQuery]=useState(''),[author,setAuthor]=useState(''),[fieldFilter,setFieldFilter]=useState('')
 
   async function refresh(hydrateToday=false){
     setLoading(true);setError('')
@@ -29,10 +32,11 @@ export default function DailyReportsPage(){
     }catch(e:any){setError(e?.message||'日報を読み込めませんでした。')}finally{setLoading(false)}
   }
   useEffect(()=>{void refresh(true)},[canCreate])
+  useEffect(()=>{try{sessionStorage.setItem(DAILY_REPORT_DRAFT_KEY,JSON.stringify(form))}catch{}},[form])
 
   const canEdit=(r:DailyReport)=>!!me&&(canReview||(canManageOwn&&r.authorId===me.id))
   function loadIntoForm(r:DailyReport){if(!canEdit(r)){setError('この日報を編集する権限がありません。');return}setForm({id:r.id,reportDate:r.reportDate,weatherNote:r.weatherNote,workHours:r.workHours?String(r.workHours):'',workSummary:r.workSummary,goodPoints:r.goodPoints,issues:r.issues,nextActions:r.nextActions,fieldIds:r.fields.map(f=>f.id)});setError('');setSuccess('')}
-  function resetForm(){setForm(blank());setPhotoFiles([]);setError('');setSuccess('')}
+  function resetForm(){try{sessionStorage.removeItem(DAILY_REPORT_DRAFT_KEY)}catch{}setForm(blank());setPhotoFiles([]);setError('');setSuccess('')}
   function toggleField(id:string){setForm(v=>({...v,fieldIds:v.fieldIds.includes(id)?v.fieldIds.filter(x=>x!==id):[...v.fieldIds,id]}))}
   function choosePhotos(files:File[]){
     try{
