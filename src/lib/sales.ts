@@ -9,7 +9,7 @@ const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
 
 export async function loadSaleableLots():Promise<ProductionLot[]>{
  const{data,error}=await supabase.from('sales_saleable_lots').select('*').order('received_date',{ascending:false}).order('legacy_id',{ascending:false});if(error)throw error
- return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',supplier:'',storageLocation:'',note:''}))
+ return(data||[]).map((r:any)=>({id:r.lot_id,legacyId:r.legacy_id||'',materialName:r.material_name||'',category:r.category||'',unit:r.unit||'',receivedDate:r.received_date||'',initialQty:n(r.initial_qty),balance:n(r.balance),totalCostYen:n(r.total_cost_yen),unitCostYen:n(r.unit_cost_yen),inventoryValueYen:n(r.inventory_value_yen),sourceType:r.source_type||'',sourceId:r.source_id||'',supplier:'',storageLocation:'',note:'',teaType:'',origin:'',variety:'',grade:'',supplierLotNo:'',purchaseDocumentNo:''}))
 }
 
 export async function loadSales(limit=300):Promise<SaleBundle[]>{
