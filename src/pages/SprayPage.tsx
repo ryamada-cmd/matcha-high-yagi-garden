@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Eye, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
 import SprayPesticideGuidanceCard from '../components/SprayPesticideGuidance'
 import { useAppPermissions } from '../lib/permissions'
@@ -23,6 +24,8 @@ function loadSprayDraft():SprayDraft|null{try{const raw=localStorage.getItem(SPR
 
 export default function SprayPage() {
   const { allowed } = useAppPermissions()
+  const [searchParams]=useSearchParams()
+  const fieldParam=searchParams.get('field')||''
   const canCreate = allowed('sprays.create')
   const canEdit = allowed('sprays.edit')
   const canDelete = allowed('sprays.delete')
@@ -31,7 +34,7 @@ export default function SprayPage() {
   const [fields, setFields] = useState<SprayField[]>([])
   const [history, setHistory] = useState<SprayHistoryRow[]>([])
   const [chemicals, setChemicals] = useState<ChemRow[]>(initialDraft?.chemicals?.length?initialDraft.chemicals:[{ key: uid(), lotId: '', dilution: '' }])
-  const [selectedFields, setSelectedFields] = useState<string[]>(initialDraft?.selectedFields||[])
+  const [selectedFields, setSelectedFields] = useState<string[]>(()=>{const base=initialDraft?.selectedFields||[];return fieldParam?[...new Set([...base,fieldParam])]:base})
   const [sprayDate, setSprayDate] = useState(initialDraft?.sprayDate||today())
   const [preparedL, setPreparedL] = useState(initialDraft?.preparedL||'1000')
   const [target, setTarget] = useState(initialDraft?.target||'')
