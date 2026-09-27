@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 
 export type DocumentType = 'ESTIMATE' | 'INVOICE' | 'DELIVERY_NOTE'
 export type DocumentStatus = 'DRAFT' | 'ISSUED' | 'CANCELLED'
+export type DocumentLanguage = 'JA' | 'EN'
 
 export type DocumentCustomer = {
   id:string; customerCode:string; name:string; postalCode:string; address1:string; address2:string;
@@ -9,8 +10,9 @@ export type DocumentCustomer = {
 }
 
 export type CompanyDocumentSettings = {
-  companyName:string; registrationNo:string; postalCode:string; address1:string; address2:string; phone:string;
-  bankName:string; bankBranch:string; bankAccountType:string; bankAccountNo:string; bankAccountName:string; note:string;
+  companyName:string; companyNameEn:string; registrationNo:string; postalCode:string; address1:string; address2:string; address1En:string; address2En:string; phone:string;
+  bankName:string; bankBranch:string; bankAccountType:string; bankAccountNo:string; bankAccountName:string;
+  bankNameEn:string; bankBranchEn:string; bankAccountTypeEn:string; bankAccountNameEn:string; note:string; noteEn:string;
 }
 
 export type SalesDocumentItem = {
@@ -18,7 +20,7 @@ export type SalesDocumentItem = {
 }
 
 export type SalesDocument = {
-  id:string; documentType:DocumentType; documentNo:string; status:DocumentStatus; issueDate:string; dueDate:string; deliveryDate:string;
+  id:string; documentType:DocumentType; documentLanguage:DocumentLanguage; documentNo:string; status:DocumentStatus; issueDate:string; dueDate:string; deliveryDate:string;
   customerId:string; customerName:string; customerPostalCode:string; customerAddress1:string; customerAddress2:string; customerDepartment:string;
   customerContactName:string; customerHonorific:string; sellerCompanyName:string; sellerRegistrationNo:string; sellerPostalCode:string;
   sellerAddress1:string; sellerAddress2:string; sellerPhone:string; bankName:string; bankBranch:string; bankAccountType:string; bankAccountNo:string;
@@ -44,27 +46,27 @@ export async function deleteDocumentCustomer(id:string){const {error}=await supa
 
 export async function loadCompanyDocumentSettings():Promise<CompanyDocumentSettings>{
   const {data,error}=await supabase.from('document_company_settings').select('*').eq('id',1).single(); if(error)throw error
-  const r:any=data||{}; return {companyName:s(r.company_name),registrationNo:s(r.registration_no),postalCode:s(r.postal_code),address1:s(r.address1),address2:s(r.address2),phone:s(r.phone),bankName:s(r.bank_name),bankBranch:s(r.bank_branch),bankAccountType:s(r.bank_account_type),bankAccountNo:s(r.bank_account_no),bankAccountName:s(r.bank_account_name),note:s(r.note)}
+  const r:any=data||{}; return {companyName:s(r.company_name),companyNameEn:s(r.company_name_en),registrationNo:s(r.registration_no),postalCode:s(r.postal_code),address1:s(r.address1),address2:s(r.address2),address1En:s(r.address1_en),address2En:s(r.address2_en),phone:s(r.phone),bankName:s(r.bank_name),bankBranch:s(r.bank_branch),bankAccountType:s(r.bank_account_type),bankAccountNo:s(r.bank_account_no),bankAccountName:s(r.bank_account_name),bankNameEn:s(r.bank_name_en),bankBranchEn:s(r.bank_branch_en),bankAccountTypeEn:s(r.bank_account_type_en),bankAccountNameEn:s(r.bank_account_name_en),note:s(r.note),noteEn:s(r.note_en)}
 }
 
 export async function saveCompanyDocumentSettings(input:CompanyDocumentSettings){
-  const {error}=await supabase.rpc('update_document_company_settings',{p_payload:{company_name:input.companyName,registration_no:input.registrationNo,postal_code:input.postalCode,address1:input.address1,address2:input.address2,phone:input.phone,bank_name:input.bankName,bank_branch:input.bankBranch,bank_account_type:input.bankAccountType,bank_account_no:input.bankAccountNo,bank_account_name:input.bankAccountName,note:input.note}});if(error)throw error
+  const {error}=await supabase.rpc('update_document_company_settings',{p_payload:{company_name:input.companyName,company_name_en:input.companyNameEn,registration_no:input.registrationNo,postal_code:input.postalCode,address1:input.address1,address2:input.address2,address1_en:input.address1En,address2_en:input.address2En,phone:input.phone,bank_name:input.bankName,bank_branch:input.bankBranch,bank_account_type:input.bankAccountType,bank_account_no:input.bankAccountNo,bank_account_name:input.bankAccountName,bank_name_en:input.bankNameEn,bank_branch_en:input.bankBranchEn,bank_account_type_en:input.bankAccountTypeEn,bank_account_name_en:input.bankAccountNameEn,note:input.note,note_en:input.noteEn}});if(error)throw error
 }
 
 export async function loadSalesDocuments():Promise<SalesDocument[]> {
   const {data,error}=await supabase.from('sales_documents').select('*,sales_document_items(*)').is('deleted_at',null).order('issue_date',{ascending:false}).order('created_at',{ascending:false});if(error)throw error
-  return (data||[]).map((r:any)=>({id:r.id,documentType:r.document_type,documentNo:s(r.document_no),status:r.status,issueDate:s(r.issue_date),dueDate:s(r.due_date),deliveryDate:s(r.delivery_date),customerId:s(r.customer_id),customerName:s(r.customer_name),customerPostalCode:s(r.customer_postal_code),customerAddress1:s(r.customer_address1),customerAddress2:s(r.customer_address2),customerDepartment:s(r.customer_department),customerContactName:s(r.customer_contact_name),customerHonorific:s(r.customer_honorific)||'御中',sellerCompanyName:s(r.seller_company_name),sellerRegistrationNo:s(r.seller_registration_no),sellerPostalCode:s(r.seller_postal_code),sellerAddress1:s(r.seller_address1),sellerAddress2:s(r.seller_address2),sellerPhone:s(r.seller_phone),bankName:s(r.bank_name),bankBranch:s(r.bank_branch),bankAccountType:s(r.bank_account_type),bankAccountNo:s(r.bank_account_no),bankAccountName:s(r.bank_account_name),note:s(r.note),subtotalYen:n(r.subtotal_yen),taxYen:n(r.tax_yen),totalYen:n(r.total_yen),createdAt:s(r.created_at),updatedAt:s(r.updated_at),items:(r.sales_document_items||[]).sort((a:any,b:any)=>a.line_no-b.line_no).map((i:any)=>({id:i.id,productId:s(i.product_id),itemName:s(i.item_name),unitPriceYen:n(i.unit_price_yen),quantity:n(i.quantity),unit:s(i.unit)||'個',taxRate:n(i.tax_rate),deliveryDate:s(i.delivery_date)}))}))
+  return (data||[]).map((r:any)=>({id:r.id,documentType:r.document_type,documentLanguage:(r.document_language==='EN'?'EN':'JA') as DocumentLanguage,documentNo:s(r.document_no),status:r.status,issueDate:s(r.issue_date),dueDate:s(r.due_date),deliveryDate:s(r.delivery_date),customerId:s(r.customer_id),customerName:s(r.customer_name),customerPostalCode:s(r.customer_postal_code),customerAddress1:s(r.customer_address1),customerAddress2:s(r.customer_address2),customerDepartment:s(r.customer_department),customerContactName:s(r.customer_contact_name),customerHonorific:s(r.customer_honorific)||'御中',sellerCompanyName:s(r.seller_company_name),sellerRegistrationNo:s(r.seller_registration_no),sellerPostalCode:s(r.seller_postal_code),sellerAddress1:s(r.seller_address1),sellerAddress2:s(r.seller_address2),sellerPhone:s(r.seller_phone),bankName:s(r.bank_name),bankBranch:s(r.bank_branch),bankAccountType:s(r.bank_account_type),bankAccountNo:s(r.bank_account_no),bankAccountName:s(r.bank_account_name),note:s(r.note),subtotalYen:n(r.subtotal_yen),taxYen:n(r.tax_yen),totalYen:n(r.total_yen),createdAt:s(r.created_at),updatedAt:s(r.updated_at),items:(r.sales_document_items||[]).sort((a:any,b:any)=>a.line_no-b.line_no).map((i:any)=>({id:i.id,productId:s(i.product_id),itemName:s(i.item_name),unitPriceYen:n(i.unit_price_yen),quantity:n(i.quantity),unit:s(i.unit)||'個',taxRate:n(i.tax_rate),deliveryDate:s(i.delivery_date)}))}))
 }
 
 export async function saveSalesDocument(input:Omit<SalesDocument,'id'|'subtotalYen'|'taxYen'|'totalYen'|'createdAt'|'updatedAt'> & {id?:string}){
-  const payload={document_type:input.documentType,document_no:input.documentNo,status:input.status,issue_date:input.issueDate,due_date:input.dueDate,delivery_date:input.deliveryDate,customer_id:input.customerId,customer_name:input.customerName,customer_postal_code:input.customerPostalCode,customer_address1:input.customerAddress1,customer_address2:input.customerAddress2,customer_department:input.customerDepartment,customer_contact_name:input.customerContactName,customer_honorific:input.customerHonorific,seller_company_name:input.sellerCompanyName,seller_registration_no:input.sellerRegistrationNo,seller_postal_code:input.sellerPostalCode,seller_address1:input.sellerAddress1,seller_address2:input.sellerAddress2,seller_phone:input.sellerPhone,bank_name:input.bankName,bank_branch:input.bankBranch,bank_account_type:input.bankAccountType,bank_account_no:input.bankAccountNo,bank_account_name:input.bankAccountName,note:input.note,items:input.items.map(i=>({product_id:i.productId,item_name:i.itemName,unit_price_yen:i.unitPriceYen,quantity:i.quantity,unit:i.unit,tax_rate:i.taxRate,delivery_date:i.deliveryDate}))}
+  const payload={document_type:input.documentType,document_language:input.documentLanguage,document_no:input.documentNo,status:input.status,issue_date:input.issueDate,due_date:input.dueDate,delivery_date:input.deliveryDate,customer_id:input.customerId,customer_name:input.customerName,customer_postal_code:input.customerPostalCode,customer_address1:input.customerAddress1,customer_address2:input.customerAddress2,customer_department:input.customerDepartment,customer_contact_name:input.customerContactName,customer_honorific:input.customerHonorific,seller_company_name:input.sellerCompanyName,seller_registration_no:input.sellerRegistrationNo,seller_postal_code:input.sellerPostalCode,seller_address1:input.sellerAddress1,seller_address2:input.sellerAddress2,seller_phone:input.sellerPhone,bank_name:input.bankName,bank_branch:input.bankBranch,bank_account_type:input.bankAccountType,bank_account_no:input.bankAccountNo,bank_account_name:input.bankAccountName,note:input.note,items:input.items.map(i=>({product_id:i.productId,item_name:i.itemName,unit_price_yen:i.unitPriceYen,quantity:i.quantity,unit:i.unit,tax_rate:i.taxRate,delivery_date:i.deliveryDate}))}
   const {data,error}=await supabase.rpc('save_sales_document',{p_document_id:input.id||null,p_payload:payload})
   if(error) throw error
   const id=String(data)
   if(input.status==='ISSUED' && typeof document!=='undefined'){
     try{
       const {archiveSalesDocumentPdf}=await import('./documentPdf')
-      await archiveSalesDocumentPdf(id,{documentType:input.documentType,documentNo:input.documentNo,customerName:input.customerName})
+      await archiveSalesDocumentPdf(id,{documentType:input.documentType,documentLanguage:input.documentLanguage,documentNo:input.documentNo,customerName:input.customerName})
       window.dispatchEvent(new CustomEvent('sales-document-pdf-archived',{detail:{documentId:id}}))
     }catch(archiveError){
       const message=archiveError instanceof Error?archiveError.message:String(archiveError)
