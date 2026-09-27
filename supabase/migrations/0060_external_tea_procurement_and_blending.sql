@@ -47,6 +47,9 @@ select lot_id,legacy_id,material_name,category,unit,received_date,initial_qty,to
   inventory_value_yen,source_type,source_id,storage_location,supplier,tea_type,origin,variety,grade,supplier_lot_no,purchase_document_no
 from private.packaging_source_lots;
 
+alter view public.production_inventory_balances set (security_invoker = true);
+alter view public.packaging_source_lots set (security_invoker = true);
+
 create or replace view private.product_packaging_summary as
 with stock as (
   select l.id as lot_id,coalesce(sum(t.quantity),0)::numeric(16,3) as balance
@@ -78,6 +81,8 @@ select id,manufacturing_batch_id,legacy_id,manufacturing_date,product_master_id,
   total_manufacturing_cost_yen,unit_cost_yen,output_lot_id,stock_units,facility,operator_name_snapshot,note,deleted_at,
   source_lot_source_type,source_tea_type,source_origin,source_variety,source_grade,source_supplier,source_supplier_lot_no
 from private.product_packaging_summary;
+
+alter view public.product_packaging_summary set (security_invoker = true);
 
 CREATE OR REPLACE FUNCTION public.admin_receive_procured_tea_lot(p_payload jsonb)
  RETURNS uuid
