@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type DocumentType = 'INVOICE' | 'DELIVERY_NOTE'
+export type DocumentType = 'ESTIMATE' | 'INVOICE' | 'DELIVERY_NOTE'
 export type DocumentStatus = 'DRAFT' | 'ISSUED' | 'CANCELLED'
 
 export type DocumentCustomer = {
