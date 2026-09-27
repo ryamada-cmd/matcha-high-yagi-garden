@@ -1,8 +1,9 @@
 import { uploadExternalFile } from './externalStorage'
-import type { DocumentType } from './documents'
+import type { DocumentLanguage, DocumentType } from './documents'
 
 type PdfArchiveInput = {
   documentType: DocumentType
+  documentLanguage: DocumentLanguage
   documentNo: string
   customerName: string
 }
@@ -61,7 +62,7 @@ export async function createSalesDocumentPdfFile(input: PdfArchiveInput) {
     pdf.addImage(image, 'JPEG', 0, -(page * pageHeight), pageWidth, imageHeight, undefined, 'FAST')
   }
 
-  const label = input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書'
+  const label = input.documentLanguage==='EN' ? (input.documentType==='ESTIMATE'?'Estimate':input.documentType==='INVOICE'?'Invoice':'Delivery_Note') : (input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書')
   const fileName = `${label}_${safeFilePart(input.documentNo)}_${safeFilePart(input.customerName)}.pdf`
   const blob = pdf.output('blob')
   return new File([blob], fileName, { type: 'application/pdf', lastModified: Date.now() })
@@ -71,7 +72,7 @@ export async function archiveSalesDocumentPdf(documentId: string, input: PdfArch
   const file = await createSalesDocumentPdfFile(input)
   return uploadExternalFile({
     file,
-    category: input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書',
+    category: input.documentLanguage==='EN' ? (input.documentType==='ESTIMATE'?'Estimate':input.documentType==='INVOICE'?'Invoice':'Delivery Note') : (input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書'),
     entityType: 'sales_document',
     entityId: documentId,
     note: '帳票発行時に自動保存',
