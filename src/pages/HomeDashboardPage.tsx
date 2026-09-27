@@ -138,6 +138,39 @@ export default function HomeDashboardPage() {
   const attentionCount = criticalCount + warningCount
   const hasAttentionSources = canDefense || canEquipment
 
+  const workSummary=useMemo(()=>{
+    const tasks=data?.calendar?.tasks||[]
+    const open=tasks.filter(t=>t.status==='TODO'||t.status==='IN_PROGRESS')
+    const now=today(),weekEnd=addDays(now,7)
+    const sort=(xs:CalendarTask[])=>xs.slice().sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||(a.dueTime||'99:99').localeCompare(b.dueTime||'99:99'))
+    return{
+      overdue:sort(open.filter(t=>t.dueDate<now)),
+      today:sort(open.filter(t=>t.dueDate===now)),
+      week:sort(open.filter(t=>t.dueDate>now&&t.dueDate<=weekEnd)),
+      unassigned:open.filter(t=>!t.assignees.length).length,
+    }
+  },[data?.calendar])
+
+  const weekPlans=useMemo(()=>{
+    const cal=data?.calendar
+    if(!cal)return[]
+    const start=today(),end=addDays(start,7)
+    const rows=[
+      ...cal.sprayPlans.map(p=>({kind:'防除',date:p.date,title:p.title,field:p.fieldName,href:'/plans'})),
+      ...cal.fertilizerPlans.map(p=>({kind:'施肥',date:p.date,title:p.title,field:p.fieldName,href:'/fertilizer-plans'})),
+      ...cal.harvestPlans.map(p=>({kind:'収穫',date:p.date,title:p.title,field:p.fieldName,href:'/calendar'})),
+    ]
+    return rows.filter(x=>x.date>=start&&x.date<=end).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8)
+  },[data?.calendar])
+
+  async function completeTask(t:CalendarTask){
+    if(!canManageCalendar||taskBusy)return
+    setTaskBusy(t.id);setError('')
+    try{await setCalendarTaskStatus(t.id,'DONE');await refresh()}
+    catch(e:any){setError(e?.message||'タスクを完了できませんでした。')}
+    finally{setTaskBusy('')}
+  }
+
   const topCards:OverviewCard[] = []
   if (hasAttentionSources) topCards.push({ label: '今日の要確認', value: data ? `${attentionCount}件` : '—', note: data ? `重要 ${criticalCount} / 注意 ${warningCount}` : '', tone: criticalCount ? 'danger' : warningCount ? 'warning' : 'ok' })
   if (canFields && data?.defense) topCards.push({ label: '管理圃場', value: `${data.defense.readiness.harvestTotal}圃場`, note: '許可された作業情報と連動' })
