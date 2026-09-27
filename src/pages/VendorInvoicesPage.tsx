@@ -82,9 +82,9 @@ export default function VendorInvoicesPage(){
       if(!form.invoiceDate)throw new Error('請求日を入力してください。')
       const items=form.items.map((item,index)=>{const quantity=Number(item.quantity),unitPrice=Number(item.unitPrice),taxRate=Number(item.taxRate);if(!item.description.trim())throw new Error(`${index+1}行目の請求内容を入力してください。`);if(!Number.isFinite(quantity)||quantity<=0)throw new Error(`${index+1}行目の数量を確認してください。`);if(!Number.isFinite(unitPrice)||unitPrice<0)throw new Error(`${index+1}行目の税込単価を確認してください。`);if(!Number.isFinite(taxRate)||taxRate<0||taxRate>100)throw new Error(`${index+1}行目の税率を確認してください。`);return{category:item.category,description:item.description,quantity,unit:item.unit,unitPriceYen:unitPrice,taxRate,note:item.note}})
       const id=await saveVendorInvoice({...form,id:form.id||undefined,items})
-      let message=form.id?'請求書を更新しました。':'請求書を登録しました。'
-      if(invoiceFile){await uploadVendorDocument({file:invoiceFile,invoiceId:id,kind:'INVOICE'});message+=' 原本をOneDriveへ保存しました。'}
-      setSuccess(message);resetForm(false);await refresh()
+      let message=form.id?'請求書を更新しました。':'請求書を登録しました。',storageError=''
+      if(invoiceFile){try{await uploadVendorDocument({file:invoiceFile,invoiceId:id,kind:'INVOICE'});message+=' 原本をOneDriveへ保存しました。'}catch(e:any){storageError=`請求書は保存済みですが、原本のOneDrive保存に失敗しました：${e?.message||'保存エラー'}`}}
+      resetForm(false);await refresh();setSuccess(message);if(storageError)setError(storageError)
     }catch(e:any){setError(e?.message||'請求書を保存できませんでした。')}finally{setBusy(false)}
   }
 
@@ -94,7 +94,7 @@ export default function VendorInvoicesPage(){
 
   async function submitPayment(event:FormEvent){
     event.preventDefault();if(!canManage)return setError('支払いを登録・編集する権限がありません。');if(!paymentForm||!paymentInvoice)return;setBusy(true);setError('');setSuccess('')
-    try{const amount=Number(paymentForm.amountYen);if(!paymentForm.paymentDate)throw new Error('支払日を入力してください。');if(!Number.isFinite(amount)||amount<=0)throw new Error('支払金額を確認してください。');const paymentId=await saveVendorInvoicePayment({...paymentForm,id:paymentForm.id||undefined,amountYen:amount});let message=paymentForm.id?'支払記録を更新しました。':'支払いを登録しました。';if(paymentFile){await uploadVendorDocument({file:paymentFile,invoiceId:paymentInvoice.id,kind:'PAYMENT',paymentId});message+=' 支払証憑の原本をOneDriveへ保存しました。'}setSuccess(message);setPaymentInvoice(null);setPaymentForm(null);setPaymentFile(null);setPaymentOcr(null);setPaymentOcrProgress('');await refresh()}catch(e:any){setError(e?.message||'支払いを登録できませんでした。')}finally{setBusy(false)}
+    try{const amount=Number(paymentForm.amountYen);if(!paymentForm.paymentDate)throw new Error('支払日を入力してください。');if(!Number.isFinite(amount)||amount<=0)throw new Error('支払金額を確認してください。');const paymentId=await saveVendorInvoicePayment({...paymentForm,id:paymentForm.id||undefined,amountYen:amount});let message=paymentForm.id?'支払記録を更新しました。':'支払いを登録しました。',storageError='';if(paymentFile){try{await uploadVendorDocument({file:paymentFile,invoiceId:paymentInvoice.id,kind:'PAYMENT',paymentId});message+=' 支払証憑の原本をOneDriveへ保存しました。'}catch(e:any){storageError=`支払記録は保存済みですが、証憑のOneDrive保存に失敗しました：${e?.message||'保存エラー'}`}}setPaymentInvoice(null);setPaymentForm(null);setPaymentFile(null);setPaymentOcr(null);setPaymentOcrProgress('');await refresh();setSuccess(message);if(storageError)setError(storageError)}catch(e:any){setError(e?.message||'支払いを登録できませんでした。')}finally{setBusy(false)}
   }
 
   async function removePayment(payment:VendorInvoicePayment){if(!canManage)return setError('支払記録を削除する権限がありません。');const reason=window.prompt('支払記録を削除する理由を入力してください。');if(reason===null)return;if(!reason.trim()){setError('削除理由を入力してください。');return}setBusy(true);setError('');try{await deleteVendorInvoicePayment(payment.id,reason);setSuccess(`${payment.paymentNo} を削除しました。`);await refresh()}catch(e:any){setError(e?.message||'支払記録を削除できませんでした。')}finally{setBusy(false)}}
