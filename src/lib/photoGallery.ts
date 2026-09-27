@@ -77,7 +77,7 @@ export async function uploadPhoto(input: {
   album: string
   takenAt: string
   note?: string
-  entityType?: 'field'|'equipment'
+  entityType?: 'field'|'equipment'|'daily_report'
   entityId?: string
 }) {
   const form = new FormData()
@@ -116,8 +116,13 @@ export async function loadPhotoTargets(): Promise<PhotoTarget[]> {
   ]
 }
 
-export async function loadPhotoThumbnails(fileIds: string[], size: 'medium'|'large' = 'medium') {
+export async function loadDailyReportPhotos():Promise<PhotoGalleryFile[]> {
+  const result = await invokePhoto<{ files: PhotoGalleryFile[] }>({ action:'daily-report-list' })
+  return result.files || []
+}
+
+export async function loadPhotoThumbnails(fileIds: string[], size: 'medium'|'large' = 'medium', scope?: 'daily_report') {
   if (!fileIds.length) return {} as Record<string,string>
-  const result = await invokePhoto<{ thumbnails: Record<string,string> }>({ action:'thumbnails', fileIds:fileIds.slice(0,60), size })
+  const result = await invokePhoto<{ thumbnails: Record<string,string> }>({ action:'thumbnails', fileIds:fileIds.slice(0,60), size, entityType:scope || '' })
   return result.thumbnails || {}
 }
