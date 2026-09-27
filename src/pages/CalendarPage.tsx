@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Edit3, Leaf, Plus, RefreshCw, Shield, Sprout, Trash2, Users, X } from 'lucide-react'
+import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Edit3, Plus, RefreshCw, Sprout, Trash2, Users, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAppPermissions } from '../lib/permissions'
 import {
