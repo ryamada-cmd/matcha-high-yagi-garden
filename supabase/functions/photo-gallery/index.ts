@@ -165,6 +165,7 @@ async function upload(req:Request){
   const note=String(form.get('note')||'').trim()||null
   const entityType=String(form.get('entityType')||'general')
   const entityId=String(form.get('entityId')||'').trim()||null
+  if(entityType==='daily_report'&&!entityId)return errorJson('日報IDが必要です。',400)
   const user=entityType==='daily_report'?(await dailyReportContext(req,entityId||'')).user:await userContext(req,'storage.upload')
 
   const {data:settings,error:settingsError}=await admin.from('external_storage_settings').select('enabled,drive_id,root_folder').eq('id',1).single()
