@@ -279,6 +279,7 @@ export default function HomeDashboardPage() {
     {hasNextWork && <section className="panel home-next-work">
       <div className="panel-title"><div><h2>次の作業</h2><p>権限のある予定・期限から直近の作業を確認</p></div><CalendarDays size={20}/></div>
       <div className="home-next-grid">
+        {canCalendar && <Link to="/calendar"><span>作業カレンダー</span><b>{workSummary.overdue.length?'期限超過 '+workSummary.overdue.length+'件':workSummary.today.length?'今日 '+workSummary.today.length+'件':'予定を確認'}</b><small>{workSummary.unassigned?'担当未設定 '+workSummary.unassigned+'件':'担当・期限・年間計画を確認'}</small></Link>}
         {canSprayPlans && <Link to="/plans"><span>防除</span><b>{data?.defense?.nextPlan?.label || '予定なし'}</b><small>{data?.defense?.nextPlan?.target || '年間防除計画を確認'}</small></Link>}
         {canFertilizerPlans && <Link to="/fertilizer-plans"><span>施肥</span><b>{data?.fertilizer?.nextPlan?.label || '予定なし'}</b><small>{data?.fertilizer?.nextPlan?.purpose || '年間施肥計画を確認'}</small></Link>}
         {canFields && <Link to="/fields"><span>摘採</span><b>{data?.defense?.harvests[0]?.date || '圃場で確認'}</b><small>{data?.defense?.harvests[0] ? `${data.defense.harvests[0].legacyId} ${data.defense.harvests[0].name}` : '圃場カルテ・摘採予定を確認'}</small></Link>}
