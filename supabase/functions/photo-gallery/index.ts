@@ -42,6 +42,41 @@ async function userContext(req:Request,permission:string){
   return userData.user
 }
 
+async function authenticatedContext(req:Request){
+  const authorization=req.headers.get('Authorization')||''
+  if(!authorization.startsWith('Bearer '))throw new Error('ログインが必要です。')
+  const userClient=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{headers:{Authorization:authorization}}})
+  const {data:userData,error:userError}=await userClient.auth.getUser()
+  if(userError||!userData.user)throw new Error('ログイン情報を確認できません。')
+  return{user:userData.user,userClient}
+}
+
+async function dailyReportContext(req:Request,reportId=''){
+  const {user,userClient}=await authenticatedContext(req)
+  const [ownResult,reviewResult]=await Promise.all([
+    userClient.rpc('has_app_permission',{p_permission_key:'daily_reports.manage_own'}),
+    userClient.rpc('has_app_permission',{p_permission_key:'daily_reports.review'}),
+  ])
+  const canOwn=!ownResult.error&&ownResult.data===true
+  const canReview=!reviewResult.error&&reviewResult.data===true
+  if(!canOwn&&!canReview)throw new Error('この操作を行う権限がありません。')
+  if(reportId){
+    const {data:report,error}=await admin.from('daily_reports').select('id,author_id').eq('id',reportId).is('deleted_at',null).maybeSingle()
+    if(error)throw error
+    if(!report)throw new Error('日報が見つかりません。')
+    if(!canReview&&String(report.author_id)!==user.id)throw new Error('この日報の写真を操作する権限がありません。')
+  }
+  return{user,canReview}
+}
+
+async function accessibleDailyReportIds(userId:string,canReview:boolean){
+  let query=admin.from('daily_reports').select('id').is('deleted_at',null)
+  if(!canReview)query=query.eq('author_id',userId)
+  const {data,error}=await query.limit(1000)
+  if(error)throw error
+  return(data||[]).map((x:any)=>String(x.id))
+}
+
 async function privateConfig(){
   const {data,error}=await admin.rpc('external_storage_get_private_config')
   if(error)throw error
@@ -99,6 +134,11 @@ async function relatedFolder(entityType:string,entityId:string|null){
     if(!data)return null
     return ['05_機械設備',cleanSegment(`${data.asset_no||''} ${data.name||''}`.trim(),'設備未設定'),'写真']
   }
+  if(entityType==='daily_report'){
+    const {data}=await admin.from('daily_reports').select('report_date,author_name_snapshot').eq('id',entityId).is('deleted_at',null).maybeSingle()
+    if(!data)return null
+    return ['08_日報',cleanSegment(`${data.report_date||''} ${data.author_name_snapshot||''}`.trim(),'日報'),'写真']
+  }
   return null
 }
 
@@ -112,7 +152,6 @@ async function destination(root:string,photoCategory:string,album:string,takenAt
 }
 
 async function upload(req:Request){
-  const user=await userContext(req,'storage.upload')
   const form=await req.formData()
   const file=form.get('file')
   if(!(file instanceof File))return errorJson('写真を選択してください。')
@@ -120,16 +159,17 @@ async function upload(req:Request){
   if(file.size>MAX_UPLOAD_BYTES)return errorJson('写真は1枚25MBまでアップロードできます。',413)
   if(!looksLikeImage(file))return errorJson('画像ファイルだけアップロードできます。',415)
 
-  const {data:settings,error:settingsError}=await admin.from('external_storage_settings').select('enabled,drive_id,root_folder').eq('id',1).single()
-  if(settingsError)throw settingsError
-  if(!settings.enabled||!settings.drive_id)return errorJson('OneDriveが未接続です。「ファイル・OneDrive」から接続してください。',409)
-
   const photoCategory=String(form.get('photoCategory')||'その他')
   const album=String(form.get('album')||'未分類')
   const takenAt=String(form.get('takenAt')||'')
   const note=String(form.get('note')||'').trim()||null
   const entityType=String(form.get('entityType')||'general')
   const entityId=String(form.get('entityId')||'').trim()||null
+  const user=entityType==='daily_report'?(await dailyReportContext(req,entityId||'')).user:await userContext(req,'storage.upload')
+
+  const {data:settings,error:settingsError}=await admin.from('external_storage_settings').select('enabled,drive_id,root_folder').eq('id',1).single()
+  if(settingsError)throw settingsError
+  if(!settings.enabled||!settings.drive_id)return errorJson('OneDriveが未接続です。「ファイル・OneDrive」から接続してください。',409)
 
   const config=await privateConfig()
   const accessToken=await refreshAccessToken(config)
@@ -151,17 +191,49 @@ async function upload(req:Request){
   }).select('id,provider,drive_id,provider_item_id,file_name,mime_type,size_bytes,folder_path,web_url,uploaded_at,metadata').single()
   if(fileError||!fileRow)throw fileError||new Error('写真台帳を保存できませんでした。')
 
-  const {error:linkError}=await admin.from('external_file_links').insert({file_id:fileRow.id,entity_type:entityType==='field'||entityType==='equipment'?entityType:'photo',entity_id:entityId,category:dest.category,note,created_by:user.id})
+  const linkType=entityType==='field'||entityType==='equipment'||entityType==='daily_report'?entityType:'photo'
+  const {error:linkError}=await admin.from('external_file_links').insert({file_id:fileRow.id,entity_type:linkType,entity_id:entityId,category:dest.category,note,created_by:user.id})
   if(linkError)throw linkError
   return json({ok:true,file:fileRow})
 }
 
+async function dailyReportList(req:Request){
+  const {user,canReview}=await dailyReportContext(req)
+  const reportIds=await accessibleDailyReportIds(user.id,canReview)
+  if(!reportIds.length)return json({files:[]})
+  const {data:links,error:linkError}=await admin.from('external_file_links')
+    .select('id,file_id,entity_type,entity_id,category,note,created_at')
+    .eq('entity_type','daily_report')
+    .in('entity_id',reportIds)
+  if(linkError)throw linkError
+  const fileIds=[...new Set((links||[]).map((x:any)=>String(x.file_id)).filter(Boolean))]
+  if(!fileIds.length)return json({files:[]})
+  const {data:files,error:fileError}=await admin.from('external_files')
+    .select('id,provider,drive_id,provider_item_id,file_name,mime_type,size_bytes,folder_path,web_url,uploaded_at,metadata')
+    .in('id',fileIds).is('archived_at',null).order('uploaded_at',{ascending:false})
+  if(fileError)throw fileError
+  const byFile=new Map((links||[]).map((x:any)=>[String(x.file_id),x]))
+  return json({files:(files||[]).filter((x:any)=>x.metadata?.kind==='photo').map((x:any)=>({...x,external_file_links:byFile.has(String(x.id))?[byFile.get(String(x.id))]:[]}))})
+}
+
 async function thumbnails(req:Request,body:Record<string,unknown>){
-  await userContext(req,'storage.view')
   const ids=Array.isArray(body.fileIds)?body.fileIds.map(String).filter(Boolean).slice(0,60):[]
   if(!ids.length)return json({thumbnails:{}})
+  let allowedIds=ids
+  if(String(body.entityType||'')==='daily_report'){
+    const {user,canReview}=await dailyReportContext(req)
+    const reportIds=await accessibleDailyReportIds(user.id,canReview)
+    if(!reportIds.length)return json({thumbnails:{}})
+    const {data:links,error:linkError}=await admin.from('external_file_links').select('file_id').eq('entity_type','daily_report').in('entity_id',reportIds).in('file_id',ids)
+    if(linkError)throw linkError
+    const allowed=new Set((links||[]).map((x:any)=>String(x.file_id)))
+    allowedIds=ids.filter(id=>allowed.has(id))
+    if(!allowedIds.length)return json({thumbnails:{}})
+  }else{
+    await userContext(req,'storage.view')
+  }
   const size=body.size==='large'?'large':'medium'
-  const {data:rows,error}=await admin.from('external_files').select('id,drive_id,provider_item_id,metadata').in('id',ids).is('archived_at',null)
+  const {data:rows,error}=await admin.from('external_files').select('id,drive_id,provider_item_id,metadata').in('id',allowedIds).is('archived_at',null)
   if(error)throw error
   const photos=(rows||[]).filter((row:any)=>row.metadata?.kind==='photo')
   if(!photos.length)return json({thumbnails:{}})
@@ -186,6 +258,7 @@ Deno.serve(async(req)=>{
     if(contentType.includes('multipart/form-data'))return await upload(req)
     const body=await req.json().catch(()=>({})) as Record<string,unknown>
     if(String(body.action||'')==='thumbnails')return await thumbnails(req,body)
+    if(String(body.action||'')==='daily-report-list')return await dailyReportList(req)
     return errorJson('Unknown action',400)
   }catch(error){
     const message=error instanceof Error?error.message:String(error)
