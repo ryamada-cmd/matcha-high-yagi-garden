@@ -3,6 +3,7 @@ import { Camera, Check, Download, Edit3, ExternalLink, FileImage, Paperclip, Plu
 import { useAppPermissions } from '../lib/permissions'
 import { loadExpenseClaims, loadExpenseUser, reviewExpenseClaim, saveExpenseClaim, type ExpenseClaim, type ExpenseUser } from '../lib/expenseClaims'
 import { loadExpenseReceiptMap, uploadExpenseReceipt, type ExpenseReceipt, type ExpenseReceiptMap } from '../lib/expenseReceipts'
+import { recognizeDocument, type DocumentOcrResult } from '../lib/documentOcr'
 
 const yen=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0})
 const num=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:3})
@@ -37,6 +38,7 @@ export default function ExpenseClaimsPage(){
   const[claims,setClaims]=useState<ExpenseClaim[]>([]),[me,setMe]=useState<ExpenseUser|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
   const[form,setForm]=useState<ExpenseForm>(loadExpenseDraft),[month,setMonth]=useState(currentMonth()),[status,setStatus]=useState(''),[applicant,setApplicant]=useState(''),[query,setQuery]=useState('')
   const[receiptMap,setReceiptMap]=useState<ExpenseReceiptMap>({}),[receiptFiles,setReceiptFiles]=useState<File[]>([]),[receiptInputKey,setReceiptInputKey]=useState(0),[receiptBusyClaim,setReceiptBusyClaim]=useState('')
+  const[ocrResult,setOcrResult]=useState<DocumentOcrResult|null>(null),[ocrBusyKey,setOcrBusyKey]=useState(''),[ocrProgress,setOcrProgress]=useState('')
 
   async function refresh(){
     setLoading(true);setError('')
@@ -48,7 +50,7 @@ export default function ExpenseClaimsPage(){
   useEffect(()=>{void refresh()},[])
   useEffect(()=>{try{sessionStorage.setItem(EXPENSE_DRAFT_KEY,JSON.stringify(form))}catch{}},[form])
 
-  function resetForm(clear=true){try{sessionStorage.removeItem(EXPENSE_DRAFT_KEY)}catch{}setForm(blank());setReceiptFiles([]);setReceiptInputKey(v=>v+1);setError('');if(clear)setSuccess('')}
+  function resetForm(clear=true){try{sessionStorage.removeItem(EXPENSE_DRAFT_KEY)}catch{}setForm(blank());setReceiptFiles([]);setReceiptInputKey(v=>v+1);setOcrResult(null);setOcrBusyKey('');setOcrProgress('');setError('');if(clear)setSuccess('')}
   function updateItem(key:string,patch:Partial<FormItem>){setForm(v=>({...v,items:v.items.map(i=>i.key===key?{...i,...patch}:i)}))}
   function removeItem(key:string){setForm(v=>({...v,items:v.items.length===1?v.items:v.items.filter(i=>i.key!==key)}))}
   function chooseReceipts(files:File[]){
@@ -59,6 +61,33 @@ export default function ExpenseClaimsPage(){
     }catch(e:any){setError(e?.message||'領収書を選択できませんでした。')}
   }
   const formTotal=useMemo(()=>form.items.reduce((s,i)=>s+Math.round((Number(i.quantity)||0)*(Number(i.unitPrice)||0)),0),[form.items])
+
+  async function runReceiptOcr(file:File,index:number){
+    const key=`${file.name}-${file.size}-${index}`
+    setOcrBusyKey(key);setOcrResult(null);setOcrProgress('OCRを準備しています…');setError('');setSuccess('')
+    try{
+      const result=await recognizeDocument(file,'EXPENSE_RECEIPT',(progress,message)=>setOcrProgress(`${message} ${progress}%`))
+      setOcrResult(result);setOcrProgress('')
+      if(result.warnings.length)setSuccess(`OCR完了。候補値を確認してください。 ${result.warnings.join(' ')}`)
+      else setSuccess('OCRが完了しました。候補値を確認して入力欄へ反映してください。')
+    }catch(e:any){setError(e?.message||'領収書をOCRできませんでした。');setOcrProgress('')}
+    finally{setOcrBusyKey('')}
+  }
+
+  function applyReceiptOcr(){
+    if(!ocrResult)return
+    setForm(old=>{
+      const time=old.purchaseAt.includes('T')?old.purchaseAt.slice(11,16):'12:00'
+      let items=old.items
+      const blankFirst=items.length===1&&!items[0].description.trim()&&!items[0].unitPrice
+      if(blankFirst&&ocrResult.totalYen>0){
+        const first=ocrResult.items[0]
+        items=[{...items[0],description:first?.description||'領収書記載分',quantity:'1',unitPrice:String(ocrResult.totalYen),taxRate:String(first?.taxRate??10)}]
+      }
+      return{...old,vendor:ocrResult.vendor||old.vendor,purchaseAt:ocrResult.date?`${ocrResult.date}T${time}`:old.purchaseAt,items}
+    })
+    setSuccess('OCR候補を入力欄へ反映しました。内容を確認してから申請してください。')
+  }
 
   async function submit(e:FormEvent){
     e.preventDefault();if(!canOwnManage)return setError('経費を申請・再申請する権限がありません。');setBusy(true);setError('');setSuccess('')
@@ -124,8 +153,10 @@ export default function ExpenseClaimsPage(){
           <label className="expense-receipt-action camera"><Camera size={17}/><span>写真を撮る</span><input key={`camera-${receiptInputKey}`} type="file" accept="image/*" capture="environment" onChange={e=>{const files=Array.from(e.currentTarget.files||[]);chooseReceipts(files);e.currentTarget.value=''}}/></label>
           <label className="expense-receipt-action"><Paperclip size={17}/><span>写真/PDFを選ぶ</span><input key={`files-${receiptInputKey}`} type="file" accept="image/*,.heic,.heif,application/pdf" multiple onChange={e=>{const files=Array.from(e.currentTarget.files||[]);chooseReceipts(files);e.currentTarget.value=''}}/></label>
         </div>
-        {receiptFiles.length>0?<div className="expense-receipt-selected">{receiptFiles.map((f,index)=><div key={`${f.name}-${f.size}-${f.lastModified}-${index}`} className="expense-receipt-chip"><FileImage size={15}/><span>{f.name}</span><small>{fileSize(f.size)}</small><button type="button" onClick={()=>setReceiptFiles(v=>v.filter((_,i)=>i!==index))} aria-label="選択解除"><X size={15}/></button></div>)}</div>:<p className="expense-receipt-help">iPhoneでは「写真を撮る」でカメラを直接起動できます。既存の写真やPDFは「写真/PDFを選ぶ」から追加してください。</p>}
+        {receiptFiles.length>0?<div className="expense-receipt-selected">{receiptFiles.map((f,index)=>{const key=`${f.name}-${f.size}-${index}`;return <div key={`${f.name}-${f.size}-${f.lastModified}-${index}`} className="expense-receipt-chip"><FileImage size={15}/><span>{f.name}</span><small>{fileSize(f.size)}</small><button className="expense-ocr-button" type="button" disabled={!!ocrBusyKey} onClick={()=>void runReceiptOcr(f,index)}><Search size={14}/>{ocrBusyKey===key?'読取中':'OCR読取'}</button><button type="button" onClick={()=>setReceiptFiles(v=>v.filter((_,i)=>i!==index))} aria-label="選択解除"><X size={15}/></button></div>})}</div>:<p className="expense-receipt-help">iPhoneでは「写真を撮る」でカメラを直接起動できます。既存の写真やPDFは「写真/PDFを選ぶ」から追加してください。</p>}
       </section>
+
+      {(ocrProgress||ocrResult)&&<section className="document-ocr-panel"><div className="document-ocr-head"><div><Search size={18}/><div><b>OCR読取結果</b><span>{ocrProgress||`信頼度の目安 ${ocrResult?.confidence??0}%`}</span></div></div>{ocrResult&&<button type="button" className="primary-button compact" onClick={applyReceiptOcr}>入力欄へ反映</button>}</div>{ocrResult&&<><div className="document-ocr-fields"><div><span>購入先候補</span><b>{ocrResult.vendor||'—'}</b></div><div><span>日付候補</span><b>{ocrResult.date||'—'}</b></div><div><span>合計金額候補</span><b>{ocrResult.totalYen?yen.format(ocrResult.totalYen):'—'}</b></div></div><details><summary>読み取った文字を確認</summary><pre>{ocrResult.rawText}</pre></details></>}</section>}
 
       <label className="full-label">備考<textarea rows={3} value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="精算に必要な補足があれば入力"/></label>
       <div className="expense-submit-row"><div><span>申請合計</span><strong>{yen.format(formTotal)}</strong></div><div>{form.id&&<button type="button" className="secondary-button" onClick={()=>resetForm()}><RotateCcw size={16}/>修正をやめる</button>}<button className="primary-button" disabled={busy||formTotal<0}><Upload size={16}/>{busy?'申請・保存中…':form.id?'領収書と一緒に再申請':'領収書と一緒に申請'}</button></div></div>
