@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Edit3, Plus, RefreshCw, Sprout, Trash2, Users, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Edit3, ListChecks, Plus, RefreshCw, Sprout, Trash2, Users, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAppPermissions } from '../lib/permissions'
 import {
-  deleteCalendarTask, deleteHarvestPlan, loadCalendarData, saveCalendarTask, saveHarvestPlan, setCalendarTaskStatus,
-  type CalendarData, type CalendarPlan, type CalendarTask, type CalendarTaskInput, type HarvestPlanInput
+  deleteCalendarTask, deleteHarvestPlan, loadCalendarData, saveCalendarTask, saveHarvestPlan, setCalendarChecklistItem, setCalendarTaskStatus,
+  type CalendarChecklistDraft, type CalendarData, type CalendarPlan, type CalendarTask, type CalendarTaskInput, type HarvestPlanInput
 } from '../lib/calendar'
 
 const pad=(n:number)=>String(n).padStart(2,'0')
@@ -18,8 +18,8 @@ const weekday=['日','月','火','水','木','金','土']
 const categoryLabel:Record<string,string>={GENERAL:'一般',SPRAY:'防除',FERTILIZER:'施肥',HARVEST:'収穫',PROCESSING:'製造',MAINTENANCE:'設備',SALES:'販売',OTHER:'その他'}
 const priorityLabel:Record<string,string>={LOW:'低',NORMAL:'通常',HIGH:'高',URGENT:'緊急'}
 const statusLabel:Record<string,string>={TODO:'未着手',IN_PROGRESS:'進行中',DONE:'完了',CANCELLED:'中止'}
-const blankData:CalendarData={members:[],fields:[],tasks:[],sprayPlans:[],fertilizerPlans:[],harvestPlans:[]}
-const blankTask=(date=today()):CalendarTaskInput=>({title:'',description:'',category:'GENERAL',priority:'NORMAL',status:'TODO',startDate:'',startTime:'',dueDate:date,dueTime:'',fieldId:'',linkType:'',linkId:'',assigneeIds:[]})
+const blankData:CalendarData={currentUserId:'',members:[],fields:[],tasks:[],sprayPlans:[],fertilizerPlans:[],harvestPlans:[]}
+const blankTask=(date=today()):CalendarTaskInput=>({title:'',description:'',category:'GENERAL',priority:'NORMAL',status:'TODO',startDate:'',startTime:'',dueDate:date,dueTime:'',fieldId:'',linkType:'',linkId:'',assigneeIds:[],checklist:[]})
 const blankHarvest=(date=today()):HarvestPlanInput=>{const d=fromIso(date);return{planYear:d.getFullYear(),month:d.getMonth()+1,period:'上旬',fieldId:'',allFields:false,season:'一番茶',harvestMethod:'',plannedStartDate:date,plannedEndDate:'',status:'planned',note:''}}
 
 type EventKind='TASK'|'SPRAY'|'FERTILIZER'|'HARVEST'
@@ -32,11 +32,12 @@ export default function CalendarPage(){
   const{allowed}=useAppPermissions(),canManage=allowed('calendar.manage')
   const[anchor,setAnchor]=useState(monthAnchor()),[selectedDate,setSelectedDate]=useState(today())
   const[data,setData]=useState<CalendarData>(blankData),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false)
-  const[error,setError]=useState(''),[success,setSuccess]=useState('')
+  const[error,setError]=useState(''),[success,setSuccess]=useState(''),[checkBusy,setCheckBusy]=useState('')
   const[kindFilter,setKindFilter]=useState<'ALL'|EventKind>('ALL'),[assigneeFilter,setAssigneeFilter]=useState('')
   const[taskOpen,setTaskOpen]=useState(false),[taskId,setTaskId]=useState(''),[taskForm,setTaskForm]=useState<CalendarTaskInput>(()=>blankTask())
   const[planDetail,setPlanDetail]=useState<{kind:'spray_plan'|'fertilizer_plan'|'harvest_plan';plan:CalendarPlan}|null>(null)
   const[harvestOpen,setHarvestOpen]=useState(false),[harvestId,setHarvestId]=useState(''),[harvestForm,setHarvestForm]=useState<HarvestPlanInput>(()=>blankHarvest())
+  const[completionTask,setCompletionTask]=useState<CalendarTask|null>(null)
 
   const grid=useMemo(()=>{const first=new Date(anchor.getFullYear(),anchor.getMonth(),1);const start=new Date(first);start.setDate(first.getDate()-first.getDay());return Array.from({length:42},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return d})},[anchor])
   const rangeStart=iso(grid[0]),rangeEnd=iso(grid[41])
@@ -82,14 +83,42 @@ export default function CalendarPage(){
     setTaskId('');setTaskForm(blankTask(date));setTaskOpen(true);setError('');setSuccess('')
   }
   function editTask(t:CalendarTask){
-    setTaskId(t.id);setTaskForm({title:t.title,description:t.description,category:t.category,priority:t.priority,status:t.status,startDate:t.startDate||'',startTime:t.startTime||'',dueDate:t.dueDate,dueTime:t.dueTime||'',fieldId:t.fieldId||'',linkType:t.linkType||'',linkId:t.linkId||'',assigneeIds:t.assignees.map(a=>a.id)});setTaskOpen(true)
+    setTaskId(t.id);setTaskForm({title:t.title,description:t.description,category:t.category,priority:t.priority,status:t.status,startDate:t.startDate||'',startTime:t.startTime||'',dueDate:t.dueDate,dueTime:t.dueTime||'',fieldId:t.fieldId||'',linkType:t.linkType||'',linkId:t.linkId||'',assigneeIds:t.assignees.map(a=>a.id),checklist:t.checklist.map(x=>({id:x.id,label:x.label,isDone:x.isDone}))});setTaskOpen(true)
   }
   function taskFromPlan(kind:'spray_plan'|'fertilizer_plan'|'harvest_plan',p:CalendarPlan){
     const category=kind==='spray_plan'?'SPRAY':kind==='fertilizer_plan'?'FERTILIZER':'HARVEST'
     const prefix=kind==='spray_plan'?'防除':kind==='fertilizer_plan'?'施肥':'収穫'
-    setTaskId('');setTaskForm({...blankTask(p.date),title:`${prefix}：${p.title}`,description:p.note||'',category,fieldId:p.fieldId||'',linkType:kind,linkId:p.id});setPlanDetail(null);setTaskOpen(true)
+    setTaskId('');setTaskForm({...blankTask(p.date),title:`${prefix}：${p.title}`,description:p.note||'',category,fieldId:p.fieldId||'',linkType:kind,linkId:p.id,checklist:category==='SPRAY'?[{label:'薬剤・希釈倍率を確認',isDone:false},{label:'天候・風を確認',isDone:false},{label:'散布後に実績を記録',isDone:false}]:category==='FERTILIZER'?[{label:'肥料在庫を確認',isDone:false},{label:'施肥量を確認',isDone:false},{label:'施肥後に実績を記録',isDone:false}]:[{label:'圃場・摘採方法を確認',isDone:false},{label:'収穫後に実績を記録',isDone:false}]});setPlanDetail(null);setTaskOpen(true)
   }
   function toggleAssignee(id:string){setTaskForm(f=>({...f,assigneeIds:f.assigneeIds.includes(id)?f.assigneeIds.filter(x=>x!==id):[...f.assigneeIds,id]}))}
+  function addChecklistItem(){if(taskForm.checklist.length>=30)return setError('チェックリストは30項目までです。');setTaskForm(f=>({...f,checklist:[...f.checklist,{label:'',isDone:false}]}))}
+  function updateChecklistItem(index:number,patch:Partial<CalendarChecklistDraft>){setTaskForm(f=>({...f,checklist:f.checklist.map((x,i)=>i===index?{...x,...patch}:x)}))}
+  function removeChecklistItem(index:number){setTaskForm(f=>({...f,checklist:f.checklist.filter((_,i)=>i!==index)}))}
+  async function toggleChecklist(index:number){
+    const item=taskForm.checklist[index];if(!item)return
+    const next=!item.isDone
+    updateChecklistItem(index,{isDone:next})
+    if(!item.id)return
+    setCheckBusy(item.id);setError('')
+    try{
+      await setCalendarChecklistItem(item.id,next)
+      setData(d=>({...d,tasks:d.tasks.map(t=>t.id===taskId?{...t,checklist:t.checklist.map(x=>x.id===item.id?{...x,isDone:next}:x)}:t)}))
+    }catch(e:any){updateChecklistItem(index,{isDone:!next});setError(e?.message||'チェック項目を更新できませんでした。')}
+    finally{setCheckBusy('')}
+  }
+  function taskActionHref(t:CalendarTask){
+    const q=new URLSearchParams()
+    if(t.fieldId)q.set('field',t.fieldId)
+    q.set('task',t.id)
+    if(t.linkId)q.set('plan',t.linkId)
+    const suffix=q.toString()?'?'+q.toString():''
+    if(t.category==='SPRAY'||t.linkType==='spray_plan')return '/sprays'+suffix
+    if(t.category==='FERTILIZER'||t.linkType==='fertilizer_plan')return '/fertilizer-applications'+suffix
+    if(t.category==='HARVEST'||t.linkType==='harvest_plan')return '/harvests'+suffix
+    if(t.category==='PROCESSING')return '/production'+suffix
+    if(t.category==='SALES')return '/sales'+suffix
+    return ''
+  }
 
   async function submitTask(e:FormEvent){
     e.preventDefault();if(!canManage)return
@@ -104,7 +133,7 @@ export default function CalendarPage(){
   }
   async function quickStatus(t:CalendarTask,status:string){
     if(!canManage)return;setBusy(true);setError('')
-    try{await setCalendarTaskStatus(t.id,status);setSuccess(status==='DONE'?'完了にしました。':'状態を更新しました。');await refresh()}
+    try{await setCalendarTaskStatus(t.id,status);setSuccess(status==='DONE'?'完了にしました。':'状態を更新しました。');if(status==='DONE'&&taskActionHref(t))setCompletionTask(t);await refresh()}
     catch(e:any){setError(e?.message||'状態を更新できませんでした。')}finally{setBusy(false)}
   }
   async function removeTask(t:CalendarTask){
@@ -147,6 +176,7 @@ export default function CalendarPage(){
       <div className="calendar-toolbar">
         <div className="calendar-month-nav"><button onClick={()=>moveMonth(-1)} aria-label="前月"><ChevronLeft size={19}/></button><h2>{monthLabel(anchor)}</h2><button onClick={()=>moveMonth(1)} aria-label="翌月"><ChevronRight size={19}/></button><button className="today-button" onClick={goToday}>今日</button></div>
         <div className="calendar-filters">
+          <button type="button" className={assigneeFilter&&assigneeFilter===data.currentUserId?'calendar-self-filter active':'calendar-self-filter'} disabled={!data.currentUserId} onClick={()=>setAssigneeFilter(v=>v===data.currentUserId?'':data.currentUserId)}><Users size={15}/>自分の担当だけ</button>
           <select value={kindFilter} onChange={e=>setKindFilter(e.target.value as any)}><option value="ALL">すべて</option><option value="TASK">やること</option><option value="SPRAY">防除計画</option><option value="FERTILIZER">施肥計画</option><option value="HARVEST">収穫計画</option></select>
           <select value={assigneeFilter} onChange={e=>setAssigneeFilter(e.target.value)}><option value="">全担当者</option>{data.members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>
         </div>
@@ -165,8 +195,8 @@ export default function CalendarPage(){
       <div className="panel-title"><div><h2>{selectedDate} の予定</h2><p>{selectedEvents.length}件</p></div>{canManage&&<button className="secondary-button" onClick={()=>openNewTask(selectedDate)}><Plus size={16}/>この日に追加</button>}</div>
       <div className="calendar-agenda">{selectedEvents.map(e=>e.kind==='TASK'&&e.task?
         <article className={`calendar-agenda-item task priority-${e.task.priority.toLowerCase()} ${e.task.status.toLowerCase()}`} key={e.key}>
-          <button className="agenda-main" onClick={()=>editTask(e.task!)}><span>{categoryLabel[e.task.category]||e.task.category} / {priorityLabel[e.task.priority]||e.task.priority}</span><h3>{e.task.title}</h3><small>{e.task.dueTime?`期限 ${e.task.dueTime.slice(0,5)} / `:''}{e.task.fieldName||'圃場指定なし'}</small><div className="agenda-assignees">{e.task.assignees.length?e.task.assignees.map(a=><b key={a.id}>{a.name}</b>):<b className="unassigned">担当未設定</b>}</div></button>
-          {canManage&&e.task.status!=='DONE'&&e.task.status!=='CANCELLED'&&<button className="agenda-done" disabled={busy} onClick={()=>void quickStatus(e.task!,'DONE')}><Check size={18}/>完了</button>}
+          <button className="agenda-main" onClick={()=>editTask(e.task!)}><span>{categoryLabel[e.task.category]||e.task.category} / {priorityLabel[e.task.priority]||e.task.priority}</span><h3>{e.task.title}</h3><small>{e.task.dueTime?`期限 ${e.task.dueTime.slice(0,5)} / `:''}{e.task.fieldName||'圃場指定なし'}</small><div className="agenda-assignees">{e.task.assignees.length?e.task.assignees.map(a=><b key={a.id}>{a.name}</b>):<b className="unassigned">担当未設定</b>}</div>{e.task.checklist.length>0&&<div className="agenda-checklist-progress"><ListChecks size={13}/><span>{e.task.checklist.filter(x=>x.isDone).length}/{e.task.checklist.length}</span><i><b style={{width:`${e.task.checklist.filter(x=>x.isDone).length/e.task.checklist.length*100}%`}}/></i></div>}</button>
+          <div className="agenda-actions">{taskActionHref(e.task)&&<Link to={taskActionHref(e.task)} className="agenda-record">実績入力<ArrowRight size={13}/></Link>}{canManage&&e.task.status!=='DONE'&&e.task.status!=='CANCELLED'&&<button className="agenda-done" disabled={busy} onClick={()=>void quickStatus(e.task!,'DONE')}><Check size={18}/>完了</button>}</div>
         </article>
         :<article className={`calendar-agenda-item plan ${e.kind.toLowerCase()}`} key={e.key}><button className="agenda-main" onClick={()=>setPlanDetail({kind:e.linkType as any,plan:e.plan!})}><span>{e.kind==='SPRAY'?'年間防除計画':e.kind==='FERTILIZER'?'年間施肥計画':'年間収穫計画'} / {e.plan?.legacyId}</span><h3>{e.title}</h3><small>{e.subtitle}</small></button></article>
       )}{!selectedEvents.length&&<p className="empty">この日の予定はありません。</p>}</div>
@@ -177,6 +207,8 @@ export default function CalendarPage(){
       <div className="calendar-upcoming-list">{openTasks.slice().sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,20).map(t=><button key={t.id} onClick={()=>editTask(t)} className={t.dueDate<today()?'overdue':''}><time>{t.dueDate}</time><div><b>{t.title}</b><span>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {categoryLabel[t.category]||t.category}</span></div><strong>{t.dueDate<today()?'期限超過':statusLabel[t.status]||t.status}</strong></button>)}{!openTasks.length&&<p className="empty">未完了タスクはありません。</p>}</div>
     </section>
 
+    {completionTask&&<div className="calendar-completion-toast"><div><Check size={18}/><span><b>タスクを完了しました</b><small>実際の作業記録も続けて登録できます。</small></span></div><div><button onClick={()=>setCompletionTask(null)}>閉じる</button><Link to={taskActionHref(completionTask)} onClick={()=>setCompletionTask(null)}>実績を記録<ArrowRight size={14}/></Link></div></div>}
+
     {taskOpen&&canManage&&<div className="inventory-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setTaskOpen(false)}}><section className="panel inventory-modal calendar-task-modal">
       <div className="section-head"><div><p className="eyebrow">TASK</p><h2>{taskId?'やることを編集':'やることを追加'}</h2></div><button className="close-detail" onClick={()=>setTaskOpen(false)}><X size={18}/></button></div>
       <form className="calendar-task-form" onSubmit={submitTask}>
@@ -185,6 +217,7 @@ export default function CalendarPage(){
         <div className="form-grid three"><label>開始日<input type="date" value={taskForm.startDate} onChange={e=>setTaskForm({...taskForm,startDate:e.target.value})}/></label><label>期限<input type="date" required value={taskForm.dueDate} onChange={e=>setTaskForm({...taskForm,dueDate:e.target.value})}/></label><label>期限時刻<input type="time" value={taskForm.dueTime} onChange={e=>setTaskForm({...taskForm,dueTime:e.target.value})}/></label></div>
         <div className="form-grid three"><label>優先度<select value={taskForm.priority} onChange={e=>setTaskForm({...taskForm,priority:e.target.value})}><option value="LOW">低</option><option value="NORMAL">通常</option><option value="HIGH">高</option><option value="URGENT">緊急</option></select></label><label>状態<select value={taskForm.status} onChange={e=>setTaskForm({...taskForm,status:e.target.value})}><option value="TODO">未着手</option><option value="IN_PROGRESS">進行中</option><option value="DONE">完了</option><option value="CANCELLED">中止</option></select></label><label>圃場<select value={taskForm.fieldId} onChange={e=>setTaskForm({...taskForm,fieldId:e.target.value})}><option value="">指定なし</option>{data.fields.map(f=><option key={f.id} value={f.id}>{f.legacyId} {f.name}</option>)}</select></label></div>
         <fieldset className="calendar-assignees"><legend>担当者（複数選択可）</legend><div>{data.members.map(m=><button type="button" key={m.id} className={taskForm.assigneeIds.includes(m.id)?'selected':''} onClick={()=>toggleAssignee(m.id)}><Users size={15}/>{m.name}</button>)}</div></fieldset>
+        <section className="calendar-checklist-editor"><div className="section-head"><div><b>チェックリスト</b><span>{taskForm.checklist.filter(x=>x.isDone).length}/{taskForm.checklist.length} 完了</span></div><button type="button" onClick={addChecklistItem}><Plus size={15}/>項目追加</button></div><div>{taskForm.checklist.map((item,index)=><div className={item.isDone?'done':''} key={item.id||index}><button type="button" className="calendar-check-toggle" disabled={!!item.id&&checkBusy===item.id} onClick={()=>void toggleChecklist(index)}>{item.isDone?<Check size={16}/>:<span/>}</button><input value={item.label} onChange={e=>updateChecklistItem(index,{label:e.target.value})} placeholder="例：資材を確認"/><button type="button" className="calendar-check-remove" onClick={()=>removeChecklistItem(index)}><X size={15}/></button></div>)}</div>{!taskForm.checklist.length&&<p>必要なら作業手順をチェック項目として追加できます。</p>}</section>
         <label>年間計画にリンク<select value={taskForm.linkType&&taskForm.linkId?`${taskForm.linkType}:${taskForm.linkId}`:''} onChange={e=>{const [type,id]=e.target.value.split(':');setTaskForm({...taskForm,linkType:type||'',linkId:id||''})}}><option value="">リンクなし</option>{data.sprayPlans.map(p=><option key={p.id} value={`spray_plan:${p.id}`}>防除｜{p.date}｜{p.title}</option>)}{data.fertilizerPlans.map(p=><option key={p.id} value={`fertilizer_plan:${p.id}`}>施肥｜{p.date}｜{p.title}</option>)}{data.harvestPlans.map(p=><option key={p.id} value={`harvest_plan:${p.id}`}>収穫｜{p.date}｜{p.title}</option>)}</select></label>
         <label>詳細<textarea rows={3} value={taskForm.description} onChange={e=>setTaskForm({...taskForm,description:e.target.value})} placeholder="作業内容、注意事項、必要な資材など"/></label>
         <div className="calendar-modal-actions">{taskId&&<button type="button" className="danger-text-button" onClick={()=>{const t=data.tasks.find(x=>x.id===taskId);if(t)void removeTask(t)}} disabled={busy}><Trash2 size={16}/>削除</button>}<button className="primary-button" disabled={busy}>{busy?'保存中…':taskId?'変更を保存':'やることを追加'}</button></div>
