@@ -223,6 +223,7 @@ async function resolveEntityFolder(entityType: string, entityId: string | null) 
 
 async function resolveUploadDestination(root: string, requestedCategory: string, entityType: string, entityId: string | null) {
   const { year, month } = japanYearMonth()
+  if (entityType === 'vendor_invoice' && cleanSegment(requestedCategory) === '支払証憑') return { category: '支払証憑', folders: [root, '02_仕入', '支払証憑', year, month] }
   const entity = await resolveEntityFolder(entityType, entityId)
   if (entity) return { category: entity.category, folders: [root, ...entity.segments, year, month] }
 
