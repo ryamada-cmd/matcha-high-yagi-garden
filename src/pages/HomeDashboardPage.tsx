@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, CircleAlert, Factory, Leaf, PackageCheck, RefreshCw, Scissors, ShieldAlert, ShoppingCart, SprayCan, Tractor } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarClock, CalendarDays, Check, CheckCircle2, CircleAlert, Factory, Leaf, PackageCheck, RefreshCw, Scissors, ShieldAlert, ShoppingCart, SprayCan, Tractor, Users } from 'lucide-react'
 import WeatherPanel from '../components/WeatherPanel'
 import { loadDashboard, type DashboardAlert, type DashboardData } from '../lib/dashboard'
 import { loadFertilizerDashboard, type FertilizerDashboardData } from '../lib/fertilizerDashboard'
@@ -8,11 +8,16 @@ import { loadHarvestRecords, loadProcessingBatches, type HarvestRecord, type Pro
 import { loadManufacturingBatches, loadProductionLots, type ManufacturingBatch, type ProductionLot } from '../lib/production'
 import { loadSalesDashboard, type SalesDashboardData } from '../lib/salesDashboard'
 import { loadEquipmentDashboard, type EquipmentDashboardData } from '../lib/equipmentDashboard'
+import { loadCalendarData, setCalendarTaskStatus, type CalendarData, type CalendarTask } from '../lib/calendar'
 import { useAppPermissions } from '../lib/permissions'
 
 const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
 const num = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 })
 const currentYear = () => Number(new Intl.DateTimeFormat('en', { year: 'numeric' }).format(new Date()))
+const pad=(n:number)=>String(n).padStart(2,'0')
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+const addDays=(s:string,n:number)=>{const d=new Date(`${s}T00:00:00`);d.setDate(d.getDate()+n);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+const taskCategoryLabel:Record<string,string>={GENERAL:'一般',SPRAY:'防除',FERTILIZER:'施肥',HARVEST:'収穫',PROCESSING:'製造',MAINTENANCE:'設備',SALES:'販売',OTHER:'その他'}
 
 function AlertIcon({ severity }: { severity: DashboardAlert['severity'] }) {
   if (severity === 'critical') return <ShieldAlert size={20}/>
@@ -29,6 +34,7 @@ type HomeData = {
   manufacturing: ManufacturingBatch[]
   sales: SalesDashboardData | null
   equipment: EquipmentDashboardData | null
+  calendar: CalendarData | null
 }
 
 type OverviewCard = { label:string; value:string; note:string; tone?:string }
