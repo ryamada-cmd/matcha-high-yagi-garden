@@ -16,7 +16,7 @@ export type DocumentOcrResult={
   suggestedCategory:string
   items:DocumentOcrItem[]
   warnings:string[]
-  engine?:'AI'|'OCR'
+  engine?:'PDF_TEXT'|'OCR'
   model?:string
 }
 
@@ -24,7 +24,12 @@ const TESSERACT_URL='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesser
 const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs'
 const PDF_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.worker.min.mjs'
 const MAX_PDF_PAGES=5
-const MAX_IMAGE_DIMENSION=3200
+const MAX_IMAGE_DIMENSION=3400
+const SUMMARY_PREFIX='[[SUMMARY]]'
+const ITEM_PREFIX='[[ITEM]]'
+
+type LayoutNode={str:string;x:number;y:number;w:number;h:number}
+type LayoutLine={y:number;h:number;parts:LayoutNode[]}
 
 type ProgressCallback=(progress:number,message:string)=>void
 
@@ -88,19 +93,78 @@ function findInvoiceDate(text:string){
   return candidates.length?[...candidates].sort().at(-1)||'':''
 }
 
-function amountsFromLine(line:string){
+function parseMoney(value:string,allowZero=false){
+  const raw=normalizeNfkcPreservingMarks(value).replace(/[￥¥円,，\s]/g,'').trim()
+  if(!/^\d+(?:\.\d+)?$/.test(raw))return null
+  const number=Number(raw)
+  if(!Number.isFinite(number)||number<0||(!allowZero&&number<1)||number>1_000_000_000)return null
+  return Math.round(number)
+}
+
+function amountsFromLine(line:string,allowZero=false){
   const found:number[]=[]
   const regex=/(?:JPY|￥|¥)?\s*([0-9０-９][0-9０-９,，.．]*)\s*(?:円)?/gi
   for(const match of line.matchAll(regex)){
-    const raw=match[1].normalize('NFKC').replace(/[,，]/g,'')
-    const value=Number(raw)
-    if(Number.isFinite(value)&&value>=1&&value<=1_000_000_000)found.push(Math.round(value))
+    const value=parseMoney(match[1],allowZero)
+    if(value!==null)found.push(value)
   }
   return found
 }
 
+const summaryAliases:{key:string;aliases:string[]}[]=[
+  {key:'previous',aliases:['前回繰越','前月繰越']},
+  {key:'payment',aliases:['入金額','ご入金額']},
+  {key:'carryover',aliases:['繰越残高','差引残高']},
+  {key:'subtotal',aliases:['お買上げ額','お買い上げ額','税抜合計','小計','subtotal']},
+  {key:'tax',aliases:['消費税額','消費税','税額','tax']},
+  {key:'total',aliases:['今回請求金額','今回御請求額','今回ご請求額','ご請求金額','請求金額','請求額','税込合計','総合計','grand total','amount due']},
+]
+
+function parseSummaryHints(text:string){
+  const map=new Map<string,number>()
+  for(const line of text.split('\n')){
+    if(!line.startsWith(SUMMARY_PREFIX))continue
+    const body=line.slice(SUMMARY_PREFIX.length).trim()
+    const eq=body.indexOf('=')
+    if(eq<1)continue
+    const key=body.slice(0,eq).trim()
+    const value=parseMoney(body.slice(eq+1),true)
+    if(value!==null)map.set(key,value)
+  }
+  return map
+}
+
+function inferPlainSummary(text:string){
+  const map=new Map<string,number>()
+  const lines=text.split('\n').map(normalizeLine).filter(Boolean).filter(line=>!line.startsWith('[['))
+  for(let i=0;i<lines.length;i++){
+    const header=lines[i]
+    const matched:string[]=[]
+    for(const def of summaryAliases){
+      if(def.aliases.some(alias=>header.replace(/\s/g,'').toLowerCase().includes(alias.replace(/\s/g,'').toLowerCase())))matched.push(def.key)
+    }
+    if(matched.length<3)continue
+    for(let j=i+1;j<Math.min(lines.length,i+4);j++){
+      const values=amountsFromLine(lines[j],true)
+      if(values.length<Math.min(3,matched.length))continue
+      const count=Math.min(matched.length,values.length)
+      for(let k=0;k<count;k++)if(!map.has(matched[k]))map.set(matched[k],values[k])
+      return map
+    }
+  }
+  return map
+}
+
+function summaryValue(text:string,key:string){
+  const hints=parseSummaryHints(text)
+  if(hints.has(key))return hints.get(key)
+  const inferred=inferPlainSummary(text)
+  if(inferred.has(key))return inferred.get(key)
+  return undefined
+}
+
 function findLabeledAmount(text:string,labels:string[]){
-  const lines=text.split('\n').map(normalizeLine).filter(Boolean)
+  const lines=text.split('\n').map(normalizeLine).filter(Boolean).filter(line=>!line.startsWith('[['))
   for(const label of labels){
     for(const line of lines){
       if(!line.toLowerCase().includes(label.toLowerCase()))continue
@@ -113,28 +177,37 @@ function findLabeledAmount(text:string,labels:string[]){
       if(!lines[i].toLowerCase().includes(label.toLowerCase()))continue
       for(let j=i+1;j<Math.min(lines.length,i+3);j++){
         const values=amountsFromLine(lines[j])
-        if(values.length)return values[values.length-1]
+        if(values.length===1)return values[0]
       }
     }
   }
   return 0
 }
 
-function findTotal(text:string){
-  const total=findLabeledAmount(text,['今回請求金額','ご請求金額','請求金額','請求額','領収金額','お支払金額','合計金額','税込合計','総合計','grand total','amount due','合計','total'])
-  if(total)return total
-  const lines=text.split('\n').map(normalizeLine).filter(Boolean)
-  const likely=lines.filter(line=>(/[￥¥円]|\bJPY\b|\d[,，]\d{3}/i.test(line))&&!/前回繰越|入金額|繰越残高/i.test(line))
-  const values=likely.flatMap(amountsFromLine).filter(v=>v>=10)
-  return values.length?Math.max(...values):0
-}
-
 function findSubtotal(text:string){
+  const summary=summaryValue(text,'subtotal')
+  if(summary!==undefined)return summary
   return findLabeledAmount(text,['税抜合計','お買上げ額','お買い上げ額','小計','subtotal'])
 }
 
 function findTax(text:string){
+  const summary=summaryValue(text,'tax')
+  if(summary!==undefined)return summary
   return findLabeledAmount(text,['消費税額','消費税','税額','tax'])
+}
+
+function findTotal(text:string,subtotalYen=0,taxYen=0){
+  const summaryTotal=summaryValue(text,'total')
+  if(summaryTotal!==undefined&&summaryTotal>0)return summaryTotal
+  const carryover=summaryValue(text,'carryover')
+  if(subtotalYen>0&&carryover!==undefined)return carryover+subtotalYen+Math.max(0,taxYen)
+  if(subtotalYen>0&&taxYen>0)return subtotalYen+taxYen
+  const total=findLabeledAmount(text,['今回請求金額','今回御請求額','今回ご請求額','ご請求金額','請求金額','請求額','領収金額','お支払金額','合計金額','税込合計','総合計','grand total','amount due'])
+  if(total)return total
+  const lines=text.split('\n').map(normalizeLine).filter(Boolean).filter(line=>!line.startsWith('[['))
+  const likely=lines.filter(line=>(/[￥¥円]|\bJPY\b|\d[,，]\d{3}/i.test(line))&&!/前回繰越|前月繰越|入金額|ご入金|繰越残高|差引残高|振込み|振込|相殺/i.test(line))
+  const values=likely.flatMap(line=>amountsFromLine(line)).filter(v=>v>=100)
+  return values.length?Math.max(...values):0
 }
 
 function cleanVendorLine(line:string){
@@ -200,7 +273,7 @@ function inferPaymentMethod(text:string){
 
 function inferCategory(text:string){
   if(/肥料|窒素|リン酸|加里|化成|堆肥/i.test(text))return'FERTILIZER'
-  if(/農薬|殺虫|殺菌|除草|ダニ|ダ二|乳剤|水和剤|フロアブル/i.test(text))return'PESTICIDE'
+  if(/農薬|殺虫|殺菌|除草|ダニ|ダ二|乳剤|水和剤|フロアブル|顆粒水和|ＳＥ|SE\b/i.test(text))return'PESTICIDE'
   if(/生葉|茶葉/i.test(text))return'FRESH_LEAF'
   if(/碾茶|てん茶/i.test(text)&&/加工/i.test(text))return'TENCHA_PROCESSING'
   if(/抹茶/i.test(text)&&/(加工|粉砕|石臼)/i.test(text))return'MATCHA_PROCESSING'
@@ -212,22 +285,43 @@ function inferCategory(text:string){
 }
 
 function parseNumericToken(token:string){
-  const raw=token.normalize('NFKC').replace(/[￥¥円,，]/g,'').trim()
+  const raw=normalizeNfkcPreservingMarks(token).replace(/[￥¥円,，]/g,'').trim()
   if(!/^\d+(?:\.\d+)?$/.test(raw))return null
   const value=Number(raw)
   return Number.isFinite(value)?value:null
 }
 
 function cleanItemDescription(value:string){
-  let text=value.replace(/^\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}\s+/,'').replace(/^\d{5,}\s+/,'').trim()
+  let text=value.replace(/^\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}\s+/,'').replace(/^\d{5,}\s+/,'').trim()
   if(/ダ二/.test(text))text=text.replace(/ダ二/g,'ダニ')
-  return text.replace(/\s+/g,' ').slice(0,160)
+  return text.replace(/\s+/g,' ').slice(0,180)
+}
+
+function extractHintItems(text:string):DocumentOcrItem[]{
+  const out:DocumentOcrItem[]=[]
+  for(const line of text.split('\n')){
+    if(!line.startsWith(ITEM_PREFIX))continue
+    const fields=line.slice(ITEM_PREFIX.length).replace(/^\t/,'').split('\t')
+    if(fields.length<8)continue
+    const rawDescription=fields[2],rawCapacity=fields[3],rawQty=fields[4],rawUnit=fields[5],rawUnitPrice=fields[6],rawAmount=fields[7]
+    const description=cleanItemDescription([rawDescription,rawCapacity].map(normalizeLine).filter(Boolean).join(' / '))
+    if(!description||/振込|振込み|入金|相殺|支払|繰越/i.test(description))continue
+    const quantity=parseNumericToken(rawQty)
+    const unitPrice=parseMoney(rawUnitPrice)
+    const amount=parseMoney(rawAmount)
+    if(quantity===null||quantity<=0||unitPrice===null||amount===null)continue
+    if(Math.abs(quantity*unitPrice-amount)>Math.max(2,amount*.012))continue
+    out.push({description,quantity,unit:normalizeLine(rawUnit),unitPriceYen:unitPrice,lineTotalYen:amount,taxRate:10,suggestedCategory:inferCategory(description)})
+  }
+  return out
 }
 
 function extractItems(text:string):DocumentOcrItem[]{
-  const lines=text.split('\n').map(normalizeLine).filter(Boolean)
+  const hinted=extractHintItems(text)
+  if(hinted.length)return hinted
+  const lines=text.split('\n').map(normalizeLine).filter(Boolean).filter(line=>!line.startsWith('[['))
   const candidates:DocumentOcrItem[]=[]
-  const excluded=/合計|小計|税|消費税|釣銭|お預り|請求金額|領収金額|total|subtotal|tax|〒|tel|fax|前回繰越|入金額|繰越残高|銀行口座|登録番号/i
+  const excluded=/合計|小計|税|消費税|釣銭|お預り|請求金額|領収金額|total|subtotal|tax|〒|tel|fax|前回繰越|入金額|繰越残高|銀行口座|登録番号|振込|振込み|相殺/i
   for(const line of lines){
     if(excluded.test(line)||line.length<4)continue
     const tokens=line.split(' ').filter(Boolean)
@@ -237,19 +331,18 @@ function extractItems(text:string):DocumentOcrItem[]{
     if(amount===null||unitPrice===null||amount<=0||unitPrice<=0)continue
     const unitPriceIndex=tokens.length-2
     let quantityIndex=-1,quantity=0
-    for(let i=unitPriceIndex-1;i>=Math.max(0,unitPriceIndex-4);i--){
+    for(let i=unitPriceIndex-1;i>=Math.max(0,unitPriceIndex-5);i--){
       const value=parseNumericToken(tokens[i])
       if(value!==null&&value>0&&value<=100000){quantityIndex=i;quantity=value;break}
     }
     if(quantityIndex<0)continue
-    const expected=quantity*unitPrice
-    if(Math.abs(expected-amount)>Math.max(2,amount*.01))continue
+    if(Math.abs(quantity*unitPrice-amount)>Math.max(2,amount*.012))continue
     const description=cleanItemDescription(tokens.slice(0,quantityIndex).join(' '))
     if(description.length<2||/^\d+$/.test(description))continue
-    const unit=tokens.slice(quantityIndex+1,unitPriceIndex).join(' ').slice(0,20)
+    const unit=tokens.slice(quantityIndex+1,unitPriceIndex).join(' ').slice(0,30)
     const taxRate=/8\s*%|軽減/.test(line)?8:10
     candidates.push({description,quantity,unit,unitPriceYen:Math.round(unitPrice),lineTotalYen:Math.round(amount),taxRate,suggestedCategory:inferCategory(description)})
-    if(candidates.length>=30)break
+    if(candidates.length>=40)break
   }
   return candidates
 }
@@ -273,11 +366,11 @@ function makeInvoiceItemsTaxInclusive(items:DocumentOcrItem[],subtotalYen:number
   return{items:[...items,{description:'消費税',quantity:1,unit:'式',unitPriceYen:taxYen,lineTotalYen:taxYen,taxRate:0,suggestedCategory:'OTHER'}],warnings:['消費税を独立明細として追加しました。税込単価への自動換算は端数差のため行っていません。']}
 }
 
-function parseResult(text:string,kind:DocumentOcrKind,confidence:number):DocumentOcrResult{
+function parseResult(text:string,kind:DocumentOcrKind,confidence:number,engine:'PDF_TEXT'|'OCR'='OCR'):DocumentOcrResult{
   const normalized=normalizeText(text)
-  const totalYen=findTotal(normalized)
   const subtotalYen=kind==='VENDOR_INVOICE'?findSubtotal(normalized):0
   const taxYen=kind==='VENDOR_INVOICE'?findTax(normalized):0
+  const totalYen=findTotal(normalized,subtotalYen,taxYen)
   const dateLabels=kind==='PAYMENT_PROOF'?['支払日','振込日','受付日','payment date','date']:['購入日','領収日','発行日','日付','date']
   const dueLabels=['支払期限','お支払期限','payment due','due date']
   let items=extractItems(normalized)
@@ -297,7 +390,7 @@ function parseResult(text:string,kind:DocumentOcrKind,confidence:number):Documen
   }
   if(kind==='VENDOR_INVOICE'&&!vendor)warnings.push('請求元を特定できませんでした。')
   const suggestedCategory=items.length&&items.every(item=>item.suggestedCategory===items[0].suggestedCategory)?items[0].suggestedCategory:kind==='VENDOR_INVOICE'?inferCategory(normalized):'OTHER'
-  const confidencePenalty=warnings.some(w=>w.includes('一致しません'))?18:0
+  const confidencePenalty=warnings.some(w=>w.includes('一致しません'))?15:0
   return{
     kind,
     rawText:normalized,
@@ -314,28 +407,115 @@ function parseResult(text:string,kind:DocumentOcrKind,confidence:number):Documen
     suggestedCategory,
     items,
     warnings,
-    engine:'OCR',
+    engine,
   }
 }
 
-function textContentToLines(items:any[]){
-  const nodes=(items||[]).map((item:any)=>{
+function buildLayoutLines(items:any[]){
+  const nodes:LayoutNode[]=(items||[]).map((item:any)=>{
     const str=normalizeLine(String(item?.str||''))
     const transform=Array.isArray(item?.transform)?item.transform:[]
-    return{str,x:Number(transform[4]||0),y:Number(transform[5]||0),h:Math.abs(Number(transform[3]||item?.height||10))}
-  }).filter((item:any)=>item.str)
-  nodes.sort((a:any,b:any)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x)
-  const lines:Array<{y:number;h:number;parts:Array<{x:number;str:string}>}>=[]
+    return{str,x:Number(transform[4]||0),y:Number(transform[5]||0),w:Math.abs(Number(item?.width||0)),h:Math.abs(Number(transform[3]||item?.height||10))}
+  }).filter((item:LayoutNode)=>item.str)
+  nodes.sort((a,b)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x)
+  const lines:LayoutLine[]=[]
   for(const node of nodes){
     const last=lines[lines.length-1]
-    const tolerance=Math.max(2.5,Math.min(6,node.h*.45))
+    const tolerance=Math.max(2.2,Math.min(6,node.h*.48))
     if(last&&Math.abs(last.y-node.y)<=tolerance){
-      last.parts.push({x:node.x,str:node.str})
-      last.y=(last.y+node.y)/2
-      last.h=Math.max(last.h,node.h)
-    }else lines.push({y:node.y,h:node.h,parts:[{x:node.x,str:node.str}]})
+      last.parts.push(node);last.y=(last.y+node.y)/2;last.h=Math.max(last.h,node.h)
+    }else lines.push({y:node.y,h:node.h,parts:[node]})
   }
-  return lines.map(line=>line.parts.sort((a,b)=>a.x-b.x).map(part=>part.str).join(' ')).filter(Boolean).join('\n')
+  for(const line of lines)line.parts.sort((a,b)=>a.x-b.x)
+  return lines
+}
+
+function layoutLineText(line:LayoutLine){return line.parts.map(part=>part.str).join(' ')}
+function nodeCenter(node:LayoutNode){return node.x+(node.w||Math.max(8,node.str.length*5))/2}
+
+function summaryHintsFromLayout(lines:LayoutLine[]){
+  const hints:string[]=[]
+  for(let i=0;i<lines.length;i++){
+    const headers:{key:string;x:number}[]=[]
+    for(const part of lines[i].parts){
+      const compact=part.str.replace(/\s/g,'').toLowerCase()
+      for(const def of summaryAliases){
+        if(def.aliases.some(alias=>compact.includes(alias.replace(/\s/g,'').toLowerCase()))){headers.push({key:def.key,x:nodeCenter(part)});break}
+      }
+    }
+    const dedup=headers.filter((h,index)=>headers.findIndex(x=>x.key===h.key)===index)
+    if(dedup.length<3)continue
+    for(let j=i+1;j<Math.min(lines.length,i+5);j++){
+      const values=lines[j].parts.map(part=>({value:parseMoney(part.str,true),x:nodeCenter(part)})).filter((x):x is {value:number;x:number}=>x.value!==null)
+      if(values.length<Math.min(3,dedup.length))continue
+      const used=new Set<number>()
+      for(const header of dedup){
+        let best=-1,bestDist=Infinity
+        for(let k=0;k<values.length;k++){
+          if(used.has(k))continue
+          const dist=Math.abs(values[k].x-header.x)
+          if(dist<bestDist){bestDist=dist;best=k}
+        }
+        if(best>=0&&bestDist<85){used.add(best);hints.push(SUMMARY_PREFIX+' '+header.key+'='+values[best].value)}
+      }
+      if(hints.length>=3)return hints
+    }
+  }
+  return hints
+}
+
+function itemHintsFromLayout(lines:LayoutLine[]){
+  const canonical=[
+    {key:'date',aliases:['伝票日付','日付','date']},
+    {key:'slip',aliases:['伝票No.','伝票No','伝票番号']},
+    {key:'description',aliases:['商品名','品名','内容','description']},
+    {key:'capacity',aliases:['容量','規格','size']},
+    {key:'quantity',aliases:['数量','qty']},
+    {key:'unit',aliases:['単位','unit']},
+    {key:'unitPrice',aliases:['単価','price']},
+    {key:'amount',aliases:['金額','amount']},
+  ]
+  for(let i=0;i<lines.length;i++){
+    const found:{key:string;x:number}[]=[]
+    for(const part of lines[i].parts){
+      const compact=part.str.replace(/\s/g,'').toLowerCase()
+      for(const def of canonical){
+        if(def.aliases.some(alias=>compact===alias.replace(/\s/g,'').toLowerCase()||compact.includes(alias.replace(/\s/g,'').toLowerCase()))){found.push({key:def.key,x:nodeCenter(part)});break}
+      }
+    }
+    const dedup=found.filter((h,index)=>found.findIndex(x=>x.key===h.key)===index).sort((a,b)=>a.x-b.x)
+    if(dedup.length<5||!dedup.some(x=>x.key==='description')||!dedup.some(x=>x.key==='amount'))continue
+    const boundaries:number[]=[-Infinity]
+    for(let k=0;k<dedup.length-1;k++)boundaries.push((dedup[k].x+dedup[k+1].x)/2)
+    boundaries.push(Infinity)
+    const hints:string[]=[]
+    for(let j=i+1;j<Math.min(lines.length,i+55);j++){
+      const cells=new Map<string,string[]>()
+      for(const part of lines[j].parts){
+        const x=nodeCenter(part);let idx=0
+        while(idx<dedup.length-1&&x>=boundaries[idx+1])idx++
+        const key=dedup[idx]?.key;if(!key)continue
+        const values=cells.get(key)||[];values.push(part.str);cells.set(key,values)
+      }
+      const get=(key:string)=>normalizeLine((cells.get(key)||[]).join(' '))
+      const date=get('date'),slip=get('slip'),description=get('description'),capacity=get('capacity'),quantity=get('quantity'),unit=get('unit'),unitPrice=get('unitPrice'),amount=get('amount')
+      if(!description&&slip&&/振込|振込み|入金|相殺/i.test(slip))continue
+      if(!description||!quantity||!unitPrice||!amount)continue
+      const q=parseNumericToken(quantity),u=parseMoney(unitPrice),a=parseMoney(amount)
+      if(q===null||u===null||a===null||q<=0||u<=0||a<=0)continue
+      if(Math.abs(q*u-a)>Math.max(2,a*.012))continue
+      if(/合計|小計|税|請求|振込|振込み|入金|相殺/i.test(description))continue
+      hints.push([ITEM_PREFIX,date,slip,description,capacity,quantity,unit,unitPrice,amount].join('\t'))
+    }
+    if(hints.length)return hints
+  }
+  return[]
+}
+
+function textContentToStructuredText(items:any[]){
+  const lines=buildLayoutLines(items)
+  const plain=lines.map(layoutLineText).filter(Boolean)
+  return [...summaryHintsFromLayout(lines),...itemHintsFromLayout(lines),...plain].join('\n')
 }
 
 async function imageFileToCanvas(file:File){
@@ -411,12 +591,12 @@ async function recognizePdf(file:File,onProgress?:ProgressCallback){
   for(let i=1;i<=pageCount;i++){
     const page=await pdf.getPage(i)
     const textContent=await page.getTextContent()
-    digitalParts.push(textContentToLines(textContent.items||[]))
+    digitalParts.push(textContentToStructuredText(textContent.items||[]))
   }
   const digital=normalizeText(digitalParts.join('\n'))
   if(digital.replace(/\s/g,'').length>=80){
     onProgress?.(100,'PDFの文字データを読み取りました。')
-    return{text:digital,confidence:99}
+    return{text:digital,confidence:99,engine:'PDF_TEXT' as const}
   }
 
   const worker=await createOcrWorker((p,message)=>onProgress?.(Math.min(95,10+Math.round(p*.8)),message))
@@ -443,7 +623,7 @@ async function recognizePdf(file:File,onProgress?:ProgressCallback){
     }
   }finally{await worker.terminate()}
   if(Number(pdf.numPages)>MAX_PDF_PAGES)onProgress?.(97,`先頭${MAX_PDF_PAGES}ページをOCRしました。`)
-  return{text:normalizeText(parts.join('\n')),confidence:confidences.length?confidences.reduce((a,b)=>a+b,0)/confidences.length:0}
+  return{text:normalizeText(parts.join('\n')),confidence:confidences.length?confidences.reduce((a,b)=>a+b,0)/confidences.length:0,engine:'OCR' as const}
 }
 
 export function canOcrDocument(file:File){
@@ -458,8 +638,11 @@ export async function recognizeDocument(file:File,kind:DocumentOcrKind,onProgres
   const recognized=isPdf?await recognizePdf(file,onProgress):await recognizeImage(file,onProgress)
   if(!recognized.text.trim())throw new Error('文字を読み取れませんでした。画像の向き・明るさ・解像度をご確認ください。')
   onProgress?.(100,'OCR完了')
-  const result=parseResult(recognized.text,kind,recognized.confidence)
+  const engine='engine'in recognized&&recognized.engine==='PDF_TEXT'?'PDF_TEXT':'OCR'
+  const result=parseResult(recognized.text,kind,recognized.confidence,engine)
+  if(engine==='PDF_TEXT')result.warnings.unshift('PDF内の文字座標と表構造を直接解析しました。画像OCRより高精度な方式です。')
   if(isPdf&&result.rawText.length<80)result.warnings.push('PDFの文字量が少ないため、読取結果をご確認ください。')
   if(!result.totalYen)result.warnings.push('合計金額を特定できませんでした。')
+  if(kind==='VENDOR_INVOICE'&&!result.items.length)result.warnings.push('商品明細を特定できませんでした。原本の明細をご確認ください。')
   return result
 }
