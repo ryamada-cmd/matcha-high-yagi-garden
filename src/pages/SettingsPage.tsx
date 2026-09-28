@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, LockKeyhole, RefreshCw, Save, Search, Settings2
 import { changeUserRole, loadAdminConsole, loadRolePermissionMatrix, saveAppSettings, saveRolePermissions, type AdminConsoleData, type AuditLogRow, type PermissionDefinition } from '../lib/adminConsole'
 import { useAppPermissions } from '../lib/permissions'
 import WeatherLocationSettings from '../components/WeatherLocationSettings'
+import AiOcrSettings from '../components/AiOcrSettings'
 
 function fmtDate(value: string) {
   if (!value) return '—'
@@ -150,6 +151,7 @@ export default function SettingsPage() {
     {success&&<div className="notice success dashboard-notice">{success}</div>}
 
     {data && <WeatherLocationSettings settings={data.settings} onSaved={refresh} canManage={canManageSettings}/>} 
+    <AiOcrSettings canManage={canManageSettings}/>
 
     <section className="panel settings-section">
       <div className="panel-title"><div><h2>ダッシュボード警告基準</h2><p>{canManageSettings?'現場に合わせて注意喚起のタイミングを変更できます。':'現在の警告基準を表示しています。変更権限はありません。'}</p></div><Settings2 size={20}/></div>
