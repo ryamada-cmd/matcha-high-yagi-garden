@@ -41,7 +41,8 @@ export default function VendorInvoicesPage(){
     try{
       const result=await recognizeDocument(file,'VENDOR_INVOICE',(progress,message)=>setInvoiceOcrProgress(`${message} ${progress}%`))
       setInvoiceOcr(result);setInvoiceOcrProgress('')
-      setSuccess('請求書OCRが完了しました。候補値を確認して入力欄へ反映してください。')
+      if(result.warnings.length)setSuccess('請求書OCRが完了しました。候補値を確認してください。 '+result.warnings.join(' '))
+      else setSuccess('請求書OCRが完了しました。候補値を確認して入力欄へ反映してください。')
     }catch(e:any){setError(e?.message||'請求書をOCRできませんでした。');setInvoiceOcrProgress('')}
   }
 
@@ -51,13 +52,22 @@ export default function VendorInvoicesPage(){
       let items=old.items
       const first=items[0]
       const blankFirst=items.length===1&&!first.description.trim()&&!first.unitPrice
-      if(blankFirst&&invoiceOcr.totalYen>0){
-        const parsed=invoiceOcr.items[0]
-        items=[{...first,category:invoiceOcr.suggestedCategory||'OTHER',description:parsed?.description||'請求書記載分',quantity:'1',unit:'式',unitPrice:String(invoiceOcr.totalYen),taxRate:String(parsed?.taxRate??10)}]
+      if(blankFirst&&invoiceOcr.items.length){
+        items=invoiceOcr.items.map(parsed=>({
+          ...newItem(),
+          category:parsed.suggestedCategory||invoiceOcr.suggestedCategory||'OTHER',
+          description:parsed.description||'請求書記載分',
+          quantity:String(parsed.quantity||1),
+          unit:parsed.unit||'',
+          unitPrice:String(parsed.unitPriceYen||0),
+          taxRate:String(parsed.taxRate??10),
+        }))
+      }else if(blankFirst&&invoiceOcr.totalYen>0){
+        items=[{...first,category:invoiceOcr.suggestedCategory||'OTHER',description:'請求書記載分',quantity:'1',unit:'式',unitPrice:String(invoiceOcr.totalYen),taxRate:'10'}]
       }
       return{...old,vendor:invoiceOcr.vendor||old.vendor,externalInvoiceNo:invoiceOcr.documentNo||old.externalInvoiceNo,invoiceDate:invoiceOcr.date||old.invoiceDate,paymentDueDate:invoiceOcr.dueDate||old.paymentDueDate,items}
     })
-    setSuccess('OCR候補を入力欄へ反映しました。原本を確認してから保存してください。')
+    setSuccess('OCR候補を入力欄へ反映しました。'+(invoiceOcr.items.length?' 明細'+invoiceOcr.items.length+'行を展開しました。':'')+' 原本を確認してから保存してください。')
   }
 
   async function runPaymentOcr(file:File){
