@@ -81,13 +81,15 @@ export default function ExpenseClaimsPage(){
       const time=old.purchaseAt.includes('T')?old.purchaseAt.slice(11,16):'12:00'
       let items=old.items
       const blankFirst=items.length===1&&!items[0].description.trim()&&!items[0].unitPrice
-      if(blankFirst&&ocrResult.totalYen>0){
+      if(blankFirst&&ocrResult.items.length){
+        items=ocrResult.items.map(parsed=>({...newItem(),description:parsed.description||'領収書記載分',quantity:String(parsed.quantity||1),unitPrice:String(parsed.unitPriceYen||0),taxRate:String(parsed.taxRate??10)}))
+      }else if(blankFirst&&ocrResult.totalYen>0){
         const first=ocrResult.items[0]
         items=[{...items[0],description:first?.description||'領収書記載分',quantity:'1',unitPrice:String(ocrResult.totalYen),taxRate:String(first?.taxRate??10)}]
       }
       return{...old,vendor:ocrResult.vendor||old.vendor,purchaseAt:ocrResult.date?`${ocrResult.date}T${time}`:old.purchaseAt,items}
     })
-    setSuccess('OCR候補を入力欄へ反映しました。内容を確認してから申請してください。')
+    setSuccess('OCR候補を入力欄へ反映しました。'+(ocrResult.items.length?' 明細'+ocrResult.items.length+'行を展開しました。':'')+' 内容を確認してから申請してください。')
   }
 
   async function submit(e:FormEvent){
