@@ -286,12 +286,20 @@ function parseResult(text:string,kind:DocumentOcrKind,confidence:number):Documen
     warnings.push(...normalizedItems.warnings)
   }
   const vendor=kind==='PAYMENT_PROOF'?'':findVendor(normalized)
-  const date=kind==='VENDOR_INVOICE'?findInvoiceDate(normalized):findDate(normalized,dateLabels)
+  const explicitInvoiceDate=kind==='VENDOR_INVOICE'?findDate(normalized,['請求日','発行日','作成日','invoice date'],false):''
+  const date=kind==='VENDOR_INVOICE'?(explicitInvoiceDate||findInvoiceDate(normalized)):findDate(normalized,dateLabels)
+  if(kind==='VENDOR_INVOICE'&&date&&!explicitInvoiceDate)warnings.push('請求日の明記がないため、請求期間末日または帳票内の最新日付を請求日候補にしています。')
+  if(kind==='VENDOR_INVOICE'&&items.length&&totalYen){
+    const itemTotal=items.reduce((sum,item)=>sum+item.lineTotalYen,0)
+    if(!approxEqual(itemTotal,totalYen,1))warnings.push('読取明細の合計と請求合計が一致しません。原本の明細・消費税をご確認ください。')
+  }
+  if(kind==='VENDOR_INVOICE'&&!vendor)warnings.push('請求元を特定できませんでした。')
   const suggestedCategory=items.length&&items.every(item=>item.suggestedCategory===items[0].suggestedCategory)?items[0].suggestedCategory:kind==='VENDOR_INVOICE'?inferCategory(normalized):'OTHER'
+  const confidencePenalty=warnings.some(w=>w.includes('一致しません'))?18:0
   return{
     kind,
     rawText:normalized,
-    confidence:Math.round(Math.max(0,Math.min(100,confidence||0))),
+    confidence:Math.round(Math.max(0,Math.min(100,(confidence||0)-confidencePenalty))),
     vendor,
     documentNo:kind==='VENDOR_INVOICE'?findDocumentNo(normalized):'',
     date,
