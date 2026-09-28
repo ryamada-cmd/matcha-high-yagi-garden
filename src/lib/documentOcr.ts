@@ -555,6 +555,55 @@ function enhanceCanvasForOcr(canvas:HTMLCanvasElement){
   ctx.putImageData(image,0,0)
 }
 
+
+function cloneCanvas(source:HTMLCanvasElement){
+  const canvas=document.createElement('canvas')
+  canvas.width=source.width;canvas.height=source.height
+  const ctx=canvas.getContext('2d',{willReadFrequently:true})
+  if(ctx)ctx.drawImage(source,0,0)
+  return canvas
+}
+
+function binarizeCanvas(canvas:HTMLCanvasElement){
+  const ctx=canvas.getContext('2d',{willReadFrequently:true})
+  if(!ctx)return
+  const image=ctx.getImageData(0,0,canvas.width,canvas.height)
+  const data=image.data
+  let sum=0,count=0
+  for(let i=0;i<data.length;i+=16){
+    sum+=.299*data[i]+.587*data[i+1]+.114*data[i+2]
+    count++
+  }
+  const mean=count?sum/count:180
+  const threshold=Math.max(145,Math.min(205,mean*.92))
+  for(let i=0;i<data.length;i+=4){
+    const gray=.299*data[i]+.587*data[i+1]+.114*data[i+2]
+    const value=gray<threshold?0:255
+    data[i]=value;data[i+1]=value;data[i+2]=value;data[i+3]=255
+  }
+  ctx.putImageData(image,0,0)
+}
+
+function recognitionScore(text:string,confidence:number,kind:DocumentOcrKind){
+  if(!text.trim())return-Infinity
+  const parsed=parseResult(text,kind,confidence,'OCR')
+  let score=Math.max(0,confidence)*.15
+  if(parsed.vendor)score+=7
+  if(parsed.date)score+=5
+  if(parsed.totalYen>0)score+=12
+  if(parsed.subtotalYen>0)score+=6
+  if(parsed.taxYen>0)score+=4
+  score+=Math.min(30,parsed.items.length*6)
+  if(parsed.subtotalYen&&parsed.taxYen&&parsed.totalYen&&approxEqual(parsed.subtotalYen+parsed.taxYen,parsed.totalYen,2))score+=10
+  if(parsed.items.length&&parsed.totalYen){
+    const itemTotal=parsed.items.reduce((sum,item)=>sum+item.lineTotalYen,0)
+    if(approxEqual(itemTotal,parsed.totalYen,2))score+=14
+    else score-=6
+  }
+  score-=parsed.warnings.length*2
+  return score
+}
+
 async function createOcrWorker(onProgress?:ProgressCallback){
   const mod:any=await import(/* @vite-ignore */ TESSERACT_URL)
   const worker=await mod.createWorker('jpn+eng',undefined,{logger:(m:any)=>{
@@ -564,22 +613,39 @@ async function createOcrWorker(onProgress?:ProgressCallback){
   return worker
 }
 
-async function recognizeCanvas(canvas:HTMLCanvasElement,onProgress?:ProgressCallback){
+async function recognizeCanvasBest(canvas:HTMLCanvasElement,kind:DocumentOcrKind,onProgress?:ProgressCallback){
   const worker=await createOcrWorker(onProgress)
   try{
-    const result=await worker.recognize(canvas)
-    return{text:String(result?.data?.text||''),confidence:Number(result?.data?.confidence||0)}
+    onProgress?.(15,'高精度OCR 1/2：表レイアウトを解析しています…')
+    await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1',user_defined_dpi:'300'})
+    const first=await worker.recognize(canvas)
+    const firstText=String(first?.data?.text||'')
+    const firstConfidence=Number(first?.data?.confidence||0)
+
+    const binary=cloneCanvas(canvas)
+    binarizeCanvas(binary)
+    onProgress?.(58,'高精度OCR 2/2：文字領域を再解析しています…')
+    await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1',user_defined_dpi:'300'})
+    const second=await worker.recognize(binary)
+    const secondText=String(second?.data?.text||'')
+    const secondConfidence=Number(second?.data?.confidence||0)
+
+    const firstScore=recognitionScore(firstText,firstConfidence,kind)
+    const secondScore=recognitionScore(secondText,secondConfidence,kind)
+    return secondScore>firstScore
+      ?{text:secondText,confidence:secondConfidence}
+      :{text:firstText,confidence:firstConfidence}
   }finally{await worker.terminate()}
 }
 
-async function recognizeImage(file:File,onProgress?:ProgressCallback){
+async function recognizeImage(file:File,kind:DocumentOcrKind,onProgress?:ProgressCallback){
   onProgress?.(5,'画像を準備しています…')
   const canvas=await imageFileToCanvas(file)
   onProgress?.(12,'OCRエンジンを準備しています…')
-  return recognizeCanvas(canvas,onProgress)
+  return recognizeCanvasBest(canvas,kind,onProgress)
 }
 
-async function recognizePdf(file:File,onProgress?:ProgressCallback){
+async function recognizePdf(file:File,kind:DocumentOcrKind,onProgress?:ProgressCallback){
   onProgress?.(3,'PDFを読み込んでいます…')
   const pdfjs:any=await import(/* @vite-ignore */ PDFJS_URL)
   pdfjs.GlobalWorkerOptions.workerSrc=PDF_WORKER_URL
@@ -594,8 +660,10 @@ async function recognizePdf(file:File,onProgress?:ProgressCallback){
     digitalParts.push(textContentToStructuredText(textContent.items||[]))
   }
   const digital=normalizeText(digitalParts.join('\n'))
-  if(digital.replace(/\s/g,'').length>=80){
-    onProgress?.(100,'PDFの文字データを読み取りました。')
+  const digitalParsed=digital?parseResult(digital,kind,99,'PDF_TEXT'):null
+  const digitalUseful=digital.replace(/\s/g,'').length>=55&&!!digitalParsed&&(kind!=='VENDOR_INVOICE'||digitalParsed.totalYen>0&&(digitalParsed.items.length>0||digitalParsed.subtotalYen>0))
+  if(digitalUseful){
+    onProgress?.(100,'PDFの文字・表構造を直接解析しました。')
     return{text:digital,confidence:99,engine:'PDF_TEXT' as const}
   }
 
@@ -617,9 +685,18 @@ async function recognizePdf(file:File,onProgress?:ProgressCallback){
       ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height)
       await page.render({canvasContext:ctx,viewport:finalViewport}).promise
       enhanceCanvasForOcr(canvas)
-      const result=await worker.recognize(canvas)
-      parts.push(String(result?.data?.text||''))
-      confidences.push(Number(result?.data?.confidence||0))
+      await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1',user_defined_dpi:'300'})
+      const first=await worker.recognize(canvas)
+      const binary=cloneCanvas(canvas);binarizeCanvas(binary)
+      await worker.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1',user_defined_dpi:'300'})
+      const second=await worker.recognize(binary)
+      const firstText=String(first?.data?.text||''),secondText=String(second?.data?.text||'')
+      const firstConfidence=Number(first?.data?.confidence||0),secondConfidence=Number(second?.data?.confidence||0)
+      if(recognitionScore(secondText,secondConfidence,kind)>recognitionScore(firstText,firstConfidence,kind)){
+        parts.push(secondText);confidences.push(secondConfidence)
+      }else{
+        parts.push(firstText);confidences.push(firstConfidence)
+      }
     }
   }finally{await worker.terminate()}
   if(Number(pdf.numPages)>MAX_PDF_PAGES)onProgress?.(97,`先頭${MAX_PDF_PAGES}ページをOCRしました。`)
@@ -635,7 +712,7 @@ export async function recognizeDocument(file:File,kind:DocumentOcrKind,onProgres
   if(file.size<=0)throw new Error('空のファイルは読み取れません。')
   if(file.size>25*1024*1024)throw new Error('OCR対象は1ファイル25MBまでです。')
   const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name)
-  const recognized=isPdf?await recognizePdf(file,onProgress):await recognizeImage(file,onProgress)
+  const recognized=isPdf?await recognizePdf(file,kind,onProgress):await recognizeImage(file,kind,onProgress)
   if(!recognized.text.trim())throw new Error('文字を読み取れませんでした。画像の向き・明るさ・解像度をご確認ください。')
   onProgress?.(100,'OCR完了')
   const engine='engine'in recognized&&recognized.engine==='PDF_TEXT'?'PDF_TEXT':'OCR'
