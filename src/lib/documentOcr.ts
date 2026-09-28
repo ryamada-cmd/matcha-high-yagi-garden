@@ -26,8 +26,16 @@ const MAX_IMAGE_DIMENSION=3200
 
 type ProgressCallback=(progress:number,message:string)=>void
 
-const normalizeLine=(value:string)=>value.normalize('NFKC').replace(/[\t ]+/g,' ').trim()
-const normalizeText=(value:string)=>value.normalize('NFKC').replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim()
+const circledMarks=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳']
+function normalizeNfkcPreservingMarks(value:string){
+  let text=value
+  circledMarks.forEach((mark,index)=>{text=text.replaceAll(mark,String.fromCharCode(0xE000+index))})
+  text=text.normalize('NFKC')
+  circledMarks.forEach((mark,index)=>{text=text.replaceAll(String.fromCharCode(0xE000+index),mark)})
+  return text
+}
+const normalizeLine=(value:string)=>normalizeNfkcPreservingMarks(value).replace(/[\t ]+/g,' ').trim()
+const normalizeText=(value:string)=>normalizeNfkcPreservingMarks(value).replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim()
 
 function toIsoDate(year:number,month:number,day:number){
   if(year<100)year+=year>=70?1900:2000
