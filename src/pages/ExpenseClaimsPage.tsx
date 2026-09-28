@@ -3,7 +3,8 @@ import { Camera, Check, Download, Edit3, ExternalLink, FileImage, Paperclip, Plu
 import { useAppPermissions } from '../lib/permissions'
 import { loadExpenseClaims, loadExpenseUser, reviewExpenseClaim, saveExpenseClaim, type ExpenseClaim, type ExpenseUser } from '../lib/expenseClaims'
 import { loadExpenseReceiptMap, uploadExpenseReceipt, type ExpenseReceipt, type ExpenseReceiptMap } from '../lib/expenseReceipts'
-import { recognizeDocument, type DocumentOcrResult } from '../lib/documentOcr'
+import type { DocumentOcrResult } from '../lib/documentOcr'
+import { recognizeDocumentSmart } from '../lib/aiOcr'
 
 const yen=new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0})
 const num=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:3})
@@ -66,7 +67,7 @@ export default function ExpenseClaimsPage(){
     const key=`${file.name}-${file.size}-${index}`
     setOcrBusyKey(key);setOcrResult(null);setOcrProgress('OCRを準備しています…');setError('');setSuccess('')
     try{
-      const result=await recognizeDocument(file,'EXPENSE_RECEIPT',(progress,message)=>setOcrProgress(`${message} ${progress}%`))
+      const result=await recognizeDocumentSmart(file,'EXPENSE_RECEIPT',(progress,message)=>setOcrProgress(message+' '+progress+'%'))
       setOcrResult(result);setOcrProgress('')
       if(result.warnings.length)setSuccess(`OCR完了。候補値を確認してください。 ${result.warnings.join(' ')}`)
       else setSuccess('OCRが完了しました。候補値を確認して入力欄へ反映してください。')
@@ -156,7 +157,7 @@ export default function ExpenseClaimsPage(){
         {receiptFiles.length>0?<div className="expense-receipt-selected">{receiptFiles.map((f,index)=>{const key=`${f.name}-${f.size}-${index}`;return <div key={`${f.name}-${f.size}-${f.lastModified}-${index}`} className="expense-receipt-chip"><FileImage size={15}/><span>{f.name}</span><small>{fileSize(f.size)}</small><button className="expense-ocr-button" type="button" disabled={!!ocrBusyKey} onClick={()=>void runReceiptOcr(f,index)}><Search size={14}/>{ocrBusyKey===key?'読取中':'OCR読取'}</button><button type="button" onClick={()=>setReceiptFiles(v=>v.filter((_,i)=>i!==index))} aria-label="選択解除"><X size={15}/></button></div>})}</div>:<p className="expense-receipt-help">iPhoneでは「写真を撮る」でカメラを直接起動できます。既存の写真やPDFは「写真/PDFを選ぶ」から追加してください。</p>}
       </section>
 
-      {(ocrProgress||ocrResult)&&<section className="document-ocr-panel"><div className="document-ocr-head"><div><Search size={18}/><div><b>OCR読取結果</b><span>{ocrProgress||`信頼度の目安 ${ocrResult?.confidence??0}%`}</span></div></div>{ocrResult&&<button type="button" className="primary-button compact" onClick={applyReceiptOcr}>入力欄へ反映</button>}</div>{ocrResult&&<><div className="document-ocr-fields"><div><span>購入先候補</span><b>{ocrResult.vendor||'—'}</b></div><div><span>日付候補</span><b>{ocrResult.date||'—'}</b></div><div><span>合計金額候補</span><b>{ocrResult.totalYen?yen.format(ocrResult.totalYen):'—'}</b></div></div><details><summary>読み取った文字を確認</summary><pre>{ocrResult.rawText}</pre></details></>}</section>}
+      {(ocrProgress||ocrResult)&&<section className="document-ocr-panel"><div className="document-ocr-head"><div><Search size={18}/><div><b>{ocrResult?.engine==='AI'?'AI帳票解析結果':'OCR読取結果'}</b><span>{ocrProgress||(ocrResult?.engine==='AI'?'AI解析 / '+(ocrResult?.model||'OpenAI'):'信頼度の目安 '+(ocrResult?.confidence??0)+'%')}</span></div></div>{ocrResult&&<button type="button" className="primary-button compact" onClick={applyReceiptOcr}>入力欄へ反映</button>}</div>{ocrResult&&<><div className="document-ocr-fields"><div><span>購入先候補</span><b>{ocrResult.vendor||'—'}</b></div><div><span>日付候補</span><b>{ocrResult.date||'—'}</b></div><div><span>合計金額候補</span><b>{ocrResult.totalYen?yen.format(ocrResult.totalYen):'—'}</b></div></div>{ocrResult.rawText&&<details><summary>読み取った文字を確認</summary><pre>{ocrResult.rawText}</pre></details>}</>}</section>}
 
       <label className="full-label">備考<textarea rows={3} value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="精算に必要な補足があれば入力"/></label>
       <div className="expense-submit-row"><div><span>申請合計</span><strong>{yen.format(formTotal)}</strong></div><div>{form.id&&<button type="button" className="secondary-button" onClick={()=>resetForm()}><RotateCcw size={16}/>修正をやめる</button>}<button className="primary-button" disabled={busy||formTotal<0}><Upload size={16}/>{busy?'申請・保存中…':form.id?'領収書と一緒に再申請':'領収書と一緒に申請'}</button></div></div>
