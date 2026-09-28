@@ -16,6 +16,8 @@ export type DocumentOcrResult={
   suggestedCategory:string
   items:DocumentOcrItem[]
   warnings:string[]
+  engine?:'AI'|'OCR'
+  model?:string
 }
 
 const TESSERACT_URL='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.esm.min.js'
@@ -312,6 +314,7 @@ function parseResult(text:string,kind:DocumentOcrKind,confidence:number):Documen
     suggestedCategory,
     items,
     warnings,
+    engine:'OCR',
   }
 }
 
