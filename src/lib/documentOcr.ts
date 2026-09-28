@@ -215,7 +215,7 @@ function cleanVendorLine(line:string){
 }
 
 function findVendor(text:string){
-  const lines=text.split('\n').map(normalizeLine).filter(Boolean).slice(0,32)
+  const lines=text.split('\n').map(normalizeLine).filter(Boolean).filter(line=>!line.startsWith('[[')).slice(0,40)
   for(const line of lines){
     const m=line.match(/^(?:発行元|請求元|販売元|vendor|from)\s*[:：]?\s*(.+)$/i)
     if(m&&m[1].trim())return cleanVendorLine(m[1])
@@ -301,7 +301,7 @@ function extractHintItems(text:string):DocumentOcrItem[]{
   const out:DocumentOcrItem[]=[]
   for(const line of text.split('\n')){
     if(!line.startsWith(ITEM_PREFIX))continue
-    const fields=line.slice(ITEM_PREFIX.length).replace(/^\t/,'').split('\t')
+    const fields=line.slice(ITEM_PREFIX.length).replace(/^\|\^\|/,'').split('|^|')
     if(fields.length<8)continue
     const rawDescription=fields[2],rawCapacity=fields[3],rawQty=fields[4],rawUnit=fields[5],rawUnitPrice=fields[6],rawAmount=fields[7]
     const description=cleanItemDescription([rawDescription,rawCapacity].map(normalizeLine).filter(Boolean).join(' / '))
@@ -505,7 +505,7 @@ function itemHintsFromLayout(lines:LayoutLine[]){
       if(q===null||u===null||a===null||q<=0||u<=0||a<=0)continue
       if(Math.abs(q*u-a)>Math.max(2,a*.012))continue
       if(/合計|小計|税|請求|振込|振込み|入金|相殺/i.test(description))continue
-      hints.push([ITEM_PREFIX,date,slip,description,capacity,quantity,unit,unitPrice,amount].join('\t'))
+      hints.push([ITEM_PREFIX,date,slip,description,capacity,quantity,unit,unitPrice,amount].join('|^|'))
     }
     if(hints.length)return hints
   }
