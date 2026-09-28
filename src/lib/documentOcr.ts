@@ -114,7 +114,7 @@ function findTotal(text:string){
   const total=findLabeledAmount(text,['今回請求金額','ご請求金額','請求金額','請求額','領収金額','お支払金額','合計金額','税込合計','総合計','grand total','amount due','合計','total'])
   if(total)return total
   const lines=text.split('\n').map(normalizeLine).filter(Boolean)
-  const likely=lines.filter(line=>/[￥¥円]|\bJPY\b|\d[,，]\d{3}/i.test(line)&&!/前回繰越|入金額|繰越残高/i.test(line))
+  const likely=lines.filter(line=>(/[￥¥円]|\bJPY\b|\d[,，]\d{3}/i.test(line))&&!/前回繰越|入金額|繰越残高/i.test(line))
   const values=likely.flatMap(amountsFromLine).filter(v=>v>=10)
   return values.length?Math.max(...values):0
 }
@@ -139,7 +139,13 @@ function findVendor(text:string){
   }
   const company=/株式会社|有限会社|合同会社|合資会社|合名会社|一般社団法人|農業協同組合|\bJA\b|商店|商会|農園|茶園|製茶|ストア|スーパー|薬局|ホームセンター|センター|company|corporation|corp\.?|co\.,?\s*ltd\.?|llc|inc\.?/i
   const excluded=/領収書|請求書|invoice|receipt|納品書|明細|合計|〒|tel|fax|登録番号|銀行口座|普通預金|当座預金|名義人|請求期間|no\.?\s*[:：]?\s*\d/i
-  const candidates=lines.map((line,index)=>{
+  const variants=lines.flatMap((line,index)=>{
+    const parts=line.split(' ').filter(Boolean)
+    const local=[line,...parts]
+    for(let i=0;i<parts.length-1;i++)local.push(parts[i]+' '+parts[i+1])
+    return [...new Set(local)].map(value=>({line:value,index}))
+  })
+  const candidates=variants.map(({line,index})=>{
     let score=0
     if(company.test(line))score+=5
     if(/御中|様\s*$/.test(line))score-=8
@@ -147,6 +153,7 @@ function findVendor(text:string){
     if(/^\d[\d\s/.-]+$/.test(line)||/^[￥¥\d,.円 ]+$/.test(line))score-=5
     if(index<18)score+=1
     if(line.length>=3&&line.length<=80)score+=1
+    if(line.split(' ').length===1&&company.test(line))score+=2
     return{line,score}
   }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score)
   if(candidates.length)return cleanVendorLine(candidates[0].line)
