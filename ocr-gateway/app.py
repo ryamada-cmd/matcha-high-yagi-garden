@@ -8,12 +8,14 @@ import time
 from typing import Any, Literal
 
 import cv2
-import fitz
+import pymupdf
 import numpy as np
 import requests
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from PIL import Image, ImageOps
+
+from invoice_parser import parse_invoice_dococr
 
 try:
     from pillow_heif import register_heif_opener
@@ -81,7 +83,7 @@ def _load_pages(data: bytes, filename: str, content_type: str | None) -> list[Im
     is_pdf = content_type == "application/pdf" or filename.lower().endswith(".pdf")
     if is_pdf:
         try:
-            doc = fitz.open(stream=data, filetype="pdf")
+            doc = pymupdf.open(stream=data, filetype="pdf")
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"PDFを開けませんでした: {exc}") from exc
 
@@ -171,13 +173,18 @@ def _ocr_pages(
     combined = "\n\n".join(
         f"--- PAGE {item['page']} ---\n{item['text']}".strip() for item in results
     ).strip()
-    return {
+    payload = {
         "endpoint": endpoint,
         "preprocessing": preprocessing,
         "pages": results,
         "combined_text": combined,
         "elapsed_ms": round((time.perf_counter() - started) * 1000),
     }
+
+    if endpoint == "docOCR":
+        payload["structured_invoice"] = parse_invoice_dococr(combined)
+
+    return payload
 
 
 @app.get("/")
@@ -233,6 +240,49 @@ async def ocr(
         "sha256": hashlib.sha256(data).hexdigest(),
         "page_count": len(pages),
         **result,
+    }
+
+
+@app.post("/invoice", dependencies=[Depends(require_api_key)])
+async def invoice(file: UploadFile = File(...)) -> dict[str, Any]:
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="空のファイルです")
+    if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"最大{MAX_UPLOAD_MB}MBまでです")
+
+    pages = _load_pages(data, file.filename or "document", file.content_type)
+
+    doc_error: Any = None
+    try:
+        result = _ocr_pages(pages, "docOCR", "original")
+        result["success"] = True
+        result["selected_engine"] = "IOS_DOCOCR"
+        return {
+            "success": True,
+            "filename": file.filename,
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "page_count": len(pages),
+            **result,
+        }
+    except HTTPException as exc:
+        doc_error = exc.detail
+
+    # Keep a deterministic fallback for iPhones/OS versions where docOCR is unavailable.
+    fallback = _ocr_pages(pages, "upload", "original")
+    fallback["success"] = True
+    fallback["selected_engine"] = "IOS_UPLOAD"
+    fallback["structured_invoice"] = parse_invoice_dococr(
+        fallback.get("combined_text", "")
+    )
+    fallback["fallback_reason"] = doc_error
+
+    return {
+        "success": True,
+        "filename": file.filename,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "page_count": len(pages),
+        **fallback,
     }
 
 
