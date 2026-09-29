@@ -857,7 +857,7 @@ export async function recognizeDocument(file:File,kind:DocumentOcrKind,onProgres
   if(!recognized.text.trim())throw new Error('文字を読み取れませんでした。画像の向き・明るさ・解像度をご確認ください。')
   onProgress?.(100,'OCR完了')
   if('engine'in recognized&&recognized.engine==='IOS_DOCOCR'){
-    const result=iosInvoiceResult(recognized)
+    const result=iosInvoiceResult(recognized as IosRecognized)
     onProgress?.(100,'Apple Vision OCR完了')
     return result
   }
