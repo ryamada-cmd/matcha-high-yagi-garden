@@ -272,9 +272,8 @@ async def invoice(file: UploadFile = File(...)) -> dict[str, Any]:
     fallback = _ocr_pages(pages, "upload", "original")
     fallback["success"] = True
     fallback["selected_engine"] = "IOS_UPLOAD"
-    fallback["structured_invoice"] = parse_invoice_dococr(
-        fallback.get("combined_text", "")
-    )
+    fallback["structured_invoice"] = None
+    fallback["requires_existing_parser"] = True
     fallback["fallback_reason"] = doc_error
 
     return {
