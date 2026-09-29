@@ -22,8 +22,8 @@ export type DocumentOcrResult={
 }
 
 const TESSERACT_URL='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.esm.min.js'
-const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.mjs'
-const PDF_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.worker.min.mjs'
+const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legacy/build/pdf.min.mjs'
+const PDF_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legacy/build/pdf.worker.min.mjs'
 const MAX_PDF_PAGES=5
 const MAX_IMAGE_DIMENSION=3400
 const MAX_IOS_PROXY_BYTES=Math.floor(3.75*1024*1024)
@@ -794,17 +794,37 @@ async function recognizeImage(file:File,kind:DocumentOcrKind,onProgress?:Progres
 
 async function recognizePdf(file:File,kind:DocumentOcrKind,onProgress?:ProgressCallback){
   onProgress?.(3,'PDFを読み込んでいます…')
-  const pdfjs:any=await import(/* @vite-ignore */ PDFJS_URL)
-  pdfjs.GlobalWorkerOptions.workerSrc=PDF_WORKER_URL
-  const pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise
+  let pdf:any
+  try{
+    const pdfjs:any=await import(/* @vite-ignore */ PDFJS_URL)
+    pdfjs.GlobalWorkerOptions.workerSrc=PDF_WORKER_URL
+    const bytes=typeof file.arrayBuffer==='function'
+      ?await file.arrayBuffer()
+      :await new Response(file).arrayBuffer()
+    pdf=await pdfjs.getDocument({data:new Uint8Array(bytes)}).promise
+  }catch(error){
+    if(kind==='VENDOR_INVOICE'){
+      onProgress?.(7,'この端末ではPDF直接解析を利用できないため、Apple Visionへ切り替えています…')
+      const ios=await tryIosInvoiceOcr(file,onProgress)
+      if(ios)return ios
+    }
+    const detail=error instanceof Error&&error.message?' ('+error.message+')':''
+    throw new Error('この端末ではPDFを直接解析できませんでした。画像として保存して再度お試しください。'+detail)
+  }
+
   const pageCount=Math.min(Number(pdf.numPages||0),MAX_PDF_PAGES)
   if(pageCount<1)throw new Error('PDFに読み取り可能なページがありません。')
 
   const digitalParts:string[]=[]
-  for(let i=1;i<=pageCount;i++){
-    const page=await pdf.getPage(i)
-    const textContent=await page.getTextContent()
-    digitalParts.push(textContentToStructuredText(textContent.items||[]))
+  try{
+    for(let i=1;i<=pageCount;i++){
+      const page=await pdf.getPage(i)
+      const textContent=await page.getTextContent()
+      digitalParts.push(textContentToStructuredText(textContent.items||[]))
+    }
+  }catch{
+    digitalParts.length=0
+    onProgress?.(6,'PDF内の文字構造を取得できないため、画像OCRへ切り替えています…')
   }
   const digital=normalizeText(digitalParts.join('\n'))
   const digitalParsed=digital?parseResult(digital,kind,99,'PDF_TEXT'):null
