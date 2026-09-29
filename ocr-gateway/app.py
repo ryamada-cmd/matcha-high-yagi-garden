@@ -182,7 +182,15 @@ def _ocr_pages(
     }
 
     if endpoint == "docOCR":
-        payload["structured_invoice"] = parse_invoice_dococr(combined)
+        try:
+            payload["structured_invoice"] = parse_invoice_dococr(combined)
+            payload["parser_error"] = None
+        except Exception as exc:
+            payload["structured_invoice"] = None
+            payload["parser_error"] = {
+                "type": type(exc).__name__,
+                "message": str(exc),
+            }
 
     return payload
 
