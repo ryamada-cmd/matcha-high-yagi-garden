@@ -376,6 +376,35 @@ def _suggest_category(description: str, document_text: str = "") -> str:
     return "OTHER"
 
 
+def _normalize_domain_description(description: str, document_text: str = "") -> tuple[str, list[str]]:
+    text = normalize_text(description).strip()
+    corrections: list[str] = []
+    tea_context = bool(
+        re.search(
+            r"茶園|製茶|碾茶|てん茶|抹茶|玉露|煎茶|ほうじ茶|番茶|生葉|荒茶|仕上茶",
+            document_text,
+        )
+    )
+    if tea_context:
+        replacements = {
+            "生菜": "生葉",
+            "碾荼": "碾茶",
+            "てん荼": "てん茶",
+            "抹荼": "抹茶",
+            "荒荼": "荒茶",
+            "加工貸": "加工賃",
+            "加工貨": "加工賃",
+            "荷造科": "荷造料",
+            "仕上荼": "仕上茶",
+        }
+        for source, target in replacements.items():
+            if source in text:
+                text = text.replace(source, target)
+                corrections.append(f"domain_term:{source}->{target}")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text, corrections
+
+
 def _find_vendor(text: str) -> str:
     lines = [
         normalize_text(raw_line.strip())
@@ -547,7 +576,7 @@ def _parse_plain_items(normalized: str) -> list[dict[str, Any]]:
 
     items: list[dict[str, Any]] = []
     quantity_pattern = re.compile(
-        r"^(\d[\d,，]*(?:\.\d+)?)\s*(kg|KG|㎏|g|G|ml|mL|ML|l|L|本|袋|個|箱|式)$"
+        r"^(\d[\d,，]*(?:\.\d+)?)\s*(kg|KG|㎏|g|G|ml|mL|ML|l|L|本|袋|個|箱|式|枚|缶|ケース|反|俵|束|台|回|件)$"
     )
 
     for index, line in enumerate(lines):
@@ -588,8 +617,10 @@ def _parse_plain_items(normalized: str) -> list[dict[str, Any]]:
         if not description_parts:
             continue
         description = " ".join(description_parts)
-        if "碾茶" in normalized or "茶園" in normalized:
-            description = description.replace("生菜", "生葉")
+        description, domain_corrections = _normalize_domain_description(
+            description,
+            normalized,
+        )
 
         items.append(
             {
@@ -600,7 +631,7 @@ def _parse_plain_items(normalized: str) -> list[dict[str, Any]]:
                 "unit_price_yen": unit_price,
                 "line_total_yen": line_total,
                 "suggested_category": _suggest_category(description, normalized),
-                "corrections": [],
+                "corrections": domain_corrections,
                 "needs_review": False,
             }
         )
@@ -653,6 +684,11 @@ def _item_from_row(
 
     if not description:
         return None
+
+    description, domain_corrections = _normalize_domain_description(
+        description,
+        document_text,
+    )
 
     if re.search(
         r"振込|振込み|伝票消費税|小計|消費税|合計|値引き|請求金額",
@@ -713,7 +749,7 @@ def _item_from_row(
         "unit_price_yen": unit_price,
         "line_total_yen": line_total,
         "suggested_category": _suggest_category(description, document_text),
-        "corrections": [],
+        "corrections": domain_corrections,
         "needs_review": False,
     }
 
