@@ -195,7 +195,7 @@ def _ocr_pages(
     return payload
 
 
-@app.get("/")
+@app.get("/", dependencies=[Depends(require_api_key)])
 def root() -> dict[str, Any]:
     return {
         "service": "Yagi Garden OCR Gateway",
@@ -205,7 +205,7 @@ def root() -> dict[str, Any]:
     }
 
 
-@app.get("/health")
+@app.get("/health", dependencies=[Depends(require_api_key)])
 def health() -> dict[str, Any]:
     iphone_reachable = False
     iphone_status: int | None = None
