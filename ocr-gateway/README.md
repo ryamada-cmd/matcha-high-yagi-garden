@@ -119,3 +119,33 @@ file=<image-or-pdf>
 6. Apple Vision失敗時は既存ブラウザOCRへフォールバック
 
 この順番なら、現在のOCRを壊さず段階的に切り替えられます。
+
+
+## Structured invoice parser
+
+The Gateway now parses `docOCR` markdown tables into deterministic invoice JSON.
+
+It validates and, only when mathematically unique, repairs:
+
+- missing quantity from `line total / unit price`
+- one OCR-corrupted line amount from the invoice subtotal
+- one OCR-corrupted unit price using a near-identical item/capacity on the same invoice
+- `subtotal + tax = total`
+- sum of line totals = subtotal
+
+If a value cannot be determined uniquely, it is not silently changed; the item is marked `needs_review: true`.
+
+The `/invoice` endpoint uses `docOCR` first. If `docOCR` is unavailable it falls back to plain `/upload`, but deliberately does not fabricate structured invoice data; the existing Garden Manager parser can be used as the next fallback.
+
+Regression tests cover the August and September Riverside invoices used during evaluation.
+
+Run locally:
+
+```powershell
+cd C:\Users\M\Desktop\matcha-high-yagi-garden
+git pull origin feature/ios-ocr-gateway
+cd ocr-gateway
+.\.venv\Scripts\python.exe -m unittest discover -s tests
+```
+
+Then restart `start_gateway.bat` and rerun `test_invoice.py`. The `docOCR / original` section will now include a `STRUCTURED INVOICE` JSON block.
