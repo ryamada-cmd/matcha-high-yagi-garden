@@ -55,6 +55,9 @@ type IosStructuredInvoice={
   discount_yen?:number|null
   total_yen?:number|null
   confidence_score?:number|null
+  parser_version?:string
+  derived_fields?:string[]
+  quality_flags?:string[]
   items?:IosStructuredItem[]
   warnings?:string[]
   is_consistent?:boolean
@@ -64,7 +67,7 @@ type IosRecognized={
   confidence:number
   engine:'IOS_DOCOCR'
   structured:IosStructuredInvoice
-  model:'Apple Vision / docOCR'
+  model:string
 }
 
 function slashDateToIso(value:string|undefined){
@@ -114,7 +117,9 @@ async function tryIosInvoiceOcr(file:File,onProgress?:ProgressCallback,strict=fa
       confidence:Number.isFinite(parserScore)?Math.max(0,Math.min(100,Math.round(parserScore))):(structured.is_consistent?98:86),
       engine:'IOS_DOCOCR',
       structured,
-      model:'Apple Vision / docOCR',
+      model:payload?.preprocessing==='enhanced'
+        ?'Apple Vision / docOCR（画像補正）'
+        :'Apple Vision / docOCR',
     }
   }catch(error){
     if(strict)throw error instanceof Error?error:new Error('Apple Vision OCRでエラーが発生しました。')
@@ -150,7 +155,9 @@ function iosInvoiceResult(recognized:IosRecognized):DocumentOcrResult{
   const warnings=[...converted.warnings]
   const corrections=(structured.items||[]).flatMap(item=>item.corrections||[])
   if(corrections.length)warnings.push('Apple Visionの読取値に計算上の不整合があったため、数量または金額を請求書の合計と照合して自動補正しました。原本もご確認ください。')
+  if((structured.derived_fields||[]).length)warnings.push('請求書内の数値関係から、小計・税額・合計の一部を自動補完しました。原本と照合してください。')
   if((structured.warnings||[]).length||structured.is_consistent===false)warnings.push('Apple Visionの構造化結果に要確認項目があります。原本と照合してください。')
+  if(recognized.confidence<70)warnings.push('この請求書は未知レイアウトの可能性があります。OCR整合度が低いため、入力前に原本をご確認ください。')
   if(discountYen>0)warnings.push('値引き'+discountYen.toLocaleString('ja-JP')+'円を検出しました。現在の請求明細入力には値引き専用欄がないため、登録前に請求合計と明細合計を確認してください。')
   if(!structured.vendor?.trim())warnings.push('請求元を特定できませんでした。')
   if(!converted.items.length)warnings.push('商品明細を特定できませんでした。原本の明細をご確認ください。')
