@@ -398,7 +398,16 @@ function findDocumentNo(text:string){
     /(?:請求書番号|請求番号|請求書\s*no\.?|invoice\s*(?:no|number)|document\s*no)\s*[:：#]?\s*([A-Z0-9][A-Z0-9_./\-]{2,})/i,
     /(?:invoice\s*#)\s*([A-Z0-9][A-Z0-9_./\-]{2,})/i,
   ]
-  for(const line of lines)for(const pattern of patterns){const m=line.match(pattern);if(m)return m[1].trim()}
+  for(let i=0;i<lines.length;i++){
+    for(const pattern of patterns){const m=lines[i].match(pattern);if(m)return m[1].trim()}
+    if(/^(?:請求書番号|請求番号|請求書\s*no\.?|invoice\s*(?:no|number)|document\s*no)\s*[:：#]?$/i.test(lines[i])){
+      for(let j=i+1;j<Math.min(lines.length,i+3);j++){
+        const value=lines[j].trim()
+        if(/^[A-Z0-9][A-Z0-9_./\-]{2,}$/i.test(value))return value
+        if(/請求|登録番号|発行日|住所|電話/i.test(value))break
+      }
+    }
+  }
   return''
 }
 

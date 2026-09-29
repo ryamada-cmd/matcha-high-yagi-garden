@@ -127,6 +127,116 @@ JA_PROCESSING = r"""
 """
 
 
+JA_PROCESSING_ACTUAL_DOCOCR = r"""
+--- PAGE 1 ---
+請求書
+
+発行日
+
+2026年7月28日
+
+請求番号
+
+0000121
+
+八木茶園御中
+
+登録番号
+
+T8130005008786
+
+京都やましろ農業協同組合
+
+京田辺支店 支店長 湖川 普香
+
+下記の通り、ご請求申し上げます。
+
+〒610-0331
+
+ご請求金額(税込)
+
+住所:京都府京田辺市田辺県本1-2
+
+·1,061,841
+
+電話:0774-82-1177
+
+扳込先
+
+京都銀行 田辺支店普通預金5563
+
+京都やましろ農素協同組合 京田辺支店
+
+支店長 湖川 善香
+
+振込手数料は物社のご負担にてお願いいたします。
+
+日付
+
+内容
+
+狂澉税率
+
+敥並
+
+中位半価
+
+税率
+
+金額
+
+田辺碾茶工場 加工料
+
+加工料
+
+生菜
+
+2,299 kg
+
+400
+
+10%
+
+919,600
+
+梱包荷造料 仕上茶
+
+457.1 kg
+
+100
+
+10%
+
+45,710
+
+※は軽減税率対象です。
+
+小計
+
+965,310
+
+税率区分 消登税
+
+金額(税抜)
+
+消費税10%
+
+96,531
+
+10%対象
+
+96,531
+
+965,310|
+
+合計
+
+8%刘象
+
+儰考
+"""
+
+
 class InvoiceParserTests(unittest.TestCase):
     def test_august_invoice(self) -> None:
         parsed = parse_invoice_dococr(AUGUST)
@@ -199,6 +309,35 @@ class InvoiceParserTests(unittest.TestCase):
         self.assertEqual(parsed["subtotal_yen"], 965310)
         self.assertEqual(parsed["tax_yen"], 96531)
         self.assertEqual(parsed["discount_yen"], 0)
+        self.assertEqual(parsed["total_yen"], 1061841)
+        self.assertEqual(len(parsed["items"]), 2)
+        self.assertEqual(
+            [item["description"] for item in parsed["items"]],
+            ["加工料 生葉", "梱包荷造料 仕上茶"],
+        )
+        self.assertEqual(
+            [item["quantity"] for item in parsed["items"]],
+            [2299, 457.1],
+        )
+        self.assertEqual(
+            [item["unit_price_yen"] for item in parsed["items"]],
+            [400, 100],
+        )
+        self.assertEqual(
+            [item["line_total_yen"] for item in parsed["items"]],
+            [919600, 45710],
+        )
+        self.assertEqual(parsed["warnings"], [])
+        self.assertEqual(parsed["confidence_score"], 98)
+
+
+    def test_actual_ja_dococr_plain_vertical_layout(self) -> None:
+        parsed = parse_invoice_dococr(JA_PROCESSING_ACTUAL_DOCOCR)
+
+        self.assertEqual(parsed["vendor"], "京都やましろ農業協同組合")
+        self.assertEqual(parsed["suggested_invoice_date"], "2026/7/28")
+        self.assertEqual(parsed["subtotal_yen"], 965310)
+        self.assertEqual(parsed["tax_yen"], 96531)
         self.assertEqual(parsed["total_yen"], 1061841)
         self.assertEqual(len(parsed["items"]), 2)
         self.assertEqual(
