@@ -52,7 +52,9 @@ type IosStructuredInvoice={
   suggested_invoice_date?:string
   subtotal_yen?:number|null
   tax_yen?:number|null
+  discount_yen?:number|null
   total_yen?:number|null
+  confidence_score?:number|null
   items?:IosStructuredItem[]
   warnings?:string[]
   is_consistent?:boolean
@@ -105,11 +107,13 @@ async function tryIosInvoiceOcr(file:File,onProgress?:ProgressCallback,strict=fa
       return fail('iPhoneのApple Vision docOCRを利用できませんでした。iPhone OCR ServerとWindows Gatewayの起動状態をご確認ください。')
     }
 
+    const structured=payload.structured_invoice as IosStructuredInvoice
+    const parserScore=Number(structured.confidence_score)
     return{
       text:String(payload.combined_text||''),
-      confidence:payload.structured_invoice.is_consistent?98:86,
+      confidence:Number.isFinite(parserScore)?Math.max(0,Math.min(100,Math.round(parserScore))):(structured.is_consistent?98:86),
       engine:'IOS_DOCOCR',
-      structured:payload.structured_invoice as IosStructuredInvoice,
+      structured,
       model:'Apple Vision / docOCR',
     }
   }catch(error){
@@ -124,6 +128,7 @@ function iosInvoiceResult(recognized:IosRecognized):DocumentOcrResult{
   const subtotalYen=Math.max(0,Number(structured.subtotal_yen||0))
   const taxYen=Math.max(0,Number(structured.tax_yen||0))
   const totalYen=Math.max(0,Number(structured.total_yen||0))
+  const discountYen=Math.max(0,Number(structured.discount_yen||0))
 
   const rawItems:DocumentOcrItem[]=(structured.items||[]).flatMap(item=>{
     const quantity=Number(item.quantity||0)
@@ -146,6 +151,7 @@ function iosInvoiceResult(recognized:IosRecognized):DocumentOcrResult{
   const corrections=(structured.items||[]).flatMap(item=>item.corrections||[])
   if(corrections.length)warnings.push('Apple Visionの読取値に計算上の不整合があったため、数量または金額を請求書の合計と照合して自動補正しました。原本もご確認ください。')
   if((structured.warnings||[]).length||structured.is_consistent===false)warnings.push('Apple Visionの構造化結果に要確認項目があります。原本と照合してください。')
+  if(discountYen>0)warnings.push('値引き'+discountYen.toLocaleString('ja-JP')+'円を検出しました。現在の請求明細入力には値引き専用欄がないため、登録前に請求合計と明細合計を確認してください。')
   if(!structured.vendor?.trim())warnings.push('請求元を特定できませんでした。')
   if(!converted.items.length)warnings.push('商品明細を特定できませんでした。原本の明細をご確認ください。')
   if(!totalYen)warnings.push('合計金額を特定できませんでした。')
