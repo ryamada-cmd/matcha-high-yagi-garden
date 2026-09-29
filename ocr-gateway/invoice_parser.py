@@ -265,8 +265,20 @@ def _parse_summary(
                 summary[key] = values[-1]
                 continue
 
+            # Do not overwrite a value already recovered from a table with a
+            # weaker "next line" guess. Vertical summaries often place several
+            # labels before the numeric block.
+            if summary[key] is not None:
+                continue
+
             for next_index in range(line_index + 1, min(len(plain_lines), line_index + 3)):
-                next_values = _money_values(plain_lines[next_index])
+                next_line = plain_lines[next_index]
+                if any(
+                    _alias_in(next_line, other_aliases)
+                    for other_aliases in _SUMMARY_ALIASES.values()
+                ):
+                    break
+                next_values = _money_values(next_line)
                 if next_values:
                     summary[key] = next_values[-1]
                     break
@@ -488,6 +500,15 @@ def _item_from_row(
     indexes: dict[str, int | None],
     document_text: str,
 ) -> dict[str, Any] | None:
+    row_text = " ".join(normalize_text(value) for value in row)
+    if any(
+        _alias_in(row_text, aliases)
+        for aliases in _SUMMARY_ALIASES.values()
+    ):
+        return None
+    if _BANK_CONTEXT_RE.search(row_text):
+        return None
+
     def cell(key: str) -> str:
         index = indexes.get(key)
         if index is None or index >= len(row):
