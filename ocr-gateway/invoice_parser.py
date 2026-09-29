@@ -24,9 +24,57 @@ _REPLACEMENTS = {
 }
 
 _SUMMARY_ALIASES = {
-    "subtotal": ["お買上げ額", "お買い上げ額", "小計"],
-    "tax": ["消費税"],
-    "total": ["今回請求金額", "今回御請求額", "今回ご請求額", "請求金額", "合計"],
+    "subtotal": ["お買上げ額", "お買い上げ額", "税抜合計", "小計"],
+    "tax": ["消費税額", "消費税10%", "消費税10％", "消費税", "税額"],
+    "discount": ["値引き", "値引", "割引"],
+    "total": [
+        "今回請求金額",
+        "今回御請求額",
+        "今回ご請求額",
+        "ご請求金額(税込)",
+        "ご請求金額（税込）",
+        "ご請求金額",
+        "請求金額",
+        "税込合計",
+        "総合計",
+        "合計",
+    ],
+}
+
+_COLUMN_ALIASES = {
+    "description": ["商品名", "品名", "内容", "品目"],
+    "capacity": ["容量", "規格"],
+    "quantity": ["数量", "qty"],
+    "unit": ["単位", "unit"],
+    "unit_price": ["単価", "price"],
+    "amount": ["金額", "amount"],
+}
+
+_ORGANIZATION_RE = re.compile(
+    r"株式会社|有限会社|合同会社|合資会社|合名会社|"
+    r"一般社団法人|一般財団法人|農業協同組合|"
+    r"商店|商会|農園|茶園|製茶|工場"
+)
+_BANK_CONTEXT_RE = re.compile(
+    r"振込先|振込み先|銀行|信用金庫|信用組合|普通預金|当座預金|口座|支店コード"
+)
+_RECIPIENT_RE = re.compile(r"(?:御中|様)\s*$")
+_GENERIC_NAME_EXCLUSIONS = {
+    "請求書",
+    "御請求金額",
+    "ご請求金額",
+    "下記の通りご請求申し上げます",
+    "下記の通り、ご請求申し上げます",
+    "備考",
+    "発行日",
+    "請求番号",
+    "登録番号",
+    "住所",
+    "電話",
+    "携帯",
+    "合計",
+    "小計",
+    "消費税",
 }
 
 
@@ -74,6 +122,36 @@ def parse_money(value: str | None) -> int | None:
     return int(round(float(raw)))
 
 
+def parse_number(value: str | None) -> int | float | None:
+    if value is None:
+        return None
+    raw = (
+        normalize_text(value)
+        .replace(",", "")
+        .replace("，", "")
+        .replace("kg", "")
+        .replace("KG", "")
+        .replace("㎏", "")
+        .strip()
+    )
+    if not re.fullmatch(r"\d+(?:\.\d+)?", raw):
+        return None
+    number = float(raw)
+    if number.is_integer():
+        return int(number)
+    return number
+
+
+def _money_values(value: str) -> list[int]:
+    values: list[int] = []
+    normalized = normalize_text(value)
+    for match in re.finditer(r"(?:[¥￥]\s*)?(\d[\d,，]*(?:\.\d+)?)\s*(?:円)?", normalized):
+        parsed = parse_money(match.group(1))
+        if parsed is not None:
+            values.append(parsed)
+    return values
+
+
 def _split_markdown_cells(line: str) -> list[str]:
     return [cell.strip() for cell in line.strip().strip("|").split("|")]
 
@@ -95,7 +173,7 @@ def _parse_markdown_tables(text: str) -> list[tuple[list[str], list[list[str]]]]
             rows: list[list[str]] = []
             index += 2
             while index < len(lines) and lines[index].lstrip().startswith("|"):
-                rows.append(_split_markdown_cells(lines[index]))
+                rows.append([normalize_text(cell) for cell in _split_markdown_cells(lines[index])])
                 index += 1
             tables.append((header, rows))
             continue
@@ -105,6 +183,14 @@ def _parse_markdown_tables(text: str) -> list[tuple[list[str], list[list[str]]]]
     return tables
 
 
+def _alias_in(value: str, aliases: list[str]) -> bool:
+    compact = normalize_text(value).replace(" ", "").lower()
+    return any(
+        alias.replace(" ", "").lower() in compact
+        for alias in aliases
+    )
+
+
 def _parse_summary(
     text: str,
     tables: list[tuple[list[str], list[list[str]]]],
@@ -112,14 +198,16 @@ def _parse_summary(
     summary: dict[str, int | None] = {
         "subtotal": None,
         "tax": None,
+        "discount": None,
         "total": None,
     }
 
+    # Layout 1: labels in the table header and amounts in the first data row.
     for header, rows in tables:
         matches: list[tuple[int, str]] = []
         for column_index, cell in enumerate(header):
             for key, aliases in _SUMMARY_ALIASES.items():
-                if any(alias in cell for alias in aliases):
+                if _alias_in(cell, aliases):
                     matches.append((column_index, key))
                     break
 
@@ -132,25 +220,78 @@ def _parse_summary(
                 if parsed is not None:
                     summary[key] = parsed
 
-    if all(summary[key] is not None for key in summary):
-        return summary
+    # Layout 2: labels such as 小計 / 消費税 / 値引き / 合計 are rows at
+    # the bottom-right of the same detail table.
+    for _header, rows in tables:
+        for row in rows:
+            for cell_index, cell in enumerate(row):
+                for key, aliases in _SUMMARY_ALIASES.items():
+                    if not _alias_in(cell, aliases):
+                        continue
 
-    # docOCR sometimes outputs summary labels vertically and then the amounts vertically.
-    # Only inspect the plain-text prefix before the first markdown table.
-    prefix = text.split("|", 1)[0]
+                    right_values: list[int] = []
+                    for candidate in row[cell_index + 1 :]:
+                        parsed = parse_money(candidate)
+                        if parsed is not None:
+                            right_values.append(parsed)
+
+                    if right_values:
+                        summary[key] = right_values[-1]
+                        continue
+
+                    row_values = [
+                        parsed
+                        for parsed in (parse_money(candidate) for candidate in row)
+                        if parsed is not None
+                    ]
+                    if row_values:
+                        summary[key] = row_values[-1]
+
+    # Layout 3: ordinary lines. This also handles a label on one line and the
+    # amount on the next line (e.g. 御請求金額 -> 30,000).
     plain_lines = [
         normalize_text(line.strip())
-        for line in prefix.splitlines()
-        if line.strip()
+        for line in text.splitlines()
+        if line.strip() and not re.match(r"^\s*\|", line)
     ]
 
+    for line_index, line in enumerate(plain_lines):
+        for key, aliases in _SUMMARY_ALIASES.items():
+            if not _alias_in(line, aliases):
+                continue
+
+            values = _money_values(line)
+            if values:
+                summary[key] = values[-1]
+                continue
+
+            # Do not overwrite a value already recovered from a table with a
+            # weaker "next line" guess. Vertical summaries often place several
+            # labels before the numeric block.
+            if summary[key] is not None:
+                continue
+
+            for next_index in range(line_index + 1, min(len(plain_lines), line_index + 3)):
+                next_line = plain_lines[next_index]
+                if any(
+                    _alias_in(next_line, other_aliases)
+                    for other_aliases in _SUMMARY_ALIASES.values()
+                ):
+                    break
+                next_values = _money_values(next_line)
+                if next_values:
+                    summary[key] = next_values[-1]
+                    break
+
+    # Legacy vertical summary layout: several labels first, then their amounts.
     positions: list[tuple[int, str]] = []
-    for key, aliases in _SUMMARY_ALIASES.items():
+    for key in ("subtotal", "tax", "total"):
+        aliases = _SUMMARY_ALIASES[key]
         position = max(
             (
                 index
                 for index, line in enumerate(plain_lines)
-                if any(alias in line for alias in aliases)
+                if _alias_in(line, aliases)
             ),
             default=-1,
         )
@@ -168,7 +309,13 @@ def _parse_summary(
             if parsed is not None
         ]
         if len(amounts) >= 3:
-            summary["subtotal"], summary["tax"], summary["total"] = amounts[-3:]
+            # Only fill values that were not already recovered more precisely.
+            for key, value in zip(("subtotal", "tax", "total"), amounts[-3:]):
+                if summary[key] is None:
+                    summary[key] = value
+
+    if summary["discount"] is None:
+        summary["discount"] = 0
 
     return summary
 
@@ -188,14 +335,16 @@ def _looks_like_description(value: str) -> bool:
     text = normalize_text(value).strip()
     if not text:
         return False
-    if re.fullmatch(r"[\d,./\s-]+", text):
+    if re.fullmatch(r"[\d,./\s\-]+", text):
         return False
-    if re.search(r"振込|振込み|消費税|合計|小計", text):
+    if re.search(r"振込|振込み|消費税|合計|小計|値引き|請求金額", text):
+        return False
+    if re.fullmatch(r"20\d{2}/\d{1,2}/\d{1,2}", text):
         return False
     return bool(re.search(r"[ぁ-んァ-ヶ一-龯A-Za-z]", text))
 
 
-def _suggest_category(description: str) -> str:
+def _suggest_category(description: str, document_text: str = "") -> str:
     if re.search(
         r"農薬|乳剤|水和|フロアブル|プロアブル|\bSE|顆粒|ダニ|殺虫|殺菌",
         description,
@@ -204,20 +353,75 @@ def _suggest_category(description: str) -> str:
         return "PESTICIDE"
     if re.search(r"肥料|化成|堆肥|窒素|リン酸|加里", description):
         return "FERTILIZER"
+    if re.search(r"梱包|荷造|包材|包装", description):
+        return "PACKAGING"
+    if re.search(r"碾茶|てん茶", description) and re.search(r"加工|工賃|加工料", description):
+        return "TENCHA_PROCESSING"
+    if re.search(r"加工|工賃|加工料", description):
+        if re.search(r"碾茶工場|てん茶工場", document_text):
+            return "TENCHA_PROCESSING"
+        return "OUTSOURCING"
+    if re.search(r"生葉", description):
+        return "FRESH_LEAF"
     return "OTHER"
 
 
 def _find_vendor(text: str) -> str:
-    for raw_line in text.splitlines():
-        line = normalize_text(raw_line.strip())
-        if not line:
+    lines = [
+        normalize_text(raw_line.strip())
+        for raw_line in text.splitlines()
+        if raw_line.strip() and not raw_line.lstrip().startswith("|")
+    ]
+
+    organization_candidates: list[tuple[int, str]] = []
+    for index, line in enumerate(lines):
+        if _RECIPIENT_RE.search(line):
             continue
         if "リバーサイド" in line:
             continue
-        if re.search(r"銀行|農業協同組合", line):
+        if _BANK_CONTEXT_RE.search(line):
             continue
-        if re.search(r"株式会社|有限会社|合同会社|商店|商会|農園|茶園", line):
-            return line
+        if not _ORGANIZATION_RE.search(line):
+            continue
+        if re.search(r"請求書|登録番号|請求番号", line):
+            continue
+
+        score = 20
+        if index < 25:
+            score += 5
+        if len(line) <= 40:
+            score += 2
+        if re.fullmatch(r"[^\d]{3,40}", line):
+            score += 2
+        organization_candidates.append((score, line))
+
+    if organization_candidates:
+        return sorted(organization_candidates, key=lambda item: (-item[0], len(item[1])))[0][1]
+
+    # Individual businesses often issue simple invoices under a person's name.
+    # Prefer a short kanji-only name that is followed by address/contact details.
+    individual_candidates: list[tuple[int, str]] = []
+    for index, line in enumerate(lines):
+        if line in _GENERIC_NAME_EXCLUSIONS:
+            continue
+        if _RECIPIENT_RE.search(line):
+            continue
+        if _BANK_CONTEXT_RE.search(line):
+            continue
+        if not re.fullmatch(r"[一-龯々〆ヶ]{2,8}", line):
+            continue
+
+        nearby = " ".join(lines[index + 1 : index + 5])
+        score = 5
+        if re.search(r"〒|住所|TEL|FAX|電話|携帯|\d{2,4}-\d{2,4}-\d{3,4}", nearby, re.IGNORECASE):
+            score += 20
+        if index < 20:
+            score += 5
+        individual_candidates.append((score, line))
+
+    if individual_candidates:
+        return sorted(individual_candidates, key=lambda item: -item[0])[0][1]
+
     return ""
 
 
@@ -232,103 +436,270 @@ def _find_billing_period(text: str) -> dict[str, str]:
     return {"start": match.group(1), "end": match.group(2)}
 
 
+def _date_candidates(value: str) -> list[str]:
+    line = normalize_text(value)
+    found: list[str] = []
+
+    for match in re.finditer(r"(20\d{2})\s*[年/.\-]\s*(\d{1,2})\s*[月/.\-]\s*(\d{1,2})\s*日?", line):
+        found.append(f"{int(match.group(1))}/{int(match.group(2))}/{int(match.group(3))}")
+
+    era_patterns = [
+        ("令和", 2018),
+        ("平成", 1988),
+    ]
+    for era, offset in era_patterns:
+        for match in re.finditer(
+            rf"{era}\s*(元|\d{{1,2}})\s*年\s*(\d{{1,2}})\s*月\s*(\d{{1,2}})\s*日",
+            line,
+        ):
+            era_year = 1 if match.group(1) == "元" else int(match.group(1))
+            found.append(
+                f"{offset + era_year}/{int(match.group(2))}/{int(match.group(3))}"
+            )
+
+    return list(dict.fromkeys(found))
+
+
+def _find_invoice_date(text: str, period: dict[str, str]) -> tuple[str, str]:
+    lines = [
+        normalize_text(line.strip())
+        for line in text.splitlines()
+        if line.strip() and not line.lstrip().startswith("|")
+    ]
+
+    for line in lines:
+        if not re.search(r"発行日|請求日|作成日|invoice\s*date", line, re.IGNORECASE):
+            continue
+        dates = _date_candidates(line)
+        if dates:
+            return dates[0], "explicit_invoice_date"
+
+    if period.get("end"):
+        return period["end"], "billing_period_end"
+
+    # For simple paper invoices the issue date is often printed in the header
+    # without a label (e.g. 令和8年8月10日). Search only before the first table.
+    prefix = normalize_text(text).split("|", 1)[0]
+    for line in prefix.splitlines()[:25]:
+        dates = _date_candidates(line)
+        if dates:
+            return dates[0], "document_header"
+
+    return "", ""
+
+
+def _find_column_index(header: list[str], aliases: list[str]) -> int | None:
+    for index, cell in enumerate(header):
+        if _alias_in(cell, aliases):
+            return index
+    return None
+
+
+def _item_from_row(
+    row: list[str],
+    indexes: dict[str, int | None],
+    document_text: str,
+) -> dict[str, Any] | None:
+    row_text = " ".join(normalize_text(value) for value in row)
+    if any(
+        _alias_in(row_text, aliases)
+        for aliases in _SUMMARY_ALIASES.values()
+    ):
+        return None
+    if _BANK_CONTEXT_RE.search(row_text):
+        return None
+
+    def cell(key: str) -> str:
+        index = indexes.get(key)
+        if index is None or index >= len(row):
+            return ""
+        return row[index]
+
+    description_index = indexes.get("description")
+    description = _clean_description(cell("description"))
+    if not _looks_like_description(description):
+        description = ""
+
+    skipped_indexes = {
+        index
+        for key in ("capacity", "quantity", "unit_price", "amount")
+        if (index := indexes.get(key)) is not None
+    }
+
+    if not description:
+        candidates: list[tuple[int, int, str]] = []
+        for index, value in enumerate(row):
+            if index in skipped_indexes:
+                continue
+            if not _looks_like_description(value):
+                continue
+            distance = abs(index - description_index) if description_index is not None else index
+            candidates.append((distance, index, value))
+        if candidates:
+            description = _clean_description(sorted(candidates)[0][2])
+
+    if not description:
+        return None
+
+    if re.search(
+        r"振込|振込み|伝票消費税|小計|消費税|合計|値引き|請求金額",
+        description,
+    ):
+        return None
+
+    quantity = parse_number(cell("quantity"))
+    unit_price = parse_money(cell("unit_price"))
+    line_total = parse_money(cell("amount"))
+
+    numeric_cells: list[tuple[int, int]] = []
+    for index, value in enumerate(row):
+        parsed = parse_money(value)
+        if parsed is not None:
+            numeric_cells.append((index, parsed))
+
+    amount_index = indexes.get("amount")
+    quantity_index = indexes.get("quantity")
+    unit_price_index = indexes.get("unit_price")
+
+    if line_total is None and numeric_cells:
+        # The right-most money-like cell is normally the row amount.
+        amount_index, line_total = numeric_cells[-1]
+
+    if unit_price is None and line_total is not None:
+        before_amount = [
+            (index, value)
+            for index, value in numeric_cells
+            if (amount_index is None or index < amount_index)
+            and index != quantity_index
+        ]
+        if before_amount:
+            unit_price_index, unit_price = before_amount[-1]
+
+    if quantity is None and unit_price_index is not None:
+        quantity_candidates = [
+            (index, parse_number(row[index]))
+            for index in range(0, unit_price_index)
+            if index < len(row)
+        ]
+        quantity_candidates = [
+            (index, value)
+            for index, value in quantity_candidates
+            if value is not None and index != amount_index
+        ]
+        if quantity_candidates:
+            quantity_index, quantity = quantity_candidates[-1]
+
+    if not unit_price and not line_total:
+        return None
+
+    item = {
+        "description": description,
+        "capacity": normalize_text(cell("capacity")),
+        "quantity": quantity,
+        "unit": normalize_text(cell("unit")),
+        "unit_price_yen": unit_price,
+        "line_total_yen": line_total,
+        "suggested_category": _suggest_category(description, document_text),
+        "corrections": [],
+        "needs_review": False,
+    }
+
+    if quantity is None and unit_price and line_total:
+        ratio = line_total / unit_price
+        candidate = round(ratio)
+        if candidate >= 1 and abs(ratio - candidate) <= 0.02:
+            item["quantity"] = candidate
+            item["corrections"].append(
+                "quantity_inferred_from_amount_div_unit_price"
+            )
+
+    return item
+
+
+def _parse_items(
+    normalized: str,
+    tables: list[tuple[list[str], list[list[str]]]],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+
+    for header, rows in tables:
+        indexes = {
+            key: _find_column_index(header, aliases)
+            for key, aliases in _COLUMN_ALIASES.items()
+        }
+
+        has_description_header = indexes["description"] is not None
+        has_amount_header = indexes["amount"] is not None
+        if not (has_description_header or has_amount_header):
+            # Allow a badly damaged header only when a row itself clearly looks
+            # like an item row: description + at least two numeric cells.
+            looks_item_like = False
+            for row in rows:
+                text_cells = [cell for cell in row if _looks_like_description(cell)]
+                numeric_count = sum(parse_money(cell) is not None for cell in row)
+                if text_cells and numeric_count >= 2:
+                    looks_item_like = True
+                    break
+            if not looks_item_like:
+                continue
+
+        for row in rows:
+            item = _item_from_row(row, indexes, normalized)
+            if item is not None:
+                items.append(item)
+
+    # Deduplicate exact rows if docOCR emitted the same table twice.
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple[Any, ...]] = set()
+    for item in items:
+        key = (
+            item["description"],
+            item["quantity"],
+            item["unit_price_yen"],
+            item["line_total_yen"],
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+
+    return deduped
+
+
+def _amount_matches(quantity: int | float, unit_price: int, line_total: int) -> bool:
+    return abs(float(quantity) * unit_price - line_total) <= 1.0
+
+
+def _confidence_score(
+    vendor: str,
+    invoice_date: str,
+    summary: dict[str, int | None],
+    items: list[dict[str, Any]],
+    warnings: list[str],
+) -> int:
+    score = 0
+    if vendor:
+        score += 20
+    if invoice_date:
+        score += 15
+    if summary["total"] is not None:
+        score += 20
+    if summary["subtotal"] is not None:
+        score += 10
+    if summary["tax"] is not None:
+        score += 5
+    if items:
+        score += 25
+    if not warnings:
+        score += 3
+    return max(0, min(98, score))
+
+
 def parse_invoice_dococr(text: str) -> dict[str, Any]:
     normalized = normalize_text(text)
     tables = _parse_markdown_tables(normalized)
     summary = _parse_summary(normalized, tables)
-
-    detail_table = next(
-        (
-            (header, rows)
-            for header, rows in tables
-            if any("商品名" in cell for cell in header)
-            and any("金額" in cell for cell in header)
-        ),
-        None,
-    )
-
-    items: list[dict[str, Any]] = []
-
-    if detail_table:
-        header, rows = detail_table
-
-        def column_index(name: str) -> int | None:
-            return next(
-                (index for index, cell in enumerate(header) if name in cell),
-                None,
-            )
-
-        indexes = {
-            key: column_index(key)
-            for key in ["商品名", "容量", "数量", "単位", "単価", "金額"]
-        }
-        description_index = indexes["商品名"]
-
-        for row in rows:
-            def cell(key: str) -> str:
-                index = indexes[key]
-                if index is None or index >= len(row):
-                    return ""
-                return row[index]
-
-            description = _clean_description(cell("商品名"))
-
-            # docOCR may shift a description one column left/right on a damaged row.
-            if not description and description_index is not None:
-                candidates: list[tuple[int, int, str]] = []
-                skipped_indexes = {
-                    index
-                    for key in ["容量", "数量", "単価", "金額"]
-                    if (index := indexes[key]) is not None
-                }
-                for index, value in enumerate(row):
-                    if index in skipped_indexes:
-                        continue
-                    if _looks_like_description(value):
-                        candidates.append(
-                            (abs(index - description_index), index, value)
-                        )
-                if candidates:
-                    description = _clean_description(sorted(candidates)[0][2])
-
-            if not description:
-                continue
-            if re.search(
-                r"振込|振込み|伝票消費税|小計|消費税|合計",
-                description,
-            ):
-                continue
-
-            quantity = parse_money(cell("数量"))
-            unit_price = parse_money(cell("単価"))
-            line_total = parse_money(cell("金額"))
-
-            if not unit_price and not line_total:
-                continue
-
-            item = {
-                "description": description,
-                "capacity": normalize_text(cell("容量")),
-                "quantity": quantity,
-                "unit": normalize_text(cell("単位")),
-                "unit_price_yen": unit_price,
-                "line_total_yen": line_total,
-                "suggested_category": _suggest_category(description),
-                "corrections": [],
-                "needs_review": False,
-            }
-
-            # Recover a missing quantity when amount / unit price is essentially an integer.
-            if quantity is None and unit_price and line_total:
-                ratio = line_total / unit_price
-                candidate = round(ratio)
-                if candidate >= 1 and abs(ratio - candidate) <= 0.02:
-                    item["quantity"] = candidate
-                    item["corrections"].append(
-                        "quantity_inferred_from_amount_div_unit_price"
-                    )
-
-            items.append(item)
+    items = _parse_items(normalized, tables)
 
     subtotal = summary["subtotal"]
 
@@ -423,39 +794,52 @@ def parse_invoice_dococr(text: str) -> dict[str, Any]:
             quantity is None
             or not unit_price
             or not line_total
-            or quantity * unit_price != line_total
+            or not _amount_matches(quantity, unit_price, line_total)
         ):
             item["needs_review"] = True
 
     warnings: list[str] = []
 
-    if all(summary[key] is not None for key in summary):
-        if summary["subtotal"] + summary["tax"] != summary["total"]:
+    subtotal_value = summary["subtotal"]
+    tax_value = summary["tax"]
+    discount_value = summary["discount"] or 0
+    total_value = summary["total"]
+
+    if subtotal_value is not None and tax_value is not None and total_value is not None:
+        if subtotal_value + tax_value - discount_value != total_value:
             warnings.append("summary_mismatch")
 
-    if subtotal is not None and items:
+    if subtotal_value is not None and items:
         item_total = sum(item["line_total_yen"] or 0 for item in items)
-        if item_total != subtotal:
+        if item_total != subtotal_value:
             warnings.append(
-                f"item_sum_mismatch:{item_total}!={subtotal}"
+                f"item_sum_mismatch:{item_total}!={subtotal_value}"
             )
 
     if any(item["needs_review"] for item in items):
         warnings.append("one_or_more_items_need_review")
 
     period = _find_billing_period(normalized)
+    invoice_date, invoice_date_source = _find_invoice_date(normalized, period)
+    vendor = _find_vendor(normalized)
 
     return {
-        "vendor": _find_vendor(normalized),
+        "vendor": vendor,
         "billing_period": period,
-        "suggested_invoice_date": period["end"],
-        "invoice_date_source": (
-            "billing_period_end" if period["end"] else ""
-        ),
+        "suggested_invoice_date": invoice_date,
+        "invoice_date_source": invoice_date_source,
         "subtotal_yen": summary["subtotal"],
         "tax_yen": summary["tax"],
+        "discount_yen": summary["discount"],
         "total_yen": summary["total"],
         "items": items,
         "warnings": warnings,
         "is_consistent": not warnings,
+        "confidence_score": _confidence_score(
+            vendor,
+            invoice_date,
+            summary,
+            items,
+            warnings,
+        ),
     }
