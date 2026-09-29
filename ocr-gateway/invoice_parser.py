@@ -376,6 +376,35 @@ def _suggest_category(description: str, document_text: str = "") -> str:
     return "OTHER"
 
 
+def _normalize_domain_description(description: str, document_text: str = "") -> tuple[str, list[str]]:
+    text = normalize_text(description).strip()
+    corrections: list[str] = []
+    tea_context = bool(
+        re.search(
+            r"茶園|製茶|碾茶|てん茶|抹茶|玉露|煎茶|ほうじ茶|番茶|生葉|荒茶|仕上茶",
+            document_text,
+        )
+    )
+    if tea_context:
+        replacements = {
+            "生菜": "生葉",
+            "碾荼": "碾茶",
+            "てん荼": "てん茶",
+            "抹荼": "抹茶",
+            "荒荼": "荒茶",
+            "加工貸": "加工賃",
+            "加工貨": "加工賃",
+            "荷造科": "荷造料",
+            "仕上荼": "仕上茶",
+        }
+        for source, target in replacements.items():
+            if source in text:
+                text = text.replace(source, target)
+                corrections.append(f"domain_term:{source}->{target}")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text, corrections
+
+
 def _find_vendor(text: str) -> str:
     lines = [
         normalize_text(raw_line.strip())
@@ -547,7 +576,7 @@ def _parse_plain_items(normalized: str) -> list[dict[str, Any]]:
 
     items: list[dict[str, Any]] = []
     quantity_pattern = re.compile(
-        r"^(\d[\d,，]*(?:\.\d+)?)\s*(kg|KG|㎏|g|G|ml|mL|ML|l|L|本|袋|個|箱|式)$"
+        r"^(\d[\d,，]*(?:\.\d+)?)\s*(kg|KG|㎏|g|G|ml|mL|ML|l|L|本|袋|個|箱|式|枚|缶|ケース|反|俵|束|台|回|件)$"
     )
 
     for index, line in enumerate(lines):
@@ -588,8 +617,10 @@ def _parse_plain_items(normalized: str) -> list[dict[str, Any]]:
         if not description_parts:
             continue
         description = " ".join(description_parts)
-        if "碾茶" in normalized or "茶園" in normalized:
-            description = description.replace("生菜", "生葉")
+        description, domain_corrections = _normalize_domain_description(
+            description,
+            normalized,
+        )
 
         items.append(
             {
@@ -600,7 +631,7 @@ def _parse_plain_items(normalized: str) -> list[dict[str, Any]]:
                 "unit_price_yen": unit_price,
                 "line_total_yen": line_total,
                 "suggested_category": _suggest_category(description, normalized),
-                "corrections": [],
+                "corrections": domain_corrections,
                 "needs_review": False,
             }
         )
@@ -653,6 +684,11 @@ def _item_from_row(
 
     if not description:
         return None
+
+    description, domain_corrections = _normalize_domain_description(
+        description,
+        document_text,
+    )
 
     if re.search(
         r"振込|振込み|伝票消費税|小計|消費税|合計|値引き|請求金額",
@@ -713,7 +749,7 @@ def _item_from_row(
         "unit_price_yen": unit_price,
         "line_total_yen": line_total,
         "suggested_category": _suggest_category(description, document_text),
-        "corrections": [],
+        "corrections": domain_corrections,
         "needs_review": False,
     }
 
@@ -786,28 +822,115 @@ def _amount_matches(quantity: int | float, unit_price: int, line_total: int) -> 
     return abs(float(quantity) * unit_price - line_total) <= 1.0
 
 
+def _derive_summary(
+    summary: dict[str, int | None],
+    items: list[dict[str, Any]],
+) -> list[str]:
+    derived: list[str] = []
+    discount = summary.get("discount") or 0
+
+    valid_items = bool(items) and all(
+        not item.get("needs_review")
+        and (item.get("line_total_yen") or 0) > 0
+        for item in items
+    )
+    if summary.get("subtotal") is None and valid_items:
+        item_total = sum(int(item["line_total_yen"]) for item in items)
+        if item_total > 0:
+            summary["subtotal"] = item_total
+            derived.append("subtotal_from_item_sum")
+
+    subtotal = summary.get("subtotal")
+    tax = summary.get("tax")
+    total = summary.get("total")
+
+    if total is None and subtotal is not None and tax is not None:
+        candidate = subtotal + tax - discount
+        if candidate >= 0:
+            summary["total"] = candidate
+            total = candidate
+            derived.append("total_from_subtotal_tax_discount")
+
+    if subtotal is None and total is not None and tax is not None:
+        candidate = total + discount - tax
+        if candidate >= 0:
+            summary["subtotal"] = candidate
+            subtotal = candidate
+            derived.append("subtotal_from_total_tax_discount")
+
+    if tax is None and subtotal is not None and total is not None and subtotal > 0:
+        candidate = total + discount - subtotal
+        rate = candidate / subtotal * 100 if candidate >= 0 else -1
+        if candidate > 0 and (
+            abs(rate - 10) <= 0.6
+            or abs(rate - 8) <= 0.6
+        ):
+            summary["tax"] = candidate
+            derived.append("tax_from_total_subtotal_discount")
+
+    return derived
+
+
+def _quality_flags(
+    vendor: str,
+    invoice_date: str,
+    summary: dict[str, int | None],
+    items: list[dict[str, Any]],
+    warnings: list[str],
+    derived_fields: list[str],
+) -> list[str]:
+    flags: list[str] = []
+    if not vendor:
+        flags.append("missing_vendor")
+    if not invoice_date:
+        flags.append("missing_invoice_date")
+    if summary.get("total") is None:
+        flags.append("missing_total")
+    if summary.get("subtotal") is None:
+        flags.append("missing_subtotal")
+    if not items:
+        flags.append("missing_items")
+    if any(item.get("needs_review") for item in items):
+        flags.append("item_math_needs_review")
+    flags.extend(f"derived:{value}" for value in derived_fields)
+    flags.extend(f"warning:{value}" for value in warnings)
+    return list(dict.fromkeys(flags))
+
+
 def _confidence_score(
     vendor: str,
     invoice_date: str,
     summary: dict[str, int | None],
     items: list[dict[str, Any]],
     warnings: list[str],
+    derived_fields: list[str],
 ) -> int:
     score = 0
     if vendor:
-        score += 20
+        score += 18
     if invoice_date:
-        score += 15
+        score += 14
     if summary["total"] is not None:
         score += 20
     if summary["subtotal"] is not None:
         score += 10
     if summary["tax"] is not None:
-        score += 5
+        score += 6
     if items:
-        score += 25
+        score += 22
+        if all(not item.get("needs_review") for item in items):
+            score += 5
     if not warnings:
         score += 3
+
+    score -= min(12, len(derived_fields) * 4)
+    if any("summary_mismatch" in warning for warning in warnings):
+        score -= 20
+    if any("item_sum_mismatch" in warning for warning in warnings):
+        score -= 15
+    if any("need_review" in warning for warning in warnings):
+        score -= 10
+
     return max(0, min(98, score))
 
 
@@ -914,6 +1037,7 @@ def parse_invoice_dococr(text: str) -> dict[str, Any]:
         ):
             item["needs_review"] = True
 
+    derived_fields = _derive_summary(summary, items)
     warnings: list[str] = []
 
     subtotal_value = summary["subtotal"]
@@ -939,7 +1063,17 @@ def parse_invoice_dococr(text: str) -> dict[str, Any]:
     invoice_date, invoice_date_source = _find_invoice_date(normalized, period)
     vendor = _find_vendor(normalized)
 
+    quality_flags = _quality_flags(
+        vendor,
+        invoice_date,
+        summary,
+        items,
+        warnings,
+        derived_fields,
+    )
+
     return {
+        "parser_version": "v3",
         "vendor": vendor,
         "billing_period": period,
         "suggested_invoice_date": invoice_date,
@@ -949,6 +1083,8 @@ def parse_invoice_dococr(text: str) -> dict[str, Any]:
         "discount_yen": summary["discount"],
         "total_yen": summary["total"],
         "items": items,
+        "derived_fields": derived_fields,
+        "quality_flags": quality_flags,
         "warnings": warnings,
         "is_consistent": not warnings,
         "confidence_score": _confidence_score(
@@ -957,5 +1093,6 @@ def parse_invoice_dococr(text: str) -> dict[str, Any]:
             summary,
             items,
             warnings,
+            derived_fields,
         ),
     }

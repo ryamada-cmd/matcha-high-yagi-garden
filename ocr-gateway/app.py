@@ -227,6 +227,50 @@ def _ocr_pages(
     return payload
 
 
+def _invoice_candidate_rank(result: dict[str, Any]) -> tuple[int, int, int, int, int]:
+    structured = result.get("structured_invoice") or {}
+    confidence = int(structured.get("confidence_score") or 0)
+    items = structured.get("items") or []
+    warnings = structured.get("warnings") or []
+    completeness = sum(
+        1
+        for value in (
+            structured.get("vendor"),
+            structured.get("suggested_invoice_date"),
+            structured.get("subtotal_yen"),
+            structured.get("tax_yen"),
+            structured.get("total_yen"),
+        )
+        if value not in (None, "")
+    )
+    valid_items = sum(
+        1
+        for item in items
+        if not item.get("needs_review")
+        and item.get("line_total_yen")
+    )
+    return (
+        confidence,
+        completeness,
+        valid_items,
+        len(items),
+        -len(warnings),
+    )
+
+
+def _needs_enhanced_invoice_pass(result: dict[str, Any]) -> bool:
+    structured = result.get("structured_invoice") or {}
+    if int(structured.get("confidence_score") or 0) < 92:
+        return True
+    if structured.get("warnings"):
+        return True
+    if not structured.get("vendor") or not structured.get("total_yen"):
+        return True
+    if not structured.get("items"):
+        return True
+    return False
+
+
 @app.get("/", dependencies=[Depends(require_api_key)])
 def root() -> dict[str, Any]:
     discovery = iphone_locator.status()
@@ -304,9 +348,38 @@ async def invoice(file: UploadFile = File(...)) -> dict[str, Any]:
 
     doc_error: Any = None
     try:
-        result = _ocr_pages(pages, "docOCR", "original")
+        original = _ocr_pages(pages, "docOCR", "original")
+        candidates = [original]
+
+        # Unknown/weak layouts get one additional local Apple Vision pass after
+        # contrast/sharpness enhancement. No external OCR API is used.
+        if _needs_enhanced_invoice_pass(original):
+            try:
+                candidates.append(_ocr_pages(pages, "docOCR", "enhanced"))
+            except HTTPException:
+                pass
+
+        result = max(candidates, key=_invoice_candidate_rank)
         result["success"] = True
         result["selected_engine"] = "IOS_DOCOCR"
+        result["invoice_ocr_strategy"] = (
+            "best_of_original_and_enhanced"
+            if len(candidates) > 1
+            else "original_only"
+        )
+        result["candidate_count"] = len(candidates)
+        result["candidate_scores"] = [
+            {
+                "preprocessing": candidate.get("preprocessing"),
+                "rank": list(_invoice_candidate_rank(candidate)),
+                "confidence_score": (
+                    (candidate.get("structured_invoice") or {}).get(
+                        "confidence_score"
+                    )
+                ),
+            }
+            for candidate in candidates
+        ]
         return {
             "success": True,
             "filename": file.filename,

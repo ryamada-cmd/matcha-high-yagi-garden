@@ -237,6 +237,46 @@ T8130005008786
 """
 
 
+UNKNOWN_TEA_LAYOUT = r"""
+請求書
+令和8年9月15日
+山城製茶株式会社
+合同会社リバーサイド 御中
+
+請求金額 55,000
+
+内容
+碾荼加工貸
+50 kg
+1,000
+50,000
+
+消費税
+5,000
+"""
+
+MISSING_TAX_LABEL_LAYOUT = r"""
+INVOICE
+株式会社テスト資材
+発行日 2026/09/20
+合同会社リバーサイド 御中
+
+| 品名 | 数量 | 単位 | 単価 | 金額 |
+| --- | --- | --- | --- | --- |
+| 茶缶 | 10 | 缶 | 500 | 5,000 |
+
+小計 5,000
+合計 5,500
+"""
+
+LOW_INFORMATION_LAYOUT = r"""
+請求書
+合同会社リバーサイド 御中
+備考
+ありがとうございました
+"""
+
+
 class InvoiceParserTests(unittest.TestCase):
     def test_august_invoice(self) -> None:
         parsed = parse_invoice_dococr(AUGUST)
@@ -358,6 +398,50 @@ class InvoiceParserTests(unittest.TestCase):
         )
         self.assertEqual(parsed["warnings"], [])
         self.assertEqual(parsed["confidence_score"], 98)
+
+
+    def test_v3_domain_dictionary_and_derived_summary(self) -> None:
+        parsed = parse_invoice_dococr(UNKNOWN_TEA_LAYOUT)
+
+        self.assertEqual(parsed["parser_version"], "v3")
+        self.assertEqual(parsed["vendor"], "山城製茶株式会社")
+        self.assertEqual(parsed["suggested_invoice_date"], "2026/9/15")
+        self.assertEqual(parsed["subtotal_yen"], 50000)
+        self.assertEqual(parsed["tax_yen"], 5000)
+        self.assertEqual(parsed["total_yen"], 55000)
+        self.assertEqual(len(parsed["items"]), 1)
+        self.assertEqual(parsed["items"][0]["description"], "碾茶加工賃")
+        self.assertIn(
+            "domain_term:碾荼->碾茶",
+            parsed["items"][0]["corrections"],
+        )
+        self.assertIn(
+            "domain_term:加工貸->加工賃",
+            parsed["items"][0]["corrections"],
+        )
+        self.assertIn("subtotal_from_item_sum", parsed["derived_fields"])
+        self.assertTrue(parsed["confidence_score"] >= 90)
+
+    def test_v3_derives_tax_only_when_math_matches_known_rate(self) -> None:
+        parsed = parse_invoice_dococr(MISSING_TAX_LABEL_LAYOUT)
+
+        self.assertEqual(parsed["subtotal_yen"], 5000)
+        self.assertEqual(parsed["tax_yen"], 500)
+        self.assertEqual(parsed["total_yen"], 5500)
+        self.assertIn(
+            "tax_from_total_subtotal_discount",
+            parsed["derived_fields"],
+        )
+        self.assertEqual(parsed["items"][0]["unit"], "缶")
+        self.assertEqual(parsed["warnings"], [])
+
+    def test_v3_does_not_overstate_low_information_invoice(self) -> None:
+        parsed = parse_invoice_dococr(LOW_INFORMATION_LAYOUT)
+
+        self.assertLess(parsed["confidence_score"], 50)
+        self.assertIn("missing_vendor", parsed["quality_flags"])
+        self.assertIn("missing_total", parsed["quality_flags"])
+        self.assertIn("missing_items", parsed["quality_flags"])
 
 if __name__ == "__main__":
     unittest.main()
