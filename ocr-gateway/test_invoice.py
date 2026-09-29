@@ -58,6 +58,11 @@ def main() -> None:
         if len(text) > 3000:
             print("\n... (truncated on console; full result is in JSON)")
 
+        parser_error = candidate.get("parser_error")
+        if parser_error:
+            print("\n--- PARSER ERROR ---")
+            print(json.dumps(parser_error, ensure_ascii=False, indent=2))
+
         structured = candidate.get("structured_invoice")
         if structured:
             print("\n--- STRUCTURED INVOICE ---")
