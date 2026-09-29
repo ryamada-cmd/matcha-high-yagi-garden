@@ -145,11 +145,24 @@ def parse_number(value: str | None) -> int | float | None:
 def _money_values(value: str) -> list[int]:
     values: list[int] = []
     normalized = normalize_text(value)
+    normalized = re.sub(r"\d+(?:\.\d+)?\s*%", " ", normalized)
     for match in re.finditer(r"(?:[¥￥]\s*)?(\d[\d,，]*(?:\.\d+)?)\s*(?:円)?", normalized):
         parsed = parse_money(match.group(1))
         if parsed is not None:
             values.append(parsed)
     return values
+
+
+def _standalone_money(value: str) -> int | None:
+    normalized = normalize_text(value).strip()
+    normalized = normalized.rstrip("|").strip()
+    normalized = re.sub(r"^[·•・●]\s*", "", normalized)
+    if re.fullmatch(
+        r"(?:[¥￥]\s*)?\d[\d,，]*(?:\.\d+)?\s*(?:円)?",
+        normalized,
+    ):
+        return parse_money(normalized)
+    return None
 
 
 def _split_markdown_cells(line: str) -> list[str]:
@@ -265,22 +278,19 @@ def _parse_summary(
                 summary[key] = values[-1]
                 continue
 
-            # Do not overwrite a value already recovered from a table with a
-            # weaker "next line" guess. Vertical summaries often place several
-            # labels before the numeric block.
             if summary[key] is not None:
                 continue
 
-            for next_index in range(line_index + 1, min(len(plain_lines), line_index + 3)):
+            for next_index in range(line_index + 1, min(len(plain_lines), line_index + 5)):
                 next_line = plain_lines[next_index]
                 if any(
                     _alias_in(next_line, other_aliases)
                     for other_aliases in _SUMMARY_ALIASES.values()
                 ):
                     break
-                next_values = _money_values(next_line)
-                if next_values:
-                    summary[key] = next_values[-1]
+                amount = _standalone_money(next_line)
+                if amount is not None:
+                    summary[key] = amount
                     break
 
     # Legacy vertical summary layout: several labels first, then their amounts.
@@ -495,6 +505,109 @@ def _find_column_index(header: list[str], aliases: list[str]) -> int | None:
     return None
 
 
+def _plain_description_lines(lines: list[str], quantity_index: int) -> list[str]:
+    candidates: list[str] = []
+    for index in range(quantity_index - 1, max(-1, quantity_index - 5), -1):
+        line = normalize_text(lines[index]).strip()
+        if not line:
+            continue
+        if _standalone_money(line) is not None:
+            break
+        if re.fullmatch(r"\d+(?:\.\d+)?\s*%", line):
+            break
+        if re.search(
+            r"^(?:日付|内容|品目|商品名|数量|単位|単価|税率|金額|軽減税率|備考)$",
+            line,
+        ):
+            break
+        if re.search(r"小計|消費税|合計|値引|ご請求金額|御請求金額", line):
+            break
+        if _BANK_CONTEXT_RE.search(line):
+            break
+        if _looks_like_description(line):
+            candidates.append(line)
+
+    candidates.reverse()
+    if (
+        len(candidates) >= 3
+        and re.search(r"工場|センター|加工所", candidates[0])
+        and re.search(r"加工|工賃|加工料", candidates[0])
+    ):
+        candidates = candidates[1:]
+
+    return candidates[-2:]
+
+
+def _parse_plain_items(normalized: str) -> list[dict[str, Any]]:
+    lines = [
+        normalize_text(line.strip())
+        for line in normalized.splitlines()
+        if line.strip() and not line.lstrip().startswith("|")
+    ]
+
+    items: list[dict[str, Any]] = []
+    quantity_pattern = re.compile(
+        r"^(\d[\d,，]*(?:\.\d+)?)\s*(kg|KG|㎏|g|G|ml|mL|ML|l|L|本|袋|個|箱|式)$"
+    )
+
+    for index, line in enumerate(lines):
+        match = quantity_pattern.fullmatch(line)
+        if not match:
+            continue
+
+        quantity = parse_number(match.group(1))
+        unit = normalize_text(match.group(2))
+        if quantity is None:
+            continue
+
+        unit_price: int | None = None
+        line_total: int | None = None
+
+        for next_index in range(index + 1, min(len(lines), index + 6)):
+            next_line = lines[next_index]
+            if re.fullmatch(r"\d+(?:\.\d+)?\s*%", next_line):
+                continue
+            amount = _standalone_money(next_line)
+            if amount is None:
+                if _looks_like_description(next_line):
+                    break
+                continue
+            if unit_price is None:
+                unit_price = amount
+            elif line_total is None:
+                line_total = amount
+                break
+
+        if unit_price is None or line_total is None:
+            continue
+
+        if abs(float(quantity) * unit_price - line_total) > 1.0:
+            continue
+
+        description_parts = _plain_description_lines(lines, index)
+        if not description_parts:
+            continue
+        description = " ".join(description_parts)
+        if "碾茶" in normalized or "茶園" in normalized:
+            description = description.replace("生菜", "生葉")
+
+        items.append(
+            {
+                "description": description,
+                "capacity": "",
+                "quantity": quantity,
+                "unit": unit,
+                "unit_price_yen": unit_price,
+                "line_total_yen": line_total,
+                "suggested_category": _suggest_category(description, normalized),
+                "corrections": [],
+                "needs_review": False,
+            }
+        )
+
+    return items
+
+
 def _item_from_row(
     row: list[str],
     indexes: dict[str, int | None],
@@ -647,6 +760,9 @@ def _parse_items(
             item = _item_from_row(row, indexes, normalized)
             if item is not None:
                 items.append(item)
+
+    if not items:
+        items.extend(_parse_plain_items(normalized))
 
     # Deduplicate exact rows if docOCR emitted the same table twice.
     deduped: list[dict[str, Any]] = []
