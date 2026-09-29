@@ -8,28 +8,28 @@ if (Get-Command py -ErrorAction SilentlyContinue) {
 } elseif (Get-Command python -ErrorAction SilentlyContinue) {
   $python = "python"
 } else {
-  Write-Host "Python 3.11+ が見つかりません。https://www.python.org/ から Python をインストールしてください。" -ForegroundColor Red
+  Write-Host "Python 3.11+ was not found. Install Python first." -ForegroundColor Red
   exit 1
 }
 
 if (-not (Test-Path ".venv")) {
-  Write-Host "仮想環境を作成しています..."
+  Write-Host "Creating Python virtual environment..."
   & $python -m venv .venv
 }
 
-Write-Host "依存パッケージをインストールしています..."
+Write-Host "Installing required packages..."
 & ".\.venv\Scripts\python.exe" -m pip install --upgrade pip
 & ".\.venv\Scripts\python.exe" -m pip install -r requirements.txt
 
 if (-not (Test-Path ".env")) {
   Copy-Item ".env.example" ".env"
-  Write-Host ".env を作成しました。IOS_OCR_BASE_URL を iPhone に表示されたアドレスへ変更してください。" -ForegroundColor Yellow
+  Write-Host ".env created. Set IOS_OCR_BASE_URL to the address shown on the iPhone." -ForegroundColor Yellow
 } else {
-  Write-Host ".env は既に存在するため、そのまま使用します。"
+  Write-Host ".env already exists; keeping the current file."
 }
 
 Write-Host ""
-Write-Host "セットアップ完了。" -ForegroundColor Green
-Write-Host "1) .env の IOS_OCR_BASE_URL を確認"
-Write-Host "2) start_gateway.bat を実行"
-Write-Host "3) http://127.0.0.1:8787/health をブラウザで確認"
+Write-Host "Setup complete." -ForegroundColor Green
+Write-Host "1) Check IOS_OCR_BASE_URL in .env"
+Write-Host "2) Run start_gateway.bat"
+Write-Host "3) Open http://127.0.0.1:8787/health"
