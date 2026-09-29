@@ -97,7 +97,7 @@ def _load_pages(data: bytes, filename: str, content_type: str | None) -> list[Im
             scale_300dpi = 300 / 72
             scale_to_cap = MAX_IMAGE_DIMENSION / max(1, max_points)
             scale = min(scale_300dpi, scale_to_cap)
-            pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
             image = Image.open(io.BytesIO(pix.tobytes("png")))
             pages.append(_limit_image(image))
         doc.close()
