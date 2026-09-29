@@ -1,3 +1,4 @@
+import { supabase } from './supabase'
 export type DocumentOcrKind='EXPENSE_RECEIPT'|'VENDOR_INVOICE'|'PAYMENT_PROOF'
 export type DocumentOcrItem={description:string;quantity:number;unit:string;unitPriceYen:number;lineTotalYen:number;taxRate:number;suggestedCategory:string}
 export type DocumentOcrResult={
@@ -16,7 +17,7 @@ export type DocumentOcrResult={
   suggestedCategory:string
   items:DocumentOcrItem[]
   warnings:string[]
-  engine?:'PDF_TEXT'|'OCR'
+  engine?:'PDF_TEXT'|'IOS_DOCOCR'|'OCR'
   model?:string
 }
 
@@ -25,6 +26,7 @@ const PDFJS_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.min.m
 const PDF_WORKER_URL='https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.worker.min.mjs'
 const MAX_PDF_PAGES=5
 const MAX_IMAGE_DIMENSION=3400
+const MAX_IOS_PROXY_BYTES=Math.floor(3.75*1024*1024)
 const SUMMARY_PREFIX='[[SUMMARY]]'
 const ITEM_PREFIX='[[ITEM]]'
 
@@ -32,6 +34,134 @@ type LayoutNode={str:string;x:number;y:number;w:number;h:number}
 type LayoutLine={y:number;h:number;parts:LayoutNode[]}
 
 type ProgressCallback=(progress:number,message:string)=>void
+
+type IosStructuredItem={
+  description:string
+  capacity?:string
+  quantity:number|null
+  unit?:string
+  unit_price_yen:number|null
+  line_total_yen:number|null
+  suggested_category?:string
+  corrections?:string[]
+  needs_review?:boolean
+}
+type IosStructuredInvoice={
+  vendor?:string
+  billing_period?:{start?:string;end?:string}
+  suggested_invoice_date?:string
+  subtotal_yen?:number|null
+  tax_yen?:number|null
+  total_yen?:number|null
+  items?:IosStructuredItem[]
+  warnings?:string[]
+  is_consistent?:boolean
+}
+type IosRecognized={
+  text:string
+  confidence:number
+  engine:'IOS_DOCOCR'
+  structured:IosStructuredInvoice
+  model:'Apple Vision / docOCR'
+}
+
+function slashDateToIso(value:string|undefined){
+  const match=String(value||'').match(/^(20\d{2})\/(\d{1,2})\/(\d{1,2})$/)
+  return match?toIsoDate(Number(match[1]),Number(match[2]),Number(match[3])):''
+}
+
+async function tryIosInvoiceOcr(file:File,onProgress?:ProgressCallback):Promise<IosRecognized|null>{
+  if(file.size>MAX_IOS_PROXY_BYTES)return null
+  if(import.meta.env.DEV)return null
+  if(typeof window!=='undefined'&&window.location.hostname.endsWith('github.io'))return null
+
+  try{
+    const{data}=await supabase.auth.getSession()
+    const token=data.session?.access_token
+    if(!token)return null
+
+    onProgress?.(18,'Apple Vision OCRへ送信しています…')
+    const form=new FormData()
+    form.append('file',file,file.name)
+
+    const response=await fetch('/api/ocr-invoice',{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`},
+      body:form,
+    })
+    if(!response.ok)return null
+
+    const payload:any=await response.json()
+    if(!payload?.success||payload?.selected_engine!=='IOS_DOCOCR'||!payload?.structured_invoice)return null
+
+    return{
+      text:String(payload.combined_text||''),
+      confidence:payload.structured_invoice.is_consistent?98:86,
+      engine:'IOS_DOCOCR',
+      structured:payload.structured_invoice as IosStructuredInvoice,
+      model:'Apple Vision / docOCR',
+    }
+  }catch{
+    return null
+  }
+}
+
+function iosInvoiceResult(recognized:IosRecognized):DocumentOcrResult{
+  const structured=recognized.structured
+  const rawText=normalizeText(recognized.text)
+  const subtotalYen=Math.max(0,Number(structured.subtotal_yen||0))
+  const taxYen=Math.max(0,Number(structured.tax_yen||0))
+  const totalYen=Math.max(0,Number(structured.total_yen||0))
+
+  const rawItems:DocumentOcrItem[]=(structured.items||[]).flatMap(item=>{
+    const quantity=Number(item.quantity||0)
+    const unitPrice=Number(item.unit_price_yen||0)
+    const lineTotal=Number(item.line_total_yen||0)
+    if(!item.description?.trim()||quantity<=0||unitPrice<=0||lineTotal<=0)return[]
+    return[{
+      description:item.description.trim(),
+      quantity,
+      unit:item.unit?.trim()||item.capacity?.trim()||'',
+      unitPriceYen:Math.round(unitPrice),
+      lineTotalYen:Math.round(lineTotal),
+      taxRate:10,
+      suggestedCategory:item.suggested_category||inferCategory(item.description),
+    }]
+  })
+
+  const converted=makeInvoiceItemsTaxInclusive(rawItems,subtotalYen,taxYen,totalYen)
+  const warnings=[...converted.warnings]
+  const corrections=(structured.items||[]).flatMap(item=>item.corrections||[])
+  if(corrections.length)warnings.push('Apple Visionの読取値に計算上の不整合があったため、数量または金額を請求書の合計と照合して自動補正しました。原本もご確認ください。')
+  if((structured.warnings||[]).length||structured.is_consistent===false)warnings.push('Apple Visionの構造化結果に要確認項目があります。原本と照合してください。')
+  if(!structured.vendor?.trim())warnings.push('請求元を特定できませんでした。')
+  if(!converted.items.length)warnings.push('商品明細を特定できませんでした。原本の明細をご確認ください。')
+  if(!totalYen)warnings.push('合計金額を特定できませんでした。')
+
+  const suggestedCategory=converted.items.length&&converted.items.every(item=>item.suggestedCategory===converted.items[0].suggestedCategory)
+    ?converted.items[0].suggestedCategory
+    :inferCategory(rawText)
+
+  return{
+    kind:'VENDOR_INVOICE',
+    rawText,
+    confidence:recognized.confidence,
+    vendor:structured.vendor?.trim()||findVendor(rawText),
+    documentNo:findDocumentNo(rawText),
+    date:slashDateToIso(structured.suggested_invoice_date)||findInvoiceDate(rawText),
+    dueDate:findDate(rawText,['支払期限','お支払期限','payment due','due date'],false),
+    subtotalYen,
+    taxYen,
+    totalYen,
+    referenceNo:'',
+    paymentMethod:'',
+    suggestedCategory,
+    items:converted.items,
+    warnings:[...new Set(warnings)],
+    engine:'IOS_DOCOCR',
+    model:recognized.model,
+  }
+}
 
 const circledMarks=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳']
 function normalizeNfkcPreservingMarks(value:string){
@@ -639,6 +769,11 @@ async function recognizeCanvasBest(canvas:HTMLCanvasElement,kind:DocumentOcrKind
 }
 
 async function recognizeImage(file:File,kind:DocumentOcrKind,onProgress?:ProgressCallback){
+  if(kind==='VENDOR_INVOICE'){
+    const ios=await tryIosInvoiceOcr(file,onProgress)
+    if(ios)return ios
+    onProgress?.(8,'Apple Visionを利用できないため、ブラウザOCRへ切り替えています…')
+  }
   onProgress?.(5,'画像を準備しています…')
   const canvas=await imageFileToCanvas(file)
   onProgress?.(12,'OCRエンジンを準備しています…')
@@ -665,6 +800,12 @@ async function recognizePdf(file:File,kind:DocumentOcrKind,onProgress?:ProgressC
   if(digitalUseful){
     onProgress?.(100,'PDFの文字・表構造を直接解析しました。')
     return{text:digital,confidence:99,engine:'PDF_TEXT' as const}
+  }
+
+  if(kind==='VENDOR_INVOICE'){
+    const ios=await tryIosInvoiceOcr(file,onProgress)
+    if(ios)return ios
+    onProgress?.(9,'Apple Visionを利用できないため、ブラウザOCRへ切り替えています…')
   }
 
   const worker=await createOcrWorker((p,message)=>onProgress?.(Math.min(95,10+Math.round(p*.8)),message))
@@ -715,6 +856,11 @@ export async function recognizeDocument(file:File,kind:DocumentOcrKind,onProgres
   const recognized=isPdf?await recognizePdf(file,kind,onProgress):await recognizeImage(file,kind,onProgress)
   if(!recognized.text.trim())throw new Error('文字を読み取れませんでした。画像の向き・明るさ・解像度をご確認ください。')
   onProgress?.(100,'OCR完了')
+  if('engine'in recognized&&recognized.engine==='IOS_DOCOCR'){
+    const result=iosInvoiceResult(recognized)
+    onProgress?.(100,'Apple Vision OCR完了')
+    return result
+  }
   const engine='engine'in recognized&&recognized.engine==='PDF_TEXT'?'PDF_TEXT':'OCR'
   const result=parseResult(recognized.text,kind,recognized.confidence,engine)
   if(engine==='PDF_TEXT')result.warnings.unshift('PDF内の文字座標と表構造を直接解析しました。画像OCRより高精度な方式です。')
