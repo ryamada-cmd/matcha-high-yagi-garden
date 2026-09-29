@@ -178,3 +178,58 @@ GATEWAY_API_KEY=<same-strong-random-key>
 Until `OCR_GATEWAY_URL` is configured, Garden Manager automatically continues to the existing browser OCR.
 
 For normal Vercel Function uploads, Apple Vision OCR is attempted for invoice files below about 3.75 MB. Larger files automatically continue to the existing browser OCR.
+
+
+## Stable Windows operation
+
+For day-to-day use, keep the Gateway local on `127.0.0.1:8787` and publish it through a secure HTTPS relay. The preferred setup is Tailscale Funnel because it provides a stable `*.ts.net` hostname without changing the existing MATCHA HIGH DNS configuration.
+
+### 1. Start the Gateway automatically at Windows boot
+
+Run PowerShell as Administrator:
+
+```powershell
+cd C:\Users\M\Desktop\matcha-high-yagi-garden\ocr-gateway
+powershell -ExecutionPolicy Bypass -File .\install_gateway_autostart.ps1
+```
+
+This creates the scheduled task `Yagi Garden OCR Gateway` under the SYSTEM account and starts it immediately.
+
+Check status:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\check_gateway_status.ps1
+```
+
+Remove the task:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\uninstall_gateway_autostart.ps1
+```
+
+### 2. Publish the Gateway with a stable Tailscale Funnel URL
+
+Install Tailscale on Windows and sign in. Then run PowerShell as Administrator:
+
+```powershell
+cd C:\Users\M\Desktop\matcha-high-yagi-garden\ocr-gateway
+powershell -ExecutionPolicy Bypass -File .\setup_tailscale_funnel.ps1
+```
+
+The first Funnel command may open a browser approval page. Approve Funnel, then run the setup command again if needed.
+
+The final output includes a stable HTTPS hostname similar to:
+
+```
+https://<device>.<tailnet>.ts.net
+```
+
+Set that hostname as `OCR_GATEWAY_URL` in the Vercel Production environment. Keep `OCR_GATEWAY_API_KEY` unchanged.
+
+Disable Funnel:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\disable_tailscale_funnel.ps1
+```
+
+The Gateway remains protected by `GATEWAY_API_KEY`; Funnel only replaces the temporary Quick Tunnel URL.
