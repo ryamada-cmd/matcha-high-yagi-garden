@@ -233,3 +233,36 @@ powershell -ExecutionPolicy Bypass -File .\disable_tailscale_funnel.ps1
 ```
 
 The Gateway remains protected by `GATEWAY_API_KEY`; Funnel only replaces the temporary Quick Tunnel URL.
+
+
+## iPhone IP auto-discovery
+
+The Gateway can recover automatically when the iPhone receives a different LAN IP address.
+
+Default behavior:
+
+1. Try the current/configured `IOS_OCR_BASE_URL`.
+2. If it is unavailable, scan private local `/24` networks on the configured OCR port.
+3. Accept a host only when its root page identifies itself as the upstream iOS-OCR-Server.
+4. Switch the in-memory OCR destination to the discovered iPhone and reuse it for later requests.
+5. Apply a short cooldown after a failed scan so an intentionally offline iPhone does not cause repeated full-LAN scans.
+
+This is useful on shared apartment/office networks where DHCP reservation on the upstream router is not available.
+
+Optional settings:
+
+```env
+IOS_OCR_AUTO_DISCOVERY=true
+IOS_OCR_DISCOVERY_TIMEOUT_SECONDS=0.35
+IOS_OCR_DISCOVERY_COOLDOWN_SECONDS=20
+```
+
+The original `IOS_OCR_BASE_URL` remains the preferred first address. It does not need to be edited every time DHCP changes the iPhone IP.
+
+Check the active address:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\check_gateway_status.ps1
+```
+
+The health output shows both the configured URL and the currently active/discovered URL.

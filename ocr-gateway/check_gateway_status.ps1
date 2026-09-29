@@ -27,6 +27,10 @@ try {
   Write-Host "Gateway health: OK"
   Write-Host "iPhone reachable: $($health.iphone_reachable)"
   Write-Host "iPhone status: $($health.iphone_status)"
+  Write-Host "iPhone URL: $($health.iphone_url)"
+  Write-Host "Configured URL: $($health.iphone_configured_url)"
+  Write-Host "Auto discovery: $($health.iphone_auto_discovery)"
+  Write-Host "IP changed from configured: $($health.iphone_discovered)"
 } catch {
   Write-Host "Gateway health: unavailable"
   Write-Host $_.Exception.Message
