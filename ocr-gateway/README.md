@@ -149,3 +149,32 @@ cd ocr-gateway
 ```
 
 Then restart `start_gateway.bat` and rerun `test_invoice.py`. The `docOCR / original` section will now include a `STRUCTURED INVOICE` JSON block.
+
+
+## Garden Manager integration
+
+The Garden Manager now uses the following invoice OCR order:
+
+1. Embedded PDF text/layout (`PDF_TEXT`)
+2. Apple Vision `docOCR` through the authenticated server-side proxy
+3. Existing iPhone plain OCR fallback on the Gateway
+4. Existing browser Tesseract OCR
+
+The browser never receives the Windows Gateway API key. Production requests go through `/api/ocr-invoice`.
+
+Required Vercel environment variables before enabling Apple Vision remotely:
+
+```
+OCR_GATEWAY_URL=https://<your-secure-gateway-host>
+OCR_GATEWAY_API_KEY=<strong-random-key>
+```
+
+The Windows Gateway must use the same key in `.env`:
+
+```
+GATEWAY_API_KEY=<same-strong-random-key>
+```
+
+Until `OCR_GATEWAY_URL` is configured, Garden Manager automatically continues to the existing browser OCR.
+
+For normal Vercel Function uploads, Apple Vision OCR is attempted for invoice files below about 3.75 MB. Larger files automatically continue to the existing browser OCR.
