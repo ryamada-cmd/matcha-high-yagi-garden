@@ -70,15 +70,16 @@ function slashDateToIso(value:string|undefined){
   return match?toIsoDate(Number(match[1]),Number(match[2]),Number(match[3])):''
 }
 
-async function tryIosInvoiceOcr(file:File,onProgress?:ProgressCallback):Promise<IosRecognized|null>{
-  if(file.size>MAX_IOS_PROXY_BYTES)return null
-  if(import.meta.env.DEV)return null
-  if(typeof window!=='undefined'&&window.location.hostname.endsWith('github.io'))return null
+async function tryIosInvoiceOcr(file:File,onProgress?:ProgressCallback,strict=false):Promise<IosRecognized|null>{
+  const fail=(message:string):null=>{if(strict)throw new Error(message);return null}
+  if(file.size>MAX_IOS_PROXY_BYTES)return fail('Apple Vision OCRは約3.75MB以下の請求書で利用できます。PDFを軽量化するか、通常OCRをご利用ください。')
+  if(import.meta.env.DEV)return fail('Apple Vision OCRはVercel本番環境から利用してください。')
+  if(typeof window!=='undefined'&&window.location.hostname.endsWith('github.io'))return fail('GitHub PagesではApple Vision OCRを直接利用できません。Vercel本番環境をご利用ください。')
 
   try{
     const{data}=await supabase.auth.getSession()
     const token=data.session?.access_token
-    if(!token)return null
+    if(!token)return fail('Apple Vision OCRを利用するにはログインが必要です。')
 
     onProgress?.(18,'Apple Vision OCRへ送信しています…')
     const form=new FormData()
@@ -89,10 +90,20 @@ async function tryIosInvoiceOcr(file:File,onProgress?:ProgressCallback):Promise<
       headers:{Authorization:`Bearer ${token}`},
       body:form,
     })
-    if(!response.ok)return null
+    if(!response.ok){
+      let detail=''
+      try{
+        const payload:any=await response.json()
+        detail=String(payload?.error||payload?.detail||'').trim()
+      }catch{}
+      return fail(`Apple Vision OCRへの接続に失敗しました（HTTP ${response.status}）。${detail?' '+detail:''}`)
+    }
 
     const payload:any=await response.json()
-    if(!payload?.success||payload?.selected_engine!=='IOS_DOCOCR'||!payload?.structured_invoice)return null
+    if(!payload?.success)return fail('Apple Vision OCRから正常な応答を取得できませんでした。')
+    if(payload?.selected_engine!=='IOS_DOCOCR'||!payload?.structured_invoice){
+      return fail('iPhoneのApple Vision docOCRを利用できませんでした。iPhone OCR ServerとWindows Gatewayの起動状態をご確認ください。')
+    }
 
     return{
       text:String(payload.combined_text||''),
@@ -101,7 +112,8 @@ async function tryIosInvoiceOcr(file:File,onProgress?:ProgressCallback):Promise<
       structured:payload.structured_invoice as IosStructuredInvoice,
       model:'Apple Vision / docOCR',
     }
-  }catch{
+  }catch(error){
+    if(strict)throw error instanceof Error?error:new Error('Apple Vision OCRでエラーが発生しました。')
     return null
   }
 }
@@ -846,6 +858,17 @@ async function recognizePdf(file:File,kind:DocumentOcrKind,onProgress?:ProgressC
 
 export function canOcrDocument(file:File){
   return file.type==='application/pdf'||file.type.startsWith('image/')||/\.(jpe?g|png|webp|heic|heif|pdf)$/i.test(file.name)
+}
+
+export async function recognizeInvoiceWithAppleVision(file:File,onProgress?:ProgressCallback):Promise<DocumentOcrResult>{
+  if(!canOcrDocument(file))throw new Error('Apple Vision OCRは画像またはPDFに対応しています。')
+  if(file.size<=0)throw new Error('空のファイルは読み取れません。')
+  if(file.size>25*1024*1024)throw new Error('OCR対象は1ファイル25MBまでです。')
+  onProgress?.(5,'Apple Vision OCRを準備しています…')
+  const recognized=await tryIosInvoiceOcr(file,onProgress,true)
+  if(!recognized)throw new Error('Apple Vision OCRを開始できませんでした。')
+  onProgress?.(100,'Apple Vision OCR完了')
+  return iosInvoiceResult(recognized)
 }
 
 export async function recognizeDocument(file:File,kind:DocumentOcrKind,onProgress?:ProgressCallback):Promise<DocumentOcrResult>{
