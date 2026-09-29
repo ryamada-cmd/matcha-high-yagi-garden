@@ -58,6 +58,11 @@ def main() -> None:
         if len(text) > 3000:
             print("\n... (truncated on console; full result is in JSON)")
 
+        structured = candidate.get("structured_invoice")
+        if structured:
+            print("\n--- STRUCTURED INVOICE ---")
+            print(json.dumps(structured, ensure_ascii=False, indent=2))
+
 
 if __name__ == "__main__":
     main()
