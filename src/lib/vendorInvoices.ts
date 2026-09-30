@@ -9,7 +9,7 @@ export type VendorInvoicePayment={
 }
 export type VendorInvoice={
   id:string;invoiceNo:string;externalInvoiceNo:string;vendor:string;invoiceDate:string;paymentDueDate:string;scheduledPaymentDate:string;
-  plannedPaymentMethod:string;plannedPaymentAccount:string;totalAmountYen:number;paidAmountYen:number;paymentStatus:VendorInvoiceStatus;
+  plannedPaymentMethod:string;plannedPaymentAccount:string;discountAmountYen:number;totalAmountYen:number;paidAmountYen:number;paymentStatus:VendorInvoiceStatus;
   isOnHold:boolean;note:string;createdAt:string;updatedAt:string;items:VendorInvoiceItem[];payments:VendorInvoicePayment[]
 }
 export type VendorInvoiceItemInput={category:string;description:string;quantity:number;unit:string;unitPriceYen:number;taxRate:number;note?:string}
@@ -33,12 +33,12 @@ export async function loadVendorInvoices():Promise<VendorInvoice[]>{
   for(const r of itemsResult.data||[]){const item:VendorInvoiceItem={id:r.id,lineNo:n(r.line_no),category:r.category||'OTHER',description:r.description||'',quantity:n(r.quantity),unit:r.unit||'',unitPriceYen:n(r.unit_price_yen),taxRate:n(r.tax_rate),lineTotalYen:n(r.line_total_yen),note:r.note||''};itemsByInvoice.set(r.invoice_id,[...(itemsByInvoice.get(r.invoice_id)||[]),item])}
   for(const r of paymentsResult.data||[]){const payment:VendorInvoicePayment={id:r.id,paymentNo:r.payment_no||'',invoiceId:r.invoice_id,paymentDate:r.payment_date||'',amountYen:n(r.amount_yen),paymentMethod:r.payment_method||'',paymentAccount:r.payment_account||'',referenceNo:r.reference_no||'',note:r.note||'',createdAt:r.created_at||''};paymentsByInvoice.set(r.invoice_id,[...(paymentsByInvoice.get(r.invoice_id)||[]),payment])}
   return(invoicesResult.data||[]).map((r:any)=>({
-    id:r.id,invoiceNo:r.invoice_no||'',externalInvoiceNo:r.external_invoice_no||'',vendor:r.vendor||'',invoiceDate:r.invoice_date||'',paymentDueDate:r.payment_due_date||'',scheduledPaymentDate:r.scheduled_payment_date||'',plannedPaymentMethod:r.planned_payment_method||'',plannedPaymentAccount:r.planned_payment_account||'',totalAmountYen:n(r.total_amount_yen),paidAmountYen:n(r.paid_amount_yen),paymentStatus:r.payment_status,isOnHold:r.is_on_hold===true,note:r.note||'',createdAt:r.created_at||'',updatedAt:r.updated_at||'',items:itemsByInvoice.get(r.id)||[],payments:paymentsByInvoice.get(r.id)||[]
+    id:r.id,invoiceNo:r.invoice_no||'',externalInvoiceNo:r.external_invoice_no||'',vendor:r.vendor||'',invoiceDate:r.invoice_date||'',paymentDueDate:r.payment_due_date||'',scheduledPaymentDate:r.scheduled_payment_date||'',plannedPaymentMethod:r.planned_payment_method||'',plannedPaymentAccount:r.planned_payment_account||'',discountAmountYen:n(r.discount_amount_yen),totalAmountYen:n(r.total_amount_yen),paidAmountYen:n(r.paid_amount_yen),paymentStatus:r.payment_status,isOnHold:r.is_on_hold===true,note:r.note||'',createdAt:r.created_at||'',updatedAt:r.updated_at||'',items:itemsByInvoice.get(r.id)||[],payments:paymentsByInvoice.get(r.id)||[]
   }))
 }
 
-export async function saveVendorInvoice(input:{id?:string;externalInvoiceNo:string;vendor:string;invoiceDate:string;paymentDueDate:string;scheduledPaymentDate:string;plannedPaymentMethod:string;plannedPaymentAccount:string;isOnHold:boolean;note:string;items:VendorInvoiceItemInput[]}){
-  const{data,error}=await supabase.rpc('admin_save_vendor_invoice',{p_payload:{id:input.id||'',external_invoice_no:input.externalInvoiceNo,vendor:input.vendor,invoice_date:input.invoiceDate,payment_due_date:input.paymentDueDate,scheduled_payment_date:input.scheduledPaymentDate,planned_payment_method:input.plannedPaymentMethod,planned_payment_account:input.plannedPaymentAccount,is_on_hold:input.isOnHold,note:input.note,items:input.items.map(i=>({category:i.category,description:i.description,quantity:i.quantity,unit:i.unit,unit_price_yen:i.unitPriceYen,tax_rate:i.taxRate,note:i.note||''}))}})
+export async function saveVendorInvoice(input:{id?:string;externalInvoiceNo:string;vendor:string;invoiceDate:string;paymentDueDate:string;scheduledPaymentDate:string;plannedPaymentMethod:string;plannedPaymentAccount:string;discountAmountYen:number;isOnHold:boolean;note:string;items:VendorInvoiceItemInput[]}){
+  const{data,error}=await supabase.rpc('admin_save_vendor_invoice',{p_payload:{id:input.id||'',external_invoice_no:input.externalInvoiceNo,vendor:input.vendor,invoice_date:input.invoiceDate,payment_due_date:input.paymentDueDate,scheduled_payment_date:input.scheduledPaymentDate,planned_payment_method:input.plannedPaymentMethod,planned_payment_account:input.plannedPaymentAccount,discount_amount_yen:input.discountAmountYen,is_on_hold:input.isOnHold,note:input.note,items:input.items.map(i=>({category:i.category,description:i.description,quantity:i.quantity,unit:i.unit,unit_price_yen:i.unitPriceYen,tax_rate:i.taxRate,note:i.note||''}))}})
   if(error)throw error;return data as string
 }
 

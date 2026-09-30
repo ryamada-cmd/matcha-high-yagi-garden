@@ -17,7 +17,7 @@ const csvCell=(value:unknown)=>`"${String(value??'').replace(/"/g,'""')}"`
 
 type InvoiceFormItem={key:string;category:string;description:string;quantity:string;unit:string;unitPrice:string;taxRate:string;note:string}
 const newItem=():InvoiceFormItem=>({key:`${Date.now()}-${Math.random()}`,category:'OTHER',description:'',quantity:'1',unit:'',unitPrice:'',taxRate:'10',note:''})
-const blankInvoice=()=>({id:'',externalInvoiceNo:'',vendor:'',invoiceDate:dateInput(),paymentDueDate:'',scheduledPaymentDate:'',plannedPaymentMethod:'銀行振込',plannedPaymentAccount:'',isOnHold:false,note:'',items:[newItem()]})
+const blankInvoice=()=>({id:'',externalInvoiceNo:'',vendor:'',invoiceDate:dateInput(),paymentDueDate:'',scheduledPaymentDate:'',plannedPaymentMethod:'銀行振込',plannedPaymentAccount:'',discountAmountYen:'0',isOnHold:false,note:'',items:[newItem()]})
 const blankPayment=(invoice:VendorInvoice,payment?:VendorInvoicePayment)=>({id:payment?.id||'',invoiceId:invoice.id,paymentDate:payment?.paymentDate||dateInput(),amountYen:String(payment?.amountYen??Math.max(0,invoice.totalAmountYen-invoice.paidAmountYen)),paymentMethod:payment?.paymentMethod||invoice.plannedPaymentMethod||'銀行振込',paymentAccount:payment?.paymentAccount||invoice.plannedPaymentAccount||'',referenceNo:payment?.referenceNo||'',note:payment?.note||''})
 
 export default function VendorInvoicesPage(){
@@ -30,7 +30,9 @@ export default function VendorInvoicesPage(){
 
   async function refresh(){setLoading(true);setError('');try{const [rows,docs]=await Promise.all([loadVendorInvoices(),loadVendorDocumentMap().catch(()=>({} as VendorDocumentMap))]);setInvoices(rows);setDocumentMap(docs)}catch(e:any){setError(e?.message||'請求書を読み込めませんでした。')}finally{setLoading(false)}}
   useEffect(()=>{void refresh()},[])
-  const formTotal=useMemo(()=>form.items.reduce((sum,item)=>sum+Math.round((Number(item.quantity)||0)*(Number(item.unitPrice)||0)),0),[form.items])
+  const formSubtotal=useMemo(()=>form.items.reduce((sum,item)=>sum+Math.round((Number(item.quantity)||0)*(Number(item.unitPrice)||0)),0),[form.items])
+  const formDiscount=Math.max(0,Number(form.discountAmountYen)||0)
+  const formTotal=Math.max(0,formSubtotal-formDiscount)
 
   function resetForm(clear=true){setForm(blankInvoice());setInvoiceFile(null);setInvoiceOcr(null);setInvoiceOcrProgress('');setError('');if(clear)setSuccess('')}
   function updateItem(key:string,patch:Partial<InvoiceFormItem>){setForm(old=>({...old,items:old.items.map(item=>item.key===key?{...item,...patch}:item)}))}
@@ -101,15 +103,18 @@ export default function VendorInvoicesPage(){
     try{
       if(!form.vendor.trim())throw new Error('請求元を入力してください。')
       if(!form.invoiceDate)throw new Error('請求日を入力してください。')
+      const discountAmountYen=Number(form.discountAmountYen)
+      if(!Number.isFinite(discountAmountYen)||discountAmountYen<0)throw new Error('値引き額は0円以上で入力してください。')
       const items=form.items.map((item,index)=>{const quantity=Number(item.quantity),unitPrice=Number(item.unitPrice),taxRate=Number(item.taxRate);if(!item.description.trim())throw new Error(`${index+1}行目の請求内容を入力してください。`);if(!Number.isFinite(quantity)||quantity<=0)throw new Error(`${index+1}行目の数量を確認してください。`);if(!Number.isFinite(unitPrice)||unitPrice<0)throw new Error(`${index+1}行目の税込単価を確認してください。`);if(!Number.isFinite(taxRate)||taxRate<0||taxRate>100)throw new Error(`${index+1}行目の税率を確認してください。`);return{category:item.category,description:item.description,quantity,unit:item.unit,unitPriceYen:unitPrice,taxRate,note:item.note}})
-      const id=await saveVendorInvoice({...form,id:form.id||undefined,items})
+      if(discountAmountYen>formSubtotal)throw new Error('値引き額は明細合計を超えて入力できません。')
+      const id=await saveVendorInvoice({...form,id:form.id||undefined,discountAmountYen,items})
       let message=form.id?'請求書を更新しました。':'請求書を登録しました。',storageError=''
       if(invoiceFile){try{await uploadVendorDocument({file:invoiceFile,invoiceId:id,kind:'INVOICE'});message+=' 原本をOneDriveへ保存しました。'}catch(e:any){storageError=`請求書は保存済みですが、原本のOneDrive保存に失敗しました：${e?.message||'保存エラー'}`}}
       resetForm(false);await refresh();setSuccess(message);if(storageError)setError(storageError)
     }catch(e:any){setError(e?.message||'請求書を保存できませんでした。')}finally{setBusy(false)}
   }
 
-  function editInvoice(invoice:VendorInvoice){if(!canManage){setError('請求書を編集する権限がありません。');return}setInvoiceFile(null);setInvoiceOcr(null);setInvoiceOcrProgress('');setForm({id:invoice.id,externalInvoiceNo:invoice.externalInvoiceNo,vendor:invoice.vendor,invoiceDate:invoice.invoiceDate,paymentDueDate:invoice.paymentDueDate,scheduledPaymentDate:invoice.scheduledPaymentDate,plannedPaymentMethod:invoice.plannedPaymentMethod||'銀行振込',plannedPaymentAccount:invoice.plannedPaymentAccount,isOnHold:invoice.isOnHold,note:invoice.note,items:invoice.items.map(item=>({key:item.id,category:item.category,description:item.description,quantity:String(item.quantity),unit:item.unit,unitPrice:String(item.unitPriceYen),taxRate:String(item.taxRate),note:item.note}))});setError('');setSuccess('');window.scrollTo({top:0,behavior:'smooth'})}
+  function editInvoice(invoice:VendorInvoice){if(!canManage){setError('請求書を編集する権限がありません。');return}setInvoiceFile(null);setInvoiceOcr(null);setInvoiceOcrProgress('');setForm({id:invoice.id,externalInvoiceNo:invoice.externalInvoiceNo,vendor:invoice.vendor,invoiceDate:invoice.invoiceDate,paymentDueDate:invoice.paymentDueDate,scheduledPaymentDate:invoice.scheduledPaymentDate,plannedPaymentMethod:invoice.plannedPaymentMethod||'銀行振込',plannedPaymentAccount:invoice.plannedPaymentAccount,discountAmountYen:String(invoice.discountAmountYen),isOnHold:invoice.isOnHold,note:invoice.note,items:invoice.items.map(item=>({key:item.id,category:item.category,description:item.description,quantity:String(item.quantity),unit:item.unit,unitPrice:String(item.unitPriceYen),taxRate:String(item.taxRate),note:item.note}))});setError('');setSuccess('');window.scrollTo({top:0,behavior:'smooth'})}
   function openPayment(invoice:VendorInvoice,payment?:VendorInvoicePayment){if(!canManage){setError('支払いを登録・編集する権限がありません。');return}setPaymentFile(null);setPaymentOcr(null);setPaymentOcrProgress('');setPaymentInvoice(invoice);setPaymentForm(blankPayment(invoice,payment));setError('');setSuccess('')}
   function closePayment(){if(busy)return;setPaymentInvoice(null);setPaymentForm(null);setPaymentFile(null);setPaymentOcr(null);setPaymentOcrProgress('')}
 
@@ -130,8 +135,8 @@ export default function VendorInvoicesPage(){
 
   function exportCsv(){
     if(!canExport){setError('請求書CSVを出力する権限がありません。');return}
-    const header=['管理番号','先方請求書番号','請求元','請求日','支払期限','支払予定日','状態','明細番号','分類','請求内容','数量','単位','税込単価','税率','明細金額','請求額','支払済額','未払額','支払方法','支払口座','備考']
-    const rows=filtered.flatMap(invoice=>invoice.items.map(item=>[invoice.invoiceNo,invoice.externalInvoiceNo,invoice.vendor,invoice.invoiceDate,invoice.paymentDueDate,invoice.scheduledPaymentDate,statusLabel(invoice.paymentStatus),item.lineNo,categoryLabel(item.category),item.description,item.quantity,item.unit,item.unitPriceYen,`${item.taxRate}%`,item.lineTotalYen,invoice.totalAmountYen,invoice.paidAmountYen,Math.max(0,invoice.totalAmountYen-invoice.paidAmountYen),invoice.plannedPaymentMethod,invoice.plannedPaymentAccount,invoice.note]))
+    const header=['管理番号','先方請求書番号','請求元','請求日','支払期限','支払予定日','状態','明細番号','分類','請求内容','数量','単位','税込単価','税率','明細金額','値引き額','請求額','支払済額','未払額','支払方法','支払口座','備考']
+    const rows=filtered.flatMap(invoice=>invoice.items.map(item=>[invoice.invoiceNo,invoice.externalInvoiceNo,invoice.vendor,invoice.invoiceDate,invoice.paymentDueDate,invoice.scheduledPaymentDate,statusLabel(invoice.paymentStatus),item.lineNo,categoryLabel(item.category),item.description,item.quantity,item.unit,item.unitPriceYen,`${item.taxRate}%`,item.lineTotalYen,invoice.discountAmountYen,invoice.totalAmountYen,invoice.paidAmountYen,Math.max(0,invoice.totalAmountYen-invoice.paidAmountYen),invoice.plannedPaymentMethod,invoice.plannedPaymentAccount,invoice.note]))
     const csv='\ufeff'+[header,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`請求書支払管理_${month||'全期間'}.csv`;a.click();URL.revokeObjectURL(url)
   }
 
@@ -158,6 +163,7 @@ export default function VendorInvoicesPage(){
         <label><span>支払予定日</span><input type="date" value={form.scheduledPaymentDate} onChange={e=>setForm(v=>({...v,scheduledPaymentDate:e.target.value}))}/></label>
         <label><span>支払方法</span><select value={form.plannedPaymentMethod} onChange={e=>setForm(v=>({...v,plannedPaymentMethod:e.target.value}))}>{paymentMethods.map(method=><option key={method}>{method}</option>)}</select></label>
         <label><span>支払口座・カード</span><input value={form.plannedPaymentAccount} onChange={e=>setForm(v=>({...v,plannedPaymentAccount:e.target.value}))} placeholder="例：京都銀行 普通／法人カード"/></label>
+        <label><span>値引き額</span><input type="number" min="0" step="1" value={form.discountAmountYen} onChange={e=>setForm(v=>({...v,discountAmountYen:e.target.value}))} placeholder="0"/></label>
         <label className="invoice-hold"><input type="checkbox" checked={form.isOnHold} onChange={e=>setForm(v=>({...v,isOnHold:e.target.checked}))}/><span><b>支払いを保留</b><small>確認待ち・請求内容に差異がある場合</small></span></label>
       </div>
       <div className="invoice-items-head"><div><b>請求明細</b><span>肥料・農薬・加工賃などを行ごとに登録</span></div><button className="secondary-button compact" type="button" onClick={()=>setForm(v=>({...v,items:[...v.items,newItem()]}))}><Plus size={15}/>明細を追加</button></div>
@@ -173,14 +179,14 @@ export default function VendorInvoicesPage(){
         <button className="invoice-remove" type="button" aria-label={`${index+1}行目を削除`} disabled={form.items.length===1} onClick={()=>removeItem(item.key)}><Trash2 size={16}/></button>
       </div>)}</div>
       <label className="invoice-note"><span>請求書備考</span><textarea rows={3} value={form.note} onChange={e=>setForm(v=>({...v,note:e.target.value}))} placeholder="支払い条件、確認事項など"/></label>
-      <div className="invoice-submit-row"><div><span>請求合計</span><strong>{yen.format(formTotal)}</strong></div><div>{form.id&&<button className="secondary-button" type="button" onClick={()=>resetForm()} disabled={busy}>編集を中止</button>}<button className="primary-button" disabled={busy}>{busy?'保存中…':form.id?'請求書を更新':'請求書を登録'}</button></div></div>
+      <div className="invoice-submit-row"><div><span>明細合計 {yen.format(formSubtotal)}｜値引き -{yen.format(formDiscount)}</span><strong>{yen.format(formTotal)}</strong></div><div>{form.id&&<button className="secondary-button" type="button" onClick={()=>resetForm()} disabled={busy}>編集を中止</button>}<button className="primary-button" disabled={busy}>{busy?'保存中…':form.id?'請求書を更新':'請求書を登録'}</button></div></div>
     </form>}
 
     <section className="panel invoice-list-section">
       <div className="panel-title"><div><h2>請求書一覧</h2><p>支払状況と期限を確認します。変更権限がある場合は支払登録・編集もできます。</p></div><span className="audit-count">{filtered.length}件</span></div>
       <div className="invoice-toolbar"><div className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="請求元・番号・明細内容で検索"/></div><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">全ステータス</option><option value="UNPAID">未払</option><option value="PARTIAL">一部支払</option><option value="PAID">支払済</option><option value="HOLD">保留</option></select><input type="month" value={month} onChange={e=>setMonth(e.target.value)} aria-label="請求月"/></div>
       <div className="vendor-invoice-list">{filtered.map(invoice=>{const remaining=Math.max(0,invoice.totalAmountYen-invoice.paidAmountYen),isOverdue=invoice.paymentStatus!=='PAID'&&invoice.paymentStatus!=='HOLD'&&!!invoice.paymentDueDate&&invoice.paymentDueDate<today;return <article className={`vendor-invoice-card status-${invoice.paymentStatus.toLowerCase()}`} key={invoice.id}>
-        <div className="vendor-invoice-head"><div><div className="invoice-badges"><span className={`invoice-status ${invoice.paymentStatus.toLowerCase()}`}>{statusLabel(invoice.paymentStatus)}</span>{isOverdue&&<span className="invoice-overdue"><TriangleAlert size={12}/>期限超過</span>}</div><h3>{invoice.vendor}</h3><small>{invoice.invoiceNo}{invoice.externalInvoiceNo?`｜先方番号 ${invoice.externalInvoiceNo}`:''}</small></div><div className="vendor-invoice-total"><span>請求額</span><strong>{yen.format(invoice.totalAmountYen)}</strong><small>未払 {yen.format(remaining)}</small></div></div>
+        <div className="vendor-invoice-head"><div><div className="invoice-badges"><span className={`invoice-status ${invoice.paymentStatus.toLowerCase()}`}>{statusLabel(invoice.paymentStatus)}</span>{isOverdue&&<span className="invoice-overdue"><TriangleAlert size={12}/>期限超過</span>}</div><h3>{invoice.vendor}</h3><small>{invoice.invoiceNo}{invoice.externalInvoiceNo?`｜先方番号 ${invoice.externalInvoiceNo}`:''}</small></div><div className="vendor-invoice-total"><span>請求額</span><strong>{yen.format(invoice.totalAmountYen)}</strong>{invoice.discountAmountYen>0&&<small>明細 {yen.format(invoice.totalAmountYen+invoice.discountAmountYen)}｜値引き -{yen.format(invoice.discountAmountYen)}</small>}<small>未払 {yen.format(remaining)}</small></div></div>
         <div className="invoice-date-grid"><div><span>請求日</span><b>{invoice.invoiceDate||'—'}</b></div><div className={isOverdue?'overdue':''}><span>支払期限</span><b>{invoice.paymentDueDate||'未設定'}</b></div><div><span>支払予定日</span><b>{invoice.scheduledPaymentDate||'未設定'}</b></div><div><span>支払方法</span><b>{invoice.plannedPaymentMethod||'未設定'}</b></div><div><span>支払口座</span><b>{invoice.plannedPaymentAccount||'未設定'}</b></div></div>
         <div className="vendor-invoice-items">{invoice.items.map(item=><div key={item.id}><span>{item.lineNo}</span><b>{item.description}</b><small>{categoryLabel(item.category)}｜{num.format(item.quantity)}{item.unit?` ${item.unit}`:''} × {yen.format(item.unitPriceYen)}｜税率 {num.format(item.taxRate)}%</small><strong>{yen.format(item.lineTotalYen)}</strong></div>)}</div>
         {invoice.note&&<p className="vendor-invoice-note">{invoice.note}</p>}
