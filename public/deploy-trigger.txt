@@ -1,1 +1,2 @@
 GitHub Pages enabled: 2026-08-24
+Vercel production trigger: 2026-09-30 document-library
