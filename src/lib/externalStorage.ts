@@ -126,6 +126,10 @@ export async function startOneDriveAuthorization(returnTo: string) {
 export function verifyExternalStorage() { return invoke<ExternalStorageStatus & { ok: boolean }>({ action: 'verify' }) }
 export function organizeExternalStorage() { return invoke<ExternalStorageStatus & { ok: boolean }>({ action: 'organize' }) }
 
+export function getExternalFileDownloadUrl(fileId: string) {
+  return invoke<{ url: string; fileName: string; mimeType: string; webUrl: string }>({ action: 'download-url', fileId })
+}
+
 export async function uploadExternalFile(input: { file: File; category: string; entityType?: string; entityId?: string; note?: string }) {
   const form = new FormData()
   form.set('file', input.file)
