@@ -183,6 +183,13 @@ async function ensureBaseFolderStructure(accessToken: string, driveId: string, r
     [root, '05_機械設備'],
     [root, '06_農薬・肥料', '農薬'],
     [root, '06_農薬・肥料', '肥料'],
+    [root, '07_茶園・栽培', '生産記録'],
+    [root, '08_製造・加工'],
+    [root, '09_品質・検査'],
+    [root, '10_取引先・契約'],
+    [root, '11_行政・支援機関'],
+    [root, '12_商品・ブランド'],
+    [root, '13_輸出'],
     [root, '99_その他'],
   ]
   for (const path of paths) await ensureFolderPath(accessToken, driveId, path)
@@ -239,6 +246,19 @@ async function resolveUploadDestination(root: string, requestedCategory: string,
   if (category === '農薬') return { category, folders: [root, '06_農薬・肥料', '農薬', year, month] }
   if (category === '肥料') return { category, folders: [root, '06_農薬・肥料', '肥料', year, month] }
   if (category === '農薬・肥料') return { category, folders: [root, '06_農薬・肥料', '共通', year, month] }
+  if (category === '見積書') return { category, folders: [root, '01_帳票', '見積書', year, month] }
+  if (category === '領収書') return { category, folders: [root, '03_経費', '領収書', year, month] }
+  if (category === '仕入納品書') return { category, folders: [root, '02_仕入', '仕入納品書', year, month] }
+  if (category === '発注書') return { category, folders: [root, '02_仕入', '発注書', year, month] }
+  if (category === '生産記録') return { category, folders: [root, '07_茶園・栽培', '生産記録', year, month] }
+  if (category === '圃場資料') return { category, folders: [root, '04_圃場', '資料', year, month] }
+  if (category === '農薬・肥料資料') return { category, folders: [root, '06_農薬・肥料', '共通', year, month] }
+  if (category === '加工・製造資料') return { category, folders: [root, '08_製造・加工', year, month] }
+  if (category === '品質・検査資料') return { category, folders: [root, '09_品質・検査', year, month] }
+  if (category === '契約書') return { category, folders: [root, '10_取引先・契約', '契約書', year, month] }
+  if (category === '行政・支援資料') return { category, folders: [root, '11_行政・支援機関', year, month] }
+  if (category === '商品・ブランド資料') return { category, folders: [root, '12_商品・ブランド', year, month] }
+  if (category === '輸出書類') return { category, folders: [root, '13_輸出', year, month] }
   return { category: 'その他', folders: [root, '99_その他', year, month] }
 }
 
@@ -408,6 +428,40 @@ Deno.serve(async (req) => {
     if (action === 'status') {
       await userContext(req, 'storage.view')
       return json(await statusPayload())
+    }
+
+    if (action === 'download-url') {
+      await userContext(req, 'storage.view')
+      const fileId = String(body.fileId || '').trim()
+      if (!fileId) return errorJson('ファイルIDがありません。')
+      const { data: fileRow, error: fileError } = await admin
+        .from('external_files')
+        .select('id,drive_id,provider_item_id,file_name,mime_type,web_url')
+        .eq('id', fileId)
+        .is('archived_at', null)
+        .maybeSingle()
+      if (fileError) throw fileError
+      if (!fileRow) return errorJson('ファイルが見つかりません。', 404)
+
+      const config = await privateConfig()
+      const accessToken = await refreshAccessToken(config)
+      const driveId = String(fileRow.drive_id || config.drive_id || '')
+      const providerItemId = String(fileRow.provider_item_id || '')
+      if (!driveId || !providerItemId) return errorJson('OneDriveファイル情報が不足しています。', 409)
+      const itemResponse = await graphFetch(
+        accessToken,
+        `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(providerItemId)}`,
+      )
+      const item = await itemResponse.json().catch(() => ({})) as Record<string, unknown>
+      if (!itemResponse.ok) throw new Error(`OneDriveファイルを取得できませんでした (${itemResponse.status})`)
+      const downloadUrl = String(item['@microsoft.graph.downloadUrl'] || '')
+      if (!downloadUrl) return errorJson('ダウンロードURLを取得できませんでした。OneDriveで開いてください。', 409)
+      return json({
+        url: downloadUrl,
+        fileName: String(fileRow.file_name || item.name || ''),
+        mimeType: String(fileRow.mime_type || ''),
+        webUrl: String(fileRow.web_url || item.webUrl || ''),
+      })
     }
 
     if (action === 'configure') {
