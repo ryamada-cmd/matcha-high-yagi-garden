@@ -16,3 +16,27 @@
 .harvest-source-fix label select,.harvest-source-fix label input{width:100%;min-height:42px}
 .harvest-source-fix>div:last-child{display:flex;gap:6px}
 @media(max-width:800px){.harvest-source-fix{grid-template-columns:1fr}.harvest-source-fix>div:last-child{display:grid;grid-template-columns:1fr 1fr}.harvest-source-fix>div:last-child button{width:100%;min-height:44px}}
+
+/* A single harvest LOT can include multiple source fields and per-field fresh-leaf yields. */
+.harvest-multi-field-picker{display:grid;gap:10px;border:1px solid #dce6df;background:#f8fbf8;border-radius:12px;padding:12px;min-width:0}
+.harvest-multi-field-picker .field-picker-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.harvest-multi-field-picker .field-picker-head b{font-size:13px;color:#315e43}
+.harvest-multi-field-picker .field-picker-head span{font-size:12px;color:#60766a}
+.harvest-multi-field-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;min-width:0}
+.harvest-multi-field-row{display:grid;gap:9px;min-width:0;border:1px solid #d9e3dc;background:#fff;border-radius:11px;padding:11px}
+.harvest-multi-field-row.selected{border-color:#397c55;background:#eff8f2;box-shadow:inset 0 0 0 1px #397c55}
+.harvest-field-check{display:flex;gap:9px;align-items:center;min-width:0;cursor:pointer}
+.harvest-field-check input{flex:0 0 auto;width:19px;height:19px;accent-color:#397c55}
+.harvest-field-check span{display:grid;gap:3px;min-width:0}
+.harvest-field-check b{font-size:13px;color:#274a37;overflow-wrap:anywhere}
+.harvest-field-check small{font-size:11px;color:#6b7f73}
+.harvest-field-values{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.harvest-field-values label{display:grid;gap:5px;min-width:0;font-size:11px;font-weight:700;color:#4e6c57}
+.harvest-field-values input{min-width:0;width:100%;min-height:42px}
+.harvest-area-help{display:flex;align-items:center;color:#60766a;font-size:12px}
+.harvest-field-breakdown{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.harvest-field-breakdown span{font-size:11px!important;color:#356549!important;background:#f1f7f2;border:1px solid #e0ebe2;border-radius:7px;padding:4px 6px}
+.harvest-history-list small strong{color:#1e5535;font-weight:800}
+@media(max-width:900px){.harvest-multi-field-list{grid-template-columns:1fr}}
+@media(max-width:520px){.harvest-multi-field-picker{padding:9px}.harvest-multi-field-row{padding:10px}.harvest-field-values{grid-template-columns:1fr 1fr}.harvest-field-values label{font-size:10px}.harvest-field-values input{font-size:16px;padding:8px 6px}.harvest-multi-field-picker .field-picker-head span{font-size:11px}}
+@media(max-width:350px){.harvest-field-values{grid-template-columns:1fr}}
