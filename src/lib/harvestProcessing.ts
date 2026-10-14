@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
 
 export type HarvestField={id:string;legacyId:string;name:string;location:string;areaM2:number;variety:string}
-export type HarvestRecord={id:string;legacyId:string;date:string;fieldId:string;fieldLegacyId:string;fieldName:string;location:string;areaM2:number;season:string;method:string;freshLeafKg:number;harvestedAreaM2:number|null;operator:string;destination:string;qualityNote:string;note:string;sourceLotNo:string;variety:string;processedKg:number;remainingKg:number;yieldKgPer10a:number}
+export type HarvestFieldYield={fieldId:string;fieldLegacyId:string;fieldName:string;areaM2:number;variety:string;freshLeafKg:number;harvestedAreaM2:number|null}
+export type HarvestRecord={fieldYields:HarvestFieldYield[];id:string;legacyId:string;date:string;fieldId:string;fieldLegacyId:string;fieldName:string;location:string;areaM2:number;season:string;method:string;freshLeafKg:number;harvestedAreaM2:number|null;operator:string;destination:string;qualityNote:string;note:string;sourceLotNo:string;variety:string;processedKg:number;remainingKg:number;yieldKgPer10a:number}
 export type ProcessingSource={id:string;harvestId:string;harvestLegacyId:string;fieldId:string;fieldLegacyId:string;fieldName:string;harvestDate:string;inputKg:number}
 export type ProcessingBatch={id:string;legacyId:string;date:string;processType:string;outputMaterial:string;outputKg:number;stemOutputKg:number;totalOutputKg:number;sourceLotNo:string;variety:string;facility:string;costYen:number;operator:string;note:string;sources:ProcessingSource[];inputKg:number;yieldPct:number;leafYieldPct:number}
 const n=(v:unknown)=>Number.isFinite(Number(v))?Number(v):0
@@ -16,18 +17,52 @@ export async function loadHarvestRecords(limit=300):Promise<HarvestRecord[]>{
   supabase.from('harvest_records').select('*,fields(legacy_id,name,location,area_m2)').is('deleted_at',null).order('harvest_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit),
   supabase.from('harvest_processing_usage').select('*')
  ]);if(e1)throw e1;if(e2)throw e2
+ const harvestIds=(rows||[]).map((r:any)=>r.id)
+ const {data:details,error:e3}=harvestIds.length
+   ? await supabase.from('harvest_record_fields').select('harvest_record_id,field_id,fresh_leaf_kg,harvested_area_m2,fields(legacy_id,name,area_m2,variety)').in('harvest_record_id',harvestIds)
+   : {data:[],error:null}
+ if(e3)throw e3
+ const byHarvest=new Map<string,HarvestFieldYield[]>()
+ for(const d of details||[]){
+   const f=one((d as any).fields)
+   const a=byHarvest.get((d as any).harvest_record_id)||[]
+   a.push({fieldId:(d as any).field_id,fieldLegacyId:f?.legacy_id||'—',fieldName:f?.name||'圃場未特定',areaM2:n(f?.area_m2),variety:f?.variety||'',freshLeafKg:n((d as any).fresh_leaf_kg),harvestedAreaM2:(d as any).harvested_area_m2===null?null:n((d as any).harvested_area_m2)})
+   byHarvest.set((d as any).harvest_record_id,a)
+ }
  const um=new Map((usage||[]).map((u:any)=>[u.harvest_record_id,{processed:n(u.processed_kg),remaining:n(u.remaining_kg)}]))
- return(rows||[]).map((r:any)=>{const f=one(r.fields);const u=um.get(r.id)||{processed:0,remaining:n(r.fresh_leaf_kg)};const area=r.harvested_area_m2===null?null:n(r.harvested_area_m2);const basis=area&&area>0?area:n(f?.area_m2);return{id:r.id,legacyId:r.legacy_id||'',date:r.harvest_date||'',fieldId:r.field_id||'',fieldLegacyId:f?.legacy_id||'未特定',fieldName:f?.name||'圃場未特定',location:f?.location||'',areaM2:n(f?.area_m2),season:r.season||'',method:r.harvest_method||'',freshLeafKg:n(r.fresh_leaf_kg),harvestedAreaM2:area,operator:r.operator_name_snapshot||'',destination:r.destination||'',qualityNote:r.quality_note||'',note:r.note||'',sourceLotNo:r.source_lot_no||'',variety:r.variety_snapshot||'',processedKg:u.processed,remainingKg:u.remaining,yieldKgPer10a:basis>0?n(r.fresh_leaf_kg)/(basis/1000):0}})
+ return(rows||[]).map((r:any)=>{const f=one(r.fields);const u=um.get(r.id)||{processed:0,remaining:n(r.fresh_leaf_kg)};const area=r.harvested_area_m2===null?null:n(r.harvested_area_m2);const fieldYields=byHarvest.get(r.id)|| (r.field_id?[{fieldId:r.field_id,fieldLegacyId:f?.legacy_id||'—',fieldName:f?.name||'圃場未特定',areaM2:n(f?.area_m2),variety:r.variety_snapshot||'',freshLeafKg:n(r.fresh_leaf_kg),harvestedAreaM2:area}]:[])
+ const basis=fieldYields.reduce((s,y)=>s+(y.harvestedAreaM2||y.areaM2),0);const labels=fieldYields.map(y=>y.fieldLegacyId).join('・');const names=fieldYields.map(y=>y.fieldName).join('・');
+ return{fieldYields,id:r.id,legacyId:r.legacy_id||'',date:r.harvest_date||'',fieldId:r.field_id||'',fieldLegacyId:labels||'未特定',fieldName:names||'圃場未特定',location:f?.location||'',areaM2:n(f?.area_m2),season:r.season||'',method:r.harvest_method||'',freshLeafKg:n(r.fresh_leaf_kg),harvestedAreaM2:area,operator:r.operator_name_snapshot||'',destination:r.destination||'',qualityNote:r.quality_note||'',note:r.note||'',sourceLotNo:r.source_lot_no||'',variety:r.variety_snapshot||'',processedKg:u.processed,remainingKg:u.remaining,yieldKgPer10a:basis>0?n(r.fresh_leaf_kg)/(basis/1000):0}})
 }
 
-export async function saveHarvestRecord(input:{id?:string;date:string;fieldId:string;season:string;method:string;freshLeafKg:number;harvestedAreaM2:number|null;operator:string;destination:string;qualityNote:string;note:string}){const{data,error}=await supabase.rpc('save_harvest_record',{p_payload:{id:input.id||'',harvest_date:input.date,field_id:input.fieldId,season:input.season,harvest_method:input.method,fresh_leaf_kg:input.freshLeafKg,harvested_area_m2:input.harvestedAreaM2??'',operator_name:input.operator,destination:input.destination,quality_note:input.qualityNote,note:input.note}});if(error)throw error;return data as string}
+export async function saveHarvestRecord(input:{id?:string;date:string;fieldId:string;fields:Array<{fieldId:string;freshLeafKg:number;harvestedAreaM2:number|null}>;season:string;method:string;freshLeafKg:number;harvestedAreaM2:number|null;operator:string;destination:string;qualityNote:string;note:string}){
+ const {data,error}=await supabase.rpc('save_harvest_record',{p_payload:{
+   id:input.id||'',harvest_date:input.date,field_id:input.fieldId,
+   fields:input.fields.map(f=>({field_id:f.fieldId,fresh_leaf_kg:f.freshLeafKg,harvested_area_m2:f.harvestedAreaM2??''})),
+   season:input.season,harvest_method:input.method,fresh_leaf_kg:input.freshLeafKg,
+   harvested_area_m2:input.harvestedAreaM2??'',operator_name:input.operator,
+   destination:input.destination,quality_note:input.qualityNote,note:input.note
+ }});if(error)throw error;return data as string
+}
 export async function deleteHarvestRecord(id:string,reason:string){const{error}=await supabase.rpc('delete_harvest_record',{p_id:id,p_reason:reason});if(error)throw error}
 
 export async function loadProcessingBatches(limit=200):Promise<ProcessingBatch[]>{
  const{data:batches,error:e1}=await supabase.from('tea_processing_batches').select('*').is('deleted_at',null).order('processing_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit);if(e1)throw e1
  const ids=(batches||[]).map((b:any)=>b.id);if(!ids.length)return[]
  const{data:sources,error:e2}=await supabase.from('tea_processing_batch_harvests').select('id,processing_batch_id,harvest_record_id,input_kg,harvest_records(legacy_id,harvest_date,field_id,fields(legacy_id,name))').in('processing_batch_id',ids);if(e2)throw e2
- const by=new Map<string,ProcessingSource[]>();for(const s of sources||[]){const h=one((s as any).harvest_records);const f=one(h?.fields);const arr=by.get((s as any).processing_batch_id)||[];arr.push({id:(s as any).id,harvestId:(s as any).harvest_record_id,harvestLegacyId:h?.legacy_id||'',fieldId:h?.field_id||'',fieldLegacyId:f?.legacy_id||'未特定',fieldName:f?.name||'圃場未特定',harvestDate:h?.harvest_date||'',inputKg:n((s as any).input_kg)});by.set((s as any).processing_batch_id,arr)}
+ const sourceHarvestIds=[...new Set((sources||[]).map((s:any)=>s.harvest_record_id))]
+ const {data:fieldLinks,error:e3}=sourceHarvestIds.length
+  ?await supabase.from('harvest_record_fields').select('harvest_record_id,field_id,fields(legacy_id,name)').in('harvest_record_id',sourceHarvestIds)
+  :{data:[],error:null}
+ if(e3)throw e3
+ const fieldLabels=new Map<string,{codes:string[];names:string[]}>()
+ for(const d of fieldLinks||[]){
+   const f=one((d as any).fields),id=(d as any).harvest_record_id
+   const label=fieldLabels.get(id)||{codes:[],names:[]}
+   label.codes.push(f?.legacy_id||'—');label.names.push(f?.name||'圃場未特定')
+   fieldLabels.set(id,label)
+ }
+ const by=new Map<string,ProcessingSource[]>();for(const s of sources||[]){const h=one((s as any).harvest_records);const f=one(h?.fields);const fieldLabel=fieldLabels.get((s as any).harvest_record_id);const arr=by.get((s as any).processing_batch_id)||[];arr.push({id:(s as any).id,harvestId:(s as any).harvest_record_id,harvestLegacyId:h?.legacy_id||'',fieldId:h?.field_id||'',fieldLegacyId:fieldLabel?.codes.join('・')||f?.legacy_id||'未特定',fieldName:fieldLabel?.names.join('・')||f?.name||'圃場未特定',harvestDate:h?.harvest_date||'',inputKg:n((s as any).input_kg)});by.set((s as any).processing_batch_id,arr)}
  return(batches||[]).map((b:any)=>{const ss=by.get(b.id)||[];const input=ss.reduce((sum,x)=>sum+x.inputKg,0);const leaf=n(b.output_kg),stem=n(b.stem_output_kg),total=leaf+stem;return{id:b.id,legacyId:b.legacy_id||'',date:b.processing_date||'',processType:b.process_type||'',outputMaterial:b.output_material||'',outputKg:leaf,stemOutputKg:stem,totalOutputKg:total,sourceLotNo:b.source_lot_no||'',variety:b.variety_snapshot||'',facility:b.facility||'',costYen:n(b.processing_cost_yen),operator:b.operator_name_snapshot||'',note:b.note||'',sources:ss,inputKg:input,yieldPct:input>0?total/input*100:0,leafYieldPct:input>0?leaf/input*100:0}})
 }
 
