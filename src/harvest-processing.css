@@ -40,3 +40,16 @@
 @media(max-width:900px){.harvest-multi-field-list{grid-template-columns:1fr}}
 @media(max-width:520px){.harvest-multi-field-picker{padding:9px}.harvest-multi-field-row{padding:10px}.harvest-field-values{grid-template-columns:1fr 1fr}.harvest-field-values label{font-size:10px}.harvest-field-values input{font-size:16px;padding:8px 6px}.harvest-multi-field-picker .field-picker-head span{font-size:11px}}
 @media(max-width:350px){.harvest-field-values{grid-template-columns:1fr}}
+
+/* Harvest input can be reported by field or as one measured total. */
+.harvest-entry-mode{display:grid;gap:8px;padding:12px;border:1px solid #dce6df;border-radius:12px;background:#f7faf7;min-width:0}
+.harvest-entry-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.harvest-entry-switch button{min-height:44px;padding:9px 12px;background:#fff;border:1px solid #cfded3;border-radius:9px;color:#315a43;font-weight:800;font-size:13px}
+.harvest-entry-switch button.selected{background:#173f2b;border-color:#173f2b;color:#fff;box-shadow:0 2px 8px rgba(18,49,32,.15)}
+.harvest-entry-mode p{font-size:12px;line-height:1.5;color:#5b7565;margin:0}
+.harvest-area-note{font-size:11px;color:#67796d;line-height:1.5;margin:0}
+.harvest-qty-input input:not([readonly]){background:#fffdf3;border-color:#71a780;font-size:19px;font-weight:800;color:#173f2b}
+.harvest-qty-input input[readonly]{background:#f3f5f2;color:#53705f}
+.harvest-yield-preview>div:nth-child(2) span{font-size:11px;font-weight:700}
+.harvest-yield-preview>div:nth-child(2) b{font-size:17px}
+@media(max-width:520px){.harvest-entry-mode{padding:9px}.harvest-entry-switch button{padding:9px 5px;font-size:12px}.harvest-entry-mode p{font-size:11px}.harvest-qty-input input:not([readonly]){font-size:18px}}

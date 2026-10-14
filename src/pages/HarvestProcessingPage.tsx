@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Edit3, Factory, Leaf, RefreshCw, Scissors, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useAppPermissions } from '../lib/permissions'
+import { allocateHarvestTotalByArea } from '../lib/harvestAllocations'
 import { deleteHarvestRecord, deleteProcessingBatch, finalizeImportedHarvestSource, loadHarvestFields, loadHarvestRecords, loadProcessingBatches, saveHarvestRecord, saveProcessingBatch, type HarvestField, type HarvestRecord, type ProcessingBatch } from '../lib/harvestProcessing'
 
 const today=()=>new Intl.DateTimeFormat('sv-SE').format(new Date())
@@ -10,6 +11,7 @@ export default function HarvestProcessingPage(){
  const{allowed}=useAppPermissions(),canManage=allowed('harvest_processing.manage'),canDelete=allowed('harvest_processing.delete')
  const[params]=useSearchParams();const[tab,setTab]=useState<'harvest'|'process'>('harvest');const[fields,setFields]=useState<HarvestField[]>([]),[harvests,setHarvests]=useState<HarvestRecord[]>([]),[batches,setBatches]=useState<ProcessingBatch[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
  const[hId,setHId]=useState(''),[hDate,setHDate]=useState(today()),[hFieldQty,setHFieldQty]=useState<Record<string,string>>(()=>params.get('field')?{[params.get('field')!] : ''}:{}),[hFieldAreas,setHFieldAreas]=useState<Record<string,string>>({}),[hSeason,setHSeason]=useState(''),[hMethod,setHMethod]=useState(''),[hOperator,setHOperator]=useState(''),[hDestination,setHDestination]=useState(''),[hQuality,setHQuality]=useState(''),[hNote,setHNote]=useState('')
+ const[hEntryMode,setHEntryMode]=useState<'PER_FIELD'|'TOTAL_AREA_ESTIMATE'>('PER_FIELD'),[hTotalQty,setHTotalQty]=useState('')
  const[showHarvestDetails,setShowHarvestDetails]=useState(false)
  const[sourceFixId,setSourceFixId]=useState(''),[sourceFixField,setSourceFixField]=useState(''),[sourceFixDate,setSourceFixDate]=useState('')
  const[pId,setPId]=useState(''),[pDate,setPDate]=useState(today()),[pType,setPType]=useState('生葉→碾茶'),[pOutputMaterial,setPOutputMaterial]=useState('碾茶'),[pOutput,setPOutput]=useState(''),[pFacility,setPFacility]=useState(''),[pCost,setPCost]=useState('0'),[pOperator,setPOperator]=useState(''),[pNote,setPNote]=useState(''),[sourceInputs,setSourceInputs]=useState<Record<string,string>>({})
@@ -17,21 +19,30 @@ export default function HarvestProcessingPage(){
  const selectedFieldIds=Object.keys(hFieldQty)
  const hField=selectedFieldIds[0]||''
  const selectedFields=fields.filter(f=>selectedFieldIds.includes(f.id))
- const hQty=String(selectedFieldIds.reduce((total,id)=>total+Number(hFieldQty[id]||0),0))
+ const hQty=hEntryMode==='TOTAL_AREA_ESTIMATE'?hTotalQty:String(selectedFieldIds.reduce((total,id)=>total+Number(hFieldQty[id]||0),0))
  const areaBasis=selectedFields.reduce((total,f)=>total+(Number(hFieldAreas[f.id])>0?Number(hFieldAreas[f.id]):f.areaM2),0)
  const hasAllAreas=selectedFieldIds.every(id=>Number(hFieldAreas[id])>0)
  const hArea=hasAllAreas?String(selectedFieldIds.reduce((total,id)=>total+Number(hFieldAreas[id]||0),0)):''
  const hYield=Number(hQty)>0&&areaBasis>0?Number(hQty)/(areaBasis/1000):0
  const varieties=[...new Set(selectedFields.map(f=>f.variety).filter(Boolean))].join('・')||'—'
+ const isTotalMode=hEntryMode==='TOTAL_AREA_ESTIMATE'
+ const totalIsValid=Number.isFinite(Number(hQty))&&Number(hQty)>0&&Number(hQty)*1000>=selectedFieldIds.length&&!(!isTotalMode&&selectedFieldIds.some(id=>Number(hFieldQty[id])<=0))
+ const previewIsReference=selectedFields.some(f=>!hFieldAreas[f.id])
+ function changeEntryMode(mode:'PER_FIELD'|'TOTAL_AREA_ESTIMATE'){
+  if(mode===hEntryMode)return
+  if(mode==='TOTAL_AREA_ESTIMATE')setHTotalQty(Number(hQty)>0?hQty:'')
+  else setHFieldQty(old=>Object.fromEntries(Object.keys(old).map(id=>[id,''])))
+  setHEntryMode(mode)
+ }
  function toggleHarvestField(id:string){
    setHFieldQty(old=>{const next={...old};if(id in next)delete next[id];else next[id]='';return next})
    setHFieldAreas(old=>{const next={...old};delete next[id];return next})
  }
  const currentBatch=batches.find(b=>b.id===pId);const currentSource=new Map((currentBatch?.sources||[]).map(s=>[s.harvestId,s.inputKg]));const availableHarvests=harvests.filter(h=>h.remainingKg+(currentSource.get(h.id)||0)>0)
  const sourceRows=useMemo(()=>availableHarvests.filter(h=>sourceInputs[h.id]!==undefined).map(h=>({h,input:Number(sourceInputs[h.id]||0),available:h.remainingKg+(currentSource.get(h.id)||0)})),[availableHarvests,sourceInputs,pId,batches]);const inputTotal=sourceRows.reduce((s,x)=>s+x.input,0),yieldPct=inputTotal>0?Number(pOutput||0)/inputTotal*100:0
- function resetHarvest(){setHId('');setHDate(today());setHFieldQty(params.get('field')?{[params.get('field')!] : ''}:{});setHFieldAreas({});setHSeason('');setHMethod('');setHOperator('');setHDestination('');setHQuality('');setHNote('');setShowHarvestDetails(false)}
+ function resetHarvest(){setHId('');setHDate(today());setHEntryMode('PER_FIELD');setHTotalQty('');setHFieldQty(params.get('field')?{[params.get('field')!] : ''}:{});setHFieldAreas({});setHSeason('');setHMethod('');setHOperator('');setHDestination('');setHQuality('');setHNote('');setShowHarvestDetails(false)}
  function editHarvest(h:HarvestRecord){if(!canManage){setError('摘採記録を編集する権限がありません。');return}
- setTab('harvest');setHId(h.id);setHDate(h.date);
+ setTab('harvest');setHId(h.id);setHDate(h.date);setHEntryMode(h.yieldEntryMode);setHTotalQty(String(h.freshLeafKg));
  setHFieldQty(Object.fromEntries(h.fieldYields.map(f=>[f.fieldId,String(f.freshLeafKg)])))
  setHFieldAreas(Object.fromEntries(h.fieldYields.filter(f=>f.harvestedAreaM2!==null).map(f=>[f.fieldId,String(f.harvestedAreaM2)])))
  setHSeason(h.season);setHMethod(h.method);setHOperator(h.operator);setHDestination(h.destination);setHQuality(h.qualityNote);setHNote(h.note);setShowHarvestDetails(true);window.scrollTo({top:0,behavior:'smooth'})
@@ -40,14 +51,19 @@ export default function HarvestProcessingPage(){
  setBusy(true);setError('');setSuccess('')
  try{
    if(!selectedFieldIds.length)throw new Error('圃場を1件以上選択してください。')
-   const selected=selectedFieldIds.map(id=>({fieldId:id,freshLeafKg:Number(hFieldQty[id]),harvestedAreaM2:hFieldAreas[id]?Number(hFieldAreas[id]):null}))
+   if(!totalIsValid)throw new Error('生葉収量を入力してください。')
+   const selected=isTotalMode?allocateHarvestTotalByArea(Number(hQty),selectedFieldIds.map(id=>{
+    const field=fields.find(f=>f.id===id)
+    if(!field)throw new Error('圃場が見つかりません。')
+    return field
+   }),hFieldAreas):selectedFieldIds.map(id=>({fieldId:id,freshLeafKg:Number(hFieldQty[id]),harvestedAreaM2:hFieldAreas[id]?Number(hFieldAreas[id]):null}))
    for(const f of selected){
      if(!Number.isFinite(f.freshLeafKg)||f.freshLeafKg<=0)throw new Error('選択したすべての圃場に生葉収量を入力してください。')
      const master=fields.find(x=>x.id===f.fieldId)
      if(!master)throw new Error('圃場が見つかりません。')
      if(f.harvestedAreaM2!==null&&(f.harvestedAreaM2<=0||f.harvestedAreaM2>master.areaM2))throw new Error(master.name+' の摘採面積を確認してください。')
    }
-   await saveHarvestRecord({id:hId||undefined,date:hDate,fieldId:hField,fields:selected,season:hSeason,method:hMethod,freshLeafKg:Number(hQty),harvestedAreaM2:hArea?Number(hArea):null,operator:hOperator,destination:hDestination,qualityNote:hQuality,note:hNote})
+   await saveHarvestRecord({id:hId||undefined,date:hDate,fieldId:hField,yieldEntryMode:hEntryMode,fields:selected,season:hSeason,method:hMethod,freshLeafKg:Number(hQty),harvestedAreaM2:hArea?Number(hArea):null,operator:hOperator,destination:hDestination,qualityNote:hQuality,note:hNote})
    setSuccess(hId?'摘採ロットを更新しました。':'摘採ロットを登録しました。')
    resetHarvest();await refresh()
  }catch(e:any){setError(e?.message||'摘採記録の保存に失敗しました。')}finally{setBusy(false)}
@@ -82,19 +98,26 @@ export default function HarvestProcessingPage(){
  return <div className="page harvest-page"><div className="page-head"><div><p className="eyebrow">HARVEST & PROCESSING</p><h1>摘採・製茶</h1><p className="sub">圃場の生葉収量から製茶バッチ・歩留までつなげて記録します。</p></div><button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div>{error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
  <div className="metrics harvest-metrics"><article className="metric"><span>生葉収量</span><strong>{num.format(freshTotal)}kg</strong></article><article className="metric"><span>未加工生葉</span><strong>{num.format(unprocessedTotal)}kg</strong></article><article className="metric"><span>製茶バッチ</span><strong>{batches.length}件</strong></article><article className="metric"><span>製茶総出来高</span><strong>{num.format(processedOutput)}kg</strong></article></div>
  <div className="harvest-tabs"><button className={tab==='harvest'?'active':''} onClick={()=>setTab('harvest')}><Scissors size={17}/>摘採</button><button className={tab==='process'?'active':''} onClick={()=>setTab('process')}><Factory size={17}/>製茶</button></div>
- {tab==='harvest'?<>{canManage&&<form className="panel harvest-form" onSubmit={submitHarvest}><div className="panel-title"><div><h2>{hId?'摘採記録を編集':'摘採を記録'}</h2><p>現場では「日付・圃場・茶期・摘採方法・生葉量」だけで登録できます。</p></div>{hId&&<button type="button" className="secondary-button" onClick={resetHarvest}>新規へ戻る</button>}</div><div className="form-grid harvest-core-grid"><label>摘採日<input type="date" value={hDate} onChange={e=>setHDate(e.target.value)}/></label><label className="harvest-season-input">茶期<input list="season-list" value={hSeason} onChange={e=>setHSeason(e.target.value)} placeholder="一番茶"/><datalist id="season-list"><option value="一番茶"/><option value="二番茶"/><option value="秋番茶"/><option value="刈番茶"/></datalist></label><label className="harvest-method-input">摘採方法<input list="harvest-method-list" value={hMethod} onChange={e=>setHMethod(e.target.value)} placeholder="手摘み / ハサミ"/><datalist id="harvest-method-list"><option value="手摘み"/><option value="ハサミ摘み"/><option value="乗用摘採"/></datalist></label><label className="harvest-qty-input">生葉合計（kg）<input type="number" value={Number(hQty).toFixed(3)} readOnly aria-label="圃場別の生葉収量合計"/></label></div><div className="harvest-multi-field-picker">
+ {tab==='harvest'?<>{canManage&&<form className="panel harvest-form" onSubmit={submitHarvest}><div className="panel-title"><div><h2>{hId?'摘採記録を編集':'摘採を記録'}</h2><p>現場では「日付・圃場・茶期・摘採方法・生葉量」だけで登録できます。</p></div>{hId&&<button type="button" className="secondary-button" onClick={resetHarvest}>新規へ戻る</button>}</div><div className="form-grid harvest-core-grid"><label>摘採日<input type="date" value={hDate} onChange={e=>setHDate(e.target.value)}/></label><label className="harvest-season-input">茶期<input list="season-list" value={hSeason} onChange={e=>setHSeason(e.target.value)} placeholder="一番茶"/><datalist id="season-list"><option value="一番茶"/><option value="二番茶"/><option value="秋番茶"/><option value="刈番茶"/></datalist></label><label className="harvest-method-input">摘採方法<input list="harvest-method-list" value={hMethod} onChange={e=>setHMethod(e.target.value)} placeholder="手摘み / ハサミ"/><datalist id="harvest-method-list"><option value="手摘み"/><option value="ハサミ摘み"/><option value="乗用摘採"/></datalist></label><label className="harvest-qty-input">生葉合計（kg）<input type="number" inputMode="decimal" step="0.001" min="0.001" required={isTotalMode} value={isTotalMode?hTotalQty:Number(hQty).toFixed(3)} readOnly={!isTotalMode} onChange={e=>setHTotalQty(e.target.value)} placeholder={isTotalMode?'合計kgを入力':'圃場別収量の合計'} /></label></div>
+ <div className="harvest-entry-mode" role="group" aria-label="生葉収量の入力方法">
+  <div className="harvest-entry-switch"><button type="button" className={!isTotalMode?'selected':''} aria-pressed={!isTotalMode} onClick={()=>changeEntryMode('PER_FIELD')}>圃場別に入力</button><button type="button" className={isTotalMode?'selected':''} aria-pressed={isTotalMode} onClick={()=>changeEntryMode('TOTAL_AREA_ESTIMATE')}>合計のみ入力</button></div>
+  <p>{isTotalMode?'合計の実測kgのみを入力できます。圃場別収量は面積比で参考按分し、実測値と区別して保存します。':'選択した圃場ごとの実測生葉量を入力すると、合計を自動計算します。'}</p>
+ </div><div className="harvest-multi-field-picker">
   <div className="field-picker-head"><b>圃場を複数選択</b><span>選択 {selectedFieldIds.length}圃場 / 生葉合計 {num.format(Number(hQty))}kg</span></div>
   <div className="harvest-multi-field-list">{fields.map(f=>{
     const selected=f.id in hFieldQty
     return <div key={f.id} className={`harvest-multi-field-row ${selected?'selected':''}`}>
       <label className="harvest-field-check"><input type="checkbox" checked={selected} onChange={()=>toggleHarvestField(f.id)}/><span><b>{f.legacyId} {f.name}</b><small>{num.format(f.areaM2)}㎡{f.variety?` / ${f.variety}`:''}</small></span></label>
-      {selected&&<div className="harvest-field-values"><label>生葉収量（kg）<input type="number" inputMode="decimal" min="0.001" step="0.001" required value={hFieldQty[f.id]} onChange={e=>setHFieldQty(old=>({...old,[f.id]:e.target.value}))} placeholder="例：12.5"/></label><label>摘採面積（㎡・任意）<input type="number" inputMode="decimal" min="0.1" max={f.areaM2} step="0.1" value={hFieldAreas[f.id]||''} onChange={e=>setHFieldAreas(old=>({...old,[f.id]:e.target.value}))} placeholder={String(f.areaM2)}/></label></div>}
+      {selected&&<div className="harvest-field-values">
+ {!isTotalMode&&<label>生葉収量（kg）<input type="number" inputMode="decimal" min="0.001" step="0.001" required value={hFieldQty[f.id]} onChange={e=>setHFieldQty(old=>({...old,[f.id]:e.target.value}))} placeholder="例：12.5"/></label>}
+ <label>摘採面積（㎡・任意）<input type="number" inputMode="decimal" min="0.1" max={f.areaM2} step="0.1" value={hFieldAreas[f.id]||''} onChange={e=>setHFieldAreas(old=>({...old,[f.id]:e.target.value}))} placeholder={String(f.areaM2)}/></label>
+ </div>}
     </div>
   })}</div>
- </div><div className="harvest-quick-picks"><div><span>茶期</span><button type="button" className={hSeason==="一番茶"?"active":""} onClick={()=>setHSeason("一番茶")}>一番茶</button><button type="button" className={hSeason==="二番茶"?"active":""} onClick={()=>setHSeason("二番茶")}>二番茶</button><button type="button" className={hSeason==="秋番茶"?"active":""} onClick={()=>setHSeason("秋番茶")}>秋番茶</button></div><div><span>摘採方法</span><button type="button" className={hMethod==="手摘み"?"active":""} onClick={()=>setHMethod("手摘み")}>手摘み</button><button type="button" className={hMethod==="ハサミ摘み"?"active":""} onClick={()=>setHMethod("ハサミ摘み")}>ハサミ</button><button type="button" className={hMethod==="乗用摘採"?"active":""} onClick={()=>setHMethod("乗用摘採")}>乗用</button></div></div><div className="harvest-yield-preview"><div><span>計算面積</span><b>{areaBasis?`${num.format(areaBasis)}㎡`:'—'}</b></div><div><span>収量 / 10a</span><b>{hYield?`${num.format(hYield)}kg`:'—'}</b></div><div><span>圃場品種</span><b>{varieties}</b></div></div><button type="button" className="harvest-detail-toggle" onClick={()=>setShowHarvestDetails(v=>!v)}>{showHarvestDetails?'詳細入力を閉じる' :'担当者・搬入先・品質メモを入力'}</button>{showHarvestDetails&&<div className="harvest-detail-panel"><div className="form-grid three"><div className="harvest-area-help">摘採面積は上の圃場別入力欄で指定できます。</div><label>担当者<input value={hOperator} onChange={e=>setHOperator(e.target.value)}/></label><label>搬入先・販売先<input value={hDestination} onChange={e=>setHDestination(e.target.value)} placeholder="製茶工場 / 生葉売却先"/></label></div><label>品質メモ<textarea rows={2} value={hQuality} onChange={e=>setHQuality(e.target.value)} placeholder="芽の状態、水分、等級など"/></label><label>備考<textarea rows={2} value={hNote} onChange={e=>setHNote(e.target.value)}/></label></div>}<button className="primary-button harvest-save" disabled={busy||!selectedFieldIds.length||selectedFieldIds.some(id=>Number(hFieldQty[id])<=0)||!hSeason||!hMethod}>{busy?'保存中…':hId?'変更を保存':'摘採を登録'}</button></form>}
+ </div><div className="harvest-quick-picks"><div><span>茶期</span><button type="button" className={hSeason==="一番茶"?"active":""} onClick={()=>setHSeason("一番茶")}>一番茶</button><button type="button" className={hSeason==="二番茶"?"active":""} onClick={()=>setHSeason("二番茶")}>二番茶</button><button type="button" className={hSeason==="秋番茶"?"active":""} onClick={()=>setHSeason("秋番茶")}>秋番茶</button></div><div><span>摘採方法</span><button type="button" className={hMethod==="手摘み"?"active":""} onClick={()=>setHMethod("手摘み")}>手摘み</button><button type="button" className={hMethod==="ハサミ摘み"?"active":""} onClick={()=>setHMethod("ハサミ摘み")}>ハサミ</button><button type="button" className={hMethod==="乗用摘採"?"active":""} onClick={()=>setHMethod("乗用摘採")}>乗用</button></div></div><div className="harvest-yield-preview"><div><span>計算面積</span><b>{areaBasis?`${num.format(areaBasis)}㎡`:'—'}</b></div><div><span>参考：1反（1,000㎡）あたり平均収量</span><b>{hYield?`${num.format(hYield)}kg/反`:'—'}</b></div><div><span>圃場品種</span><b>{varieties}</b></div></div>{selectedFieldIds.length>0&&<p className="harvest-area-note">{previewIsReference?'※ 摘採面積が未入力の圃場は、登録済みの圃場全面積を用いた参考計算です。':'※ 入力した摘採面積を合算して計算しています。'}{isTotalMode?' 圃場別の生葉量は面積按分の推定値です。':''}</p>}<button type="button" className="harvest-detail-toggle" onClick={()=>setShowHarvestDetails(v=>!v)}>{showHarvestDetails?'詳細入力を閉じる' :'担当者・搬入先・品質メモを入力'}</button>{showHarvestDetails&&<div className="harvest-detail-panel"><div className="form-grid three"><div className="harvest-area-help">摘採面積は上の圃場別入力欄で指定できます。</div><label>担当者<input value={hOperator} onChange={e=>setHOperator(e.target.value)}/></label><label>搬入先・販売先<input value={hDestination} onChange={e=>setHDestination(e.target.value)} placeholder="製茶工場 / 生葉売却先"/></label></div><label>品質メモ<textarea rows={2} value={hQuality} onChange={e=>setHQuality(e.target.value)} placeholder="芽の状態、水分、等級など"/></label><label>備考<textarea rows={2} value={hNote} onChange={e=>setHNote(e.target.value)}/></label></div>}<button className="primary-button harvest-save" disabled={busy||!selectedFieldIds.length||!totalIsValid||!hSeason||!hMethod}>{busy?'保存中…':hId?'変更を保存':'摘採を登録'}</button></form>}
  <section className="panel harvest-history"><div className="panel-title"><div><h2>摘採履歴</h2><p>未加工残量も自動追跡</p></div><Leaf size={19}/></div><div className="harvest-history-list">{harvests.map(h=><article key={h.id}>
-<div><span>{h.date||'摘採日未特定'}｜{h.season||'茶期未入力'}</span><h3>{h.fieldLegacyId} {h.fieldName}</h3><small><strong>摘採LOT：{h.legacyId}</strong>{h.sourceLotNo?' / JAロット '+h.sourceLotNo:''}{h.variety?' / '+h.variety:''} / {h.method||'方法未入力'} / {h.operator||'担当未入力'}</small>{h.fieldYields.length>0&&<div className="harvest-field-breakdown">{h.fieldYields.map(f=><span key={f.fieldId}>{f.fieldLegacyId} {f.fieldName}：{num.format(f.freshLeafKg)}kg</span>)}</div>}</div>
-<div className="harvest-qty"><strong>{num.format(h.freshLeafKg)}kg</strong><span>{h.yieldKgPer10a?num.format(h.yieldKgPer10a)+'kg/10a':'収量/10a 未算定'}</span></div>
+<div><span>{h.date||'摘採日未特定'}｜{h.season||'茶期未入力'}</span><h3>{h.fieldLegacyId} {h.fieldName}</h3><small><strong>摘採LOT：{h.legacyId}</strong>{h.yieldEntryMode==='TOTAL_AREA_ESTIMATE'?' / 圃場別収量は面積按分（推定）':''}{h.sourceLotNo?' / JAロット '+h.sourceLotNo:''}{h.variety?' / '+h.variety:''} / {h.method||'方法未入力'} / {h.operator||'担当未入力'}</small>{h.fieldYields.length>0&&<div className="harvest-field-breakdown">{h.fieldYields.map(f=><span key={f.fieldId}>{f.fieldLegacyId} {f.fieldName}：{num.format(f.freshLeafKg)}kg{h.yieldEntryMode==='TOTAL_AREA_ESTIMATE'?'（推定）':''}</span>)}</div>}</div>
+<div className="harvest-qty"><strong>{num.format(h.freshLeafKg)}kg</strong><span>{h.yieldKgPer10a?'参考平均 '+num.format(h.yieldKgPer10a)+'kg/反':'参考平均 未算定'}</span></div>
 <div className="harvest-use"><span>製茶使用 {num.format(h.processedKg)}kg</span><b>未加工 {num.format(h.remainingKg)}kg</b></div>
 {(canManage||canDelete)&&<div className="harvest-row-actions">
  {canManage&&h.fieldId&&h.date&&<button onClick={()=>editHarvest(h)}><Edit3 size={14}/>編集</button>}{canManage&&h.remainingKg>0&&<button type="button" onClick={()=>startTenchaProcessing(h)}><Factory size={14}/>このLOTを碾茶加工</button>}
