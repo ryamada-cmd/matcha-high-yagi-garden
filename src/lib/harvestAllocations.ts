@@ -15,7 +15,7 @@ export function allocateHarvestTotalByArea(totalKg:number,fields:HarvestField[],
  const shares=weights.map(w=>transferable*w/weightTotal)
  const parts=shares.map(q=>Math.floor(q)+1)
  const rest=units-parts.reduce((s,x)=>s+x,0)
- const rank=shares.map((q,i)=>({i,frac:q-Math.floor(q)})).sort((a,b)=>b.frac-a.fr||a.i-b.i)
+ const rank=shares.map((q,i)=>({i,frac:q-Math.floor(q)})).sort((a,b)=>b.frac-a.frac||a.i-b.i)
  for(let i=0;i<rest;i++)parts[rank[i].i]++
  return fields.map((field,i)=>({
   fieldId:field.id,
