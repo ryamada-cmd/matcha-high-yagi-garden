@@ -34,7 +34,7 @@ export default function HarvestProcessingPage(){
  setTab('harvest');setHId(h.id);setHDate(h.date);
  setHFieldQty(Object.fromEntries(h.fieldYields.map(f=>[f.fieldId,String(f.freshLeafKg)])))
  setHFieldAreas(Object.fromEntries(h.fieldYields.filter(f=>f.harvestedAreaM2!==null).map(f=>[f.fieldId,String(f.harvestedAreaM2)])))
- setHSeason(h.season);setHMethod(h.method);setHOperator(h.operator);setHDestination(h.destination);setHQuality(h.qualityNote);setHNote(h.note);setShowHarvestDetails(true);window.scrollTo({top:0,behavior:'smooth')
+ setHSeason(h.season);setHMethod(h.method);setHOperator(h.operator);setHDestination(h.destination);setHQuality(h.qualityNote);setHNote(h.note);setShowHarvestDetails(true);window.scrollTo({top:0,behavior:'smooth'})
  }
  async function submitHarvest(e:FormEvent){e.preventDefault();if(!canManage)return setError('摘採記録を登録・編集する権限がありません。')
  setBusy(true);setError('');setSuccess('')
