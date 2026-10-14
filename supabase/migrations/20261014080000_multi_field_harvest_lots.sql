@@ -58,7 +58,7 @@ begin
     if v_seen ? v_field::text then raise exception '同じ圃場が重複しています'; end if;
     v_seen:=v_seen||jsonb_build_object(v_field::text,true);
     select area_m2 into v_field_area from public.fields
-      where id=v_field and deleted_at is null and status='active';
+      where id=v_field and deleted_at is null;
     if v_field_area is null then raise exception '圃場が見つかりません'; end if;
     if v_each_qty<=0 then raise exception '各圃場の生葉収量は0kgより大きくしてください'; end if;
     if v_each_area is not null and (v_each_area<=0 or v_each_area>v_field_area) then
@@ -83,9 +83,16 @@ begin
        nullif(btrim(p_payload->>'destination'),''),nullif(btrim(p_payload->>'quality_note'),''),
        nullif(btrim(p_payload->>'note'),'')) returning id into v_id;
   else
-    select to_jsonb(h) into v_before from public.harvest_records h
-      where id=v_id and deleted_at is null for update;
+    select jsonb_build_object('harvest',to_jsonb(h),'fields',
+      (select coalesce(jsonb_agg(to_jsonb(f) order by f.field_id),'[]'::jsonb)
+       from public.harvest_record_fields f where f.harvest_record_id=h.id))
+      into v_before from public.harvest_records h
+      where h.id=v_id and h.deleted_at is null for update;
     if v_before is null then raise exception '摘採記録が見つかりません'; end if;
+    if jsonb_typeof(p_payload->'fields') is distinct from 'array' and
+       (select count(*) from public.harvest_record_fields where harvest_record_id=v_id)>1 then
+      raise exception '複数圃場の摘採ロットは新しい画面で編集してください';
+    end if;
     select coalesce(sum(s.input_kg),0) into v_used
       from public.tea_processing_batch_harvests s
       join public.tea_processing_batches b on b.id=s.processing_batch_id
