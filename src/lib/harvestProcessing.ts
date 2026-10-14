@@ -14,12 +14,12 @@ export async function loadHarvestFields():Promise<HarvestField[]>{const{data,err
 
 export async function loadHarvestRecords(limit=300):Promise<HarvestRecord[]>{
  const[{data:rows,error:e1},{data:usage,error:e2}]=await Promise.all([
-  supabase.from('harvest_records').select('*,fields(legacy_id,name,location,area_m2)').is('deleted_at',null).order('harvest_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit),
+  supabase.from('harvest_records').select('*,fields!harvest_records_field_id_fkey(legacy_id,name,location,area_m2)').is('deleted_at',null).order('harvest_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit),
   supabase.from('harvest_processing_usage').select('*')
  ]);if(e1)throw e1;if(e2)throw e2
  const harvestIds=(rows||[]).map((r:any)=>r.id)
  const {data:details,error:e3}=harvestIds.length
-   ? await supabase.from('harvest_record_fields').select('harvest_record_id,field_id,fresh_leaf_kg,harvested_area_m2,fields(legacy_id,name,area_m2,variety)').in('harvest_record_id',harvestIds)
+   ? await supabase.from('harvest_record_fields').select('harvest_record_id,field_id,fresh_leaf_kg,harvested_area_m2,fields!harvest_record_fields_field_id_fkey(legacy_id,name,area_m2,variety)').in('harvest_record_id',harvestIds)
    : {data:[],error:null}
  if(e3)throw e3
  const byHarvest=new Map<string,HarvestFieldYield[]>()
@@ -49,10 +49,10 @@ export async function deleteHarvestRecord(id:string,reason:string){const{error}=
 export async function loadProcessingBatches(limit=200):Promise<ProcessingBatch[]>{
  const{data:batches,error:e1}=await supabase.from('tea_processing_batches').select('*').is('deleted_at',null).order('processing_date',{ascending:false}).order('created_at',{ascending:false}).limit(limit);if(e1)throw e1
  const ids=(batches||[]).map((b:any)=>b.id);if(!ids.length)return[]
- const{data:sources,error:e2}=await supabase.from('tea_processing_batch_harvests').select('id,processing_batch_id,harvest_record_id,input_kg,harvest_records(legacy_id,harvest_date,field_id,fields(legacy_id,name))').in('processing_batch_id',ids);if(e2)throw e2
+ const{data:sources,error:e2}=await supabase.from('tea_processing_batch_harvests').select('id,processing_batch_id,harvest_record_id,input_kg,harvest_records!tea_processing_batch_harvests_harvest_record_id_fkey(legacy_id,harvest_date,field_id,fields!harvest_records_field_id_fkey(legacy_id,name))').in('processing_batch_id',ids);if(e2)throw e2
  const sourceHarvestIds=[...new Set((sources||[]).map((s:any)=>s.harvest_record_id))]
  const {data:fieldLinks,error:e3}=sourceHarvestIds.length
-  ?await supabase.from('harvest_record_fields').select('harvest_record_id,field_id,fields(legacy_id,name)').in('harvest_record_id',sourceHarvestIds)
+  ?await supabase.from('harvest_record_fields').select('harvest_record_id,field_id,fields!harvest_record_fields_field_id_fkey(legacy_id,name)').in('harvest_record_id',sourceHarvestIds)
   :{data:[],error:null}
  if(e3)throw e3
  const fieldLabels=new Map<string,{codes:string[];names:string[]}>()
