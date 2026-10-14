@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Edit3, Factory, Leaf, RefreshCw, Scissors, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useAppPermissions } from '../lib/permissions'
+import { allocateHarvestTotalByArea } from '../lib/harvestAllocations'
 import { deleteHarvestRecord, deleteProcessingBatch, finalizeImportedHarvestSource, loadHarvestFields, loadHarvestRecords, loadProcessingBatches, saveHarvestRecord, saveProcessingBatch, type HarvestField, type HarvestRecord, type ProcessingBatch } from '../lib/harvestProcessing'
 
 const today=()=>new Intl.DateTimeFormat('sv-SE').format(new Date())
@@ -10,6 +11,7 @@ export default function HarvestProcessingPage(){
  const{allowed}=useAppPermissions(),canManage=allowed('harvest_processing.manage'),canDelete=allowed('harvest_processing.delete')
  const[params]=useSearchParams();const[tab,setTab]=useState<'harvest'|'process'>('harvest');const[fields,setFields]=useState<HarvestField[]>([]),[harvests,setHarvests]=useState<HarvestRecord[]>([]),[batches,setBatches]=useState<ProcessingBatch[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
  const[hId,setHId]=useState(''),[hDate,setHDate]=useState(today()),[hFieldQty,setHFieldQty]=useState<Record<string,string>>(()=>params.get('field')?{[params.get('field')!] : ''}:{}),[hFieldAreas,setHFieldAreas]=useState<Record<string,string>>({}),[hSeason,setHSeason]=useState(''),[hMethod,setHMethod]=useState(''),[hOperator,setHOperator]=useState(''),[hDestination,setHDestination]=useState(''),[hQuality,setHQuality]=useState(''),[hNote,setHNote]=useState('')
+ const[hEntryMode,setHEntryMode]=useState<'PER_FIELD'|'TOTAL_AREA_ESTIMATE'>('PER_FIELD'),[hTotalQty,setHTotalQty]=useState('')
  const[showHarvestDetails,setShowHarvestDetails]=useState(false)
  const[sourceFixId,setSourceFixId]=useState(''),[sourceFixField,setSourceFixField]=useState(''),[sourceFixDate,setSourceFixDate]=useState('')
  const[pId,setPId]=useState(''),[pDate,setPDate]=useState(today()),[pType,setPType]=useState('生葉→碾茶'),[pOutputMaterial,setPOutputMaterial]=useState('碾茶'),[pOutput,setPOutput]=useState(''),[pFacility,setPFacility]=useState(''),[pCost,setPCost]=useState('0'),[pOperator,setPOperator]=useState(''),[pNote,setPNote]=useState(''),[sourceInputs,setSourceInputs]=useState<Record<string,string>>({})
@@ -17,21 +19,30 @@ export default function HarvestProcessingPage(){
  const selectedFieldIds=Object.keys(hFieldQty)
  const hField=selectedFieldIds[0]||''
  const selectedFields=fields.filter(f=>selectedFieldIds.includes(f.id))
- const hQty=String(selectedFieldIds.reduce((total,id)=>total+Number(hFieldQty[id]||0),0))
+ const hQty=hEntryMode==='TOTAL_AREA_ESTIMATE'?hTotalQty:String(selectedFieldIds.reduce((total,id)=>total+Number(hFieldQty[id]||0),0))
  const areaBasis=selectedFields.reduce((total,f)=>total+(Number(hFieldAreas[f.id])>0?Number(hFieldAreas[f.id]):f.areaM2),0)
  const hasAllAreas=selectedFieldIds.every(id=>Number(hFieldAreas[id])>0)
  const hArea=hasAllAreas?String(selectedFieldIds.reduce((total,id)=>total+Number(hFieldAreas[id]||0),0)):''
  const hYield=Number(hQty)>0&&areaBasis>0?Number(hQty)/(areaBasis/1000):0
  const varieties=[...new Set(selectedFields.map(f=>f.variety).filter(Boolean))].join('・')||'—'
+ const isTotalMode=hEntryMode==='TOTAL_AREA_ESTIMATE'
+ const totalIsValid=Number.isFinite(Number(hQty))&&Number(hQty)>0&&Number(hQty)*1000>=selectedFieldIds.length&&!(!isTotalMode&&selectedFieldIds.some(id=>Number(hFieldQty[id])<=0))
+ const previewIsReference=selectedFields.some(f=>!hFieldAreas[f.id])
+ function changeEntryMode(mode:'PER_FIELD'|'TOTAL_AREA_ESTIMATE'){
+  if(mode===hEntryMode)return
+  if(mode==='TOTAL_AREA_ESTIMATE')setHTotalQty(Number(hQty)>0?hQty:'')
+  else setHFieldQty(old=>Object.fromEntries(Object.keys(old).map(id=>[id,''])))
+  setHEntryMode(mode)
+ }
  function toggleHarvestField(id:string){
    setHFieldQty(old=>{const next={...old};if(id in next)delete next[id];else next[id]='';return next})
    setHFieldAreas(old=>{const next={...old};delete next[id];return next})
  }
  const currentBatch=batches.find(b=>b.id===pId);const currentSource=new Map((currentBatch?.sources||[]).map(s=>[s.harvestId,s.inputKg]));const availableHarvests=harvests.filter(h=>h.remainingKg+(currentSource.get(h.id)||0)>0)
  const sourceRows=useMemo(()=>availableHarvests.filter(h=>sourceInputs[h.id]!==undefined).map(h=>({h,input:Number(sourceInputs[h.id]||0),available:h.remainingKg+(currentSource.get(h.id)||0)})),[availableHarvests,sourceInputs,pId,batches]);const inputTotal=sourceRows.reduce((s,x)=>s+x.input,0),yieldPct=inputTotal>0?Number(pOutput||0)/inputTotal*100:0
- function resetHarvest(){setHId('');setHDate(today());setHFieldQty(params.get('field')?{[params.get('field')!] : ''}:{});setHFieldAreas({});setHSeason('');setHMethod('');setHOperator('');setHDestination('');setHQuality('');setHNote('');setShowHarvestDetails(false)}
+ function resetHarvest(){setHId('');setHDate(today());setHEntryMode('PER_FIELD');setHTotalQty('');setHFieldQty(params.get('field')?{[params.get('field')!] : ''}:{});setHFieldAreas({});setHSeason('');setHMethod('');setHOperator('');setHDestination('');setHQuality('');setHNote('');setShowHarvestDetails(false)}
  function editHarvest(h:HarvestRecord){if(!canManage){setError('摘採記録を編集する権限がありません。');return}
- setTab('harvest');setHId(h.id);setHDate(h.date);
+ setTab('harvest');setHId(h.id);setHDate(h.date);setHEntryMode(h.yieldEntryMode);setHTotalQty(String(h.freshLeafKg));
  setHFieldQty(Object.fromEntries(h.fieldYields.map(f=>[f.fieldId,String(f.freshLeafKg)])))
  setHFieldAreas(Object.fromEntries(h.fieldYields.filter(f=>f.harvestedAreaM2!==null).map(f=>[f.fieldId,String(f.harvestedAreaM2)])))
  setHSeason(h.season);setHMethod(h.method);setHOperator(h.operator);setHDestination(h.destination);setHQuality(h.qualityNote);setHNote(h.note);setShowHarvestDetails(true);window.scrollTo({top:0,behavior:'smooth'})
@@ -40,14 +51,19 @@ export default function HarvestProcessingPage(){
  setBusy(true);setError('');setSuccess('')
  try{
    if(!selectedFieldIds.length)throw new Error('圃場を1件以上選択してください。')
-   const selected=selectedFieldIds.map(id=>({fieldId:id,freshLeafKg:Number(hFieldQty[id]),harvestedAreaM2:hFieldAreas[id]?Number(hFieldAreas[id]):null}))
+   if(!totalIsValid)throw new Error('生葉収量を入力してください。')
+   const selected=isTotalMode?allocateHarvestTotalByArea(Number(hQty),selectedFieldIds.map(id=>{
+    const field=fields.find(f=>f.id===id)
+    if(!field)throw new Error('圃場が見つかりません。')
+    return field
+   }),hFieldAreas):selectedFieldIds.map(id=>({fieldId:id,freshLeafKg:Number(hFieldQty[id]),harvestedAreaM2:hFieldAreas[id]?Number(hFieldAreas[id]):null}))
    for(const f of selected){
      if(!Number.isFinite(f.freshLeafKg)||f.freshLeafKg<=0)throw new Error('選択したすべての圃場に生葉収量を入力してください。')
      const master=fields.find(x=>x.id===f.fieldId)
      if(!master)throw new Error('圃場が見つかりません。')
      if(f.harvestedAreaM2!==null&&(f.harvestedAreaM2<=0||f.harvestedAreaM2>master.areaM2))throw new Error(master.name+' の摘採面積を確認してください。')
    }
-   await saveHarvestRecord({id:hId||undefined,date:hDate,fieldId:hField,fields:selected,season:hSeason,method:hMethod,freshLeafKg:Number(hQty),harvestedAreaM2:hArea?Number(hArea):null,operator:hOperator,destination:hDestination,qualityNote:hQuality,note:hNote})
+   await saveHarvestRecord({id:hId||undefined,date:hDate,fieldId:hField,yieldEntryMode:hEntryMode,fields:selected,season:hSeason,method:hMethod,freshLeafKg:Number(hQty),harvestedAreaM2:hArea?Number(hArea):null,operator:hOperator,destination:hDestination,qualityNote:hQuality,note:hNote})
    setSuccess(hId?'摘採ロットを更新しました。':'摘採ロットを登録しました。')
    resetHarvest();await refresh()
  }catch(e:any){setError(e?.message||'摘採記録の保存に失敗しました。')}finally{setBusy(false)}
