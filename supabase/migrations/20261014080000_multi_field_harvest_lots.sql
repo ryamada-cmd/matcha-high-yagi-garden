@@ -10,7 +10,7 @@ create table if not exists public.harvest_record_fields (
 );
 create index if not exists idx_harvest_record_fields_field on public.harvest_record_fields(field_id,harvest_record_id);
 alter table public.harvest_record_fields enable row level security;
-revoke all on public.harvest_record_fields from anon;
+revoke all on public.harvest_record_fields from anon, authenticated;
 grant select on public.harvest_record_fields to authenticated;
 drop policy if exists harvest_record_fields_read on public.harvest_record_fields;
 create policy harvest_record_fields_read on public.harvest_record_fields
