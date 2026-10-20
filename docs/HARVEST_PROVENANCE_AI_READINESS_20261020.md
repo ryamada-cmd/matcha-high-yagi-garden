@@ -75,3 +75,21 @@ three JSON null metrics.
 - After successful test, request a separate approval to apply the two
   schema/function changes in Yagi Production. Avoid merging the branch into
   `main` before this review.
+
+## Preview safety gate and known limitation
+
+Yagi Vercel project currently has **no Git repository connection** in its
+Vercel project settings, so branch-scoped Preview environment variable creation
+is unsupported. The review deployment is invoked manually using an explicit
+Git commit SHA and no Production target.
+
+The existing browser client defaults to the live Yagi Supabase project.
+Therefore the harvest/processing page detects Vercel non-production
+hostnames and disables its mutation buttons (new record, edit, delete,
+source finalization and processing). It is appropriate for **view-only**
+UI checks, NOT for submitting mock harvests. This browser guard is
+not a security boundary for every other application route, and does
+not isolate the Production database. Avoid editing data anywhere on this
+review deployment. A dedicated Supabase test project is required before
+testing full write behavior. Do not deploy the proposed SQL to Production
+solely to exercise Preview UI.
