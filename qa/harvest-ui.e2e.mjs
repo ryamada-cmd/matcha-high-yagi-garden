@@ -44,7 +44,6 @@ try{
  assert.equal(await page.locator('.harvest-provenance-tag.needs-evidence').count(),17);
  await page.getByRole('button',{name:'照合リストを開く'}).click();
  const panel=page.getByRole('region',{name:'摘採ロットの根拠資料照合'});
- await panel.getByText('要確認：').waitFor({timeout:4000}).catch(()=>{});
  assert.equal(await panel.locator('.harvest-review-row').count(),17);
  assert.match(await panel.locator('.harvest-review-stats').innerText(),/摘採日未登録：17件/);
  assert.equal(await panel.getByRole('link',{name:'資料ライブラリを見る'}).getAttribute('href'),'/library');
@@ -59,7 +58,7 @@ try{
  assert.match(exported,/摘採日（登録値・未照合）/);
  assert.match(exported,/証拠資料名・保管場所（手入力）/);
  assert.match(exported,/QA-LOT-17/);
- assert.ok(exported.split('\\r\\n').length===19);
+ assert.equal(exported.trim().split('\r\n').length,18);
  await panel.getByRole('button',{name:'照合リストを閉じる'}).click();
  assert.equal(await page.locator('input[type=date]').first().getAttribute('required'),'');
  assert.equal(await page.locator('.harvest-core-grid input[type=date]').inputValue(),'','new harvest date must be intentionally entered');
