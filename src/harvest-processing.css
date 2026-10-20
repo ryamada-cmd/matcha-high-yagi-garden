@@ -60,3 +60,30 @@
 .harvest-provenance-tag.verified{color:#0b664b;background:#d4f3e6}
 .harvest-provenance-tag.needs-evidence{color:#8a4c10;background:#fff0d1}
 @media(max-width:640px){.harvest-provenance-summary{font-size:.81rem;margin:10px 0;padding:10px}.harvest-provenance-tag{display:inline-block;max-width:100%;margin:5px 3px}}
+
+
+/* Evidence reconciliation only: read-only, no automatic historic backfill. */
+.harvest-review-panel{margin:14px 0 20px;padding:14px;border:1px solid #dae5dd;background:#f9fcfa;border-radius:13px;min-width:0}
+.harvest-review-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.harvest-review-head h3{margin:0;color:#214c35;font-size:16px}
+.harvest-review-head p{margin:5px 0 0;max-width:660px;font-size:12px;color:#566d5d;line-height:1.65}
+.harvest-review-head button{min-height:42px}
+.harvest-review-body{padding-top:13px;display:grid;gap:11px}
+.harvest-review-stats{display:flex;flex-wrap:wrap;gap:8px}
+.harvest-review-stats span{padding:6px 10px;border-radius:8px;border:1px solid #d9e9dd;background:#fff;font-size:12px;color:#2a5039}
+.harvest-review-warning{margin:0;color:#795d2c;font-size:12px;line-height:1.7}
+.harvest-review-controls{display:flex;align-items:end;flex-wrap:wrap;gap:10px;min-width:0}
+.harvest-review-controls>label:first-child{display:grid;gap:5px;flex:1 1 190px;font-size:12px;font-weight:700;color:#3b5d49;min-width:0}
+.harvest-review-controls input[type=search]{width:100%;min-width:0;min-height:42px;padding:9px 10px}
+.harvest-review-toggle{display:flex;align-items:center;gap:7px;min-height:42px;font-size:12px;color:#385942}
+.harvest-review-toggle input{height:19px;width:19px;flex:none}
+.harvest-review-controls>.secondary-button,.harvest-review-library{display:inline-flex;align-items:center;justify-content:center;padding:9px 13px;min-height:42px;text-decoration:none;white-space:normal;max-width:100%}
+.harvest-review-list{display:grid;gap:7px;max-height:340px;overflow-y:auto;overscroll-behavior:contain}
+.harvest-review-row{display:grid;grid-template-columns:minmax(165px,.8fr) minmax(0,1.2fr);gap:9px;padding:11px;background:#fff;border:1px solid #e1eae3;border-radius:9px;min-width:0}
+.harvest-review-row>div:first-child{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.harvest-review-row b{font-size:12px;color:#214a35}
+.harvest-review-row>div:first-child span{font-size:11px;color:#526e5c}
+.harvest-review-flags{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.harvest-review-flags span{font-size:10px;padding:3px 7px;border-radius:8px;background:#fff2df;color:#805324}
+.harvest-review-flags span.complete{color:#226b45;background:#def5e7}
+@media(max-width:600px){.harvest-review-panel{padding:11px;margin:12px 0}.harvest-review-head{align-items:stretch}.harvest-review-head>div{flex:1 1 100%}.harvest-review-head button{width:100%}.harvest-review-controls{display:grid;grid-template-columns:minmax(0,1fr)}.harvest-review-controls>*{max-width:100%;width:100%}.harvest-review-row{grid-template-columns:minmax(0,1fr)}.harvest-review-list{max-height:320px}}
