@@ -93,3 +93,74 @@ not isolate the Production database. Avoid editing data anywhere on this
 review deployment. A dedicated Supabase test project is required before
 testing full write behavior. Do not deploy the proposed SQL to Production
 solely to exercise Preview UI.
+
+## Isolated executable SQL QA — 2026-10-20
+
+**Result: PASS, with boundaries.** No changes to Yagi Production.
+
+Rather than create a new paid database or use a Production transaction,
+we temporarily installed *synthetic-only* tables and rewritten copies of
+both proposed SQL functions into private schema
+`qa_yagi_harvest_20261020` inside existing, separate
+Riverside AI Office Staging project `gtbkauwkovwwyajmngpy`.
+
+- The source drafts were rewritten **only for QA**: all public Yagi
+  table/function references were redirected into the QA schema.
+  The save function's Supabase authentication/permission calls were
+  replaced with a fixed synthetic QA administrator, so this exercise
+  validates its SQL and business logic but **not** its actual Production
+  authorization integration.
+- The source aggregate function retained the digest-based secret check,
+  its definer search path, three-field response and date bounds.
+  The token used for tests was synthetic, was revoked, and did not
+  match Production or AI Office credentials.
+- QA schema granted no usage to `anon` or `authenticated`.
+
+Executed SQL behavior and assertions (all passed):
+
+1. No source token → rejected with insufficient privilege.
+2. No harvests → `empty_period`, all three metrics `null`.
+3. 17 synthetic undated lots → `incomplete_provenance`, all metrics
+   `null`. These were not assigned dates or fields.
+4. A new harvest with missing date → rejected, no new row saved.
+5. Two fields with actual areas 600m²+1,400m² and quantities 30kg+70kg
+   → save successful and audit row created.
+6. With the synthetic old undated imports present, the two-field
+   harvest returned `quality=attributed_subset`, area **0.2ha**,
+   leaf weight **100kg**, field count **2**. It is clearly *not*
+   the full historic period's result.
+7. Total 90kg with 100kg in field children → rejected.
+8. New dated row lacking measured area → `incomplete_provenance`
+   with `null` values.
+9. A child with missing `fresh_leaf_kg` → incomplete rather than
+   silently accepting a partial SUM.
+10. With the undated/incomplete *synthetic* rows removed →
+    `complete` on fully attributable records.
+11. Source token disabled → rejected.
+12. QA schema inaccessible to `anon` and `authenticated`.
+
+Two SQL design defects were found and corrected in the branch draft:
+- Missing semicolon after the source aggregate SQL function terminator.
+- Existing child SUM validation could miss NULL values if a partial
+  sum coincidentally matched the parent total; now it checks both
+  child-count and non-null measured-quantity count.
+
+**Cleanup confirmed:** the QA schema, all fixtures and test routines
+were dropped using a shape-checked Staging-only cleanup migration.
+A subsequent query confirmed `to_regnamespace('qa_yagi_harvest_20261020')
+IS NULL`. No persistent QA tables or records remain.
+
+### Remaining release gates
+
+- The SQL tests ran with recreated *synthetic* schema and mocked save
+  authorization. This is not a full clone of Yagi Production and is
+  not an authenticated browser end-to-end test.
+- No source Production SQL migrations were applied; the old production
+  `save_harvest_record` fallback and prior narrow aggregate implementation
+  remain unchanged.
+- Keep PR #13 as **draft** and do not merge, promote, or mutate Yagi
+  Production until an explicit separate approval to deploy both
+  source-function migrations and validate role grants plus UI behavior.
+- Vercel Yagi Preview shares the default Production Supabase connection:
+  its harvest/processing UI write controls are disabled, but the full app
+  is not database-isolated and must be treated as view-only.
