@@ -111,6 +111,17 @@ try{
  desktop.verify();await desktop.context.close();
  passed++;
  console.log('PASS [desktop 1280] history and no horizontal overflow / no external calls');
+
+ const compact=await openFixture({width:320,height:720});
+ const c=compact.page;
+ assert.equal(await c.locator('.harvest-history-list article').count(),17);
+ const compactBoxes=c.locator('.harvest-multi-field-row input[type=checkbox]');
+ await compactBoxes.nth(0).check();await compactBoxes.nth(1).check();
+ const compactWidths=await c.evaluate(()=>({viewport:window.innerWidth,scrollWidth:document.documentElement.scrollWidth}));
+ assert.ok(compactWidths.scrollWidth<=compactWidths.viewport+2,JSON.stringify(compactWidths));
+ compact.verify();await compact.context.close();
+ passed++;
+ console.log('PASS [compact mobile 320] field selection and no horizontal overflow / no external calls');
  console.log('PASS',passed,'fixture UI scenarios. ZERO business API requests; ZERO real data persisted.');
 } catch(e){
  console.error('FAIL fixture UI smoke:',e);
