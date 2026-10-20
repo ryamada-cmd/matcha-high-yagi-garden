@@ -1,0 +1,64 @@
+name: Harvest UI Synthetic E2E
+
+on:
+  push:
+    branches: [feature/harvest-provenance-ai-readiness-v1]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'qa/**'
+      - 'src/pages/HarvestProcessingPage.tsx'
+      - 'src/lib/harvestProcessing.ts'
+      - 'src/lib/harvestProvenance.ts'
+      - 'src/harvest-processing.css'
+      - '.github/workflows/harvest-ui-fixture.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harvest-fixture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies (no live API credentials)
+        run: npm install --no-audit --no-fund
+      - name: Install isolated headless browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Launch QA-only browser fixture server
+        run: |
+          npx vite --config qa/vite.config.ts --host 127.0.0.1 --port 5178 > /tmp/yagi-harvest-qa.log 2>&1 &
+          echo $! > /tmp/yagi-harvest-qa.pid
+          for i in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5178/qa/index.html >/dev/null; then
+              echo "Synthetic UI fixture ready (127.0.0.1:5178)"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/yagi-harvest-qa.log
+          exit 1
+      - name: Verify real page component using synthetic-only data
+        run: node qa/harvest-ui.e2e.mjs
+      - name: Upload QA screenshot for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harvest-ui-fixture-screenshots
+          path: qa/screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Display fixture server logs if failed
+        if: failure()
+        run: cat /tmp/yagi-harvest-qa.log || true
