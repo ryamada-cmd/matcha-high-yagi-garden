@@ -53,7 +53,9 @@ test('UI refuses blank dates; DB migration proposal also removes fallback',()=>{
  const save=readFileSync(new URL('../src/lib/harvestProcessing.ts',import.meta.url),'utf8');
  const migration=readFileSync(new URL('../supabase/migrations/20261020143000_require_explicit_harvest_date.sql',import.meta.url),'utf8');
  assert.match(page,/validHarvestDate\(hDate\)/);
- assert.match(page,/摘採日（実際の日付・必須）<input type="date" required/);
+ assert.match(page,/摘採日（実際に確認した日付・必須）<input type="date" required/);
+ assert.match(page,/\[hDate,setHDate\]=useState\(''\)/);
+ assert.match(page,/function resetHarvest\(\)\{setHId\(''\);setHDate\(''\)/);
  assert.match(page,/harvest-provenance-summary/);
  assert.match(page,/reviewReadOnly/);
  assert.match(page,/canManage=allowed\('harvest_processing\.manage'\)&&!reviewReadOnly/);
