@@ -73,5 +73,13 @@ test('source aggregate proposal allows verified dated subset without assigning d
  assert.match(sql,/SECURITY DEFINER/);
  assert.match(sql,/x-yagi-ai-readonly-token/);
  assert.match(sql,/harvest_record_fields/);
+ // Two missing elements caught by isolated DB execution:
+ // a missing statement terminator after the SQL function body, and
+ // nullable per-field fresh-leaf weights slipping through SUM validation.
+ assert.match(sql,/\$function\$;\s*$/);
+ assert.match(sql,/COUNT\(rf\.fresh_leaf_kg\) n_qty/);
+ assert.match(sql,/child\.n<>child\.n_qty/);
+ assert.match(sql,/child\.field_kg IS NULL/);
+ assert.match(sql,/h\.fresh_leaf_kg<=0/);
  assert.doesNotMatch(sql,/UPDATE public\.harvest_records|INSERT INTO public\.harvest_records|DELETE FROM public\.harvest_records/);
 });
