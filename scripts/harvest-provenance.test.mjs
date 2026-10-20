@@ -61,3 +61,14 @@ test('UI refuses blank dates; DB migration proposal also removes fallback',()=>{
  assert.match(migration,/require_app_permission_/);
  assert.match(migration,/audit_logs/);
 });
+
+test('source aggregate proposal allows verified dated subset without assigning dates to imports',()=>{
+ const sql=readFileSync(new URL('../supabase/migrations/20261020153000_ai_harvest_attributed_subset_proposal.sql',import.meta.url),'utf8');
+ assert.match(sql,/IF v_count=0 THEN/);
+ assert.doesNotMatch(sql,/IF v_undated OR v_count=0 THEN/);
+ assert.match(sql,/'attributed_subset'/);
+ assert.match(sql,/SECURITY DEFINER/);
+ assert.match(sql,/x-yagi-ai-readonly-token/);
+ assert.match(sql,/harvest_record_fields/);
+ assert.doesNotMatch(sql,/UPDATE public\.harvest_records|INSERT INTO public\.harvest_records|DELETE FROM public\.harvest_records/);
+});
