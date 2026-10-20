@@ -43,6 +43,7 @@ try{
  assert.equal(await page.getByText('摘採日未特定').count(),17);
  assert.equal(await page.locator('.harvest-provenance-tag.needs-evidence').count(),17);
  assert.equal(await page.locator('input[type=date]').first().getAttribute('required'),'');
+ assert.equal(await page.locator('.harvest-core-grid input[type=date]').inputValue(),'','new harvest date must be intentionally entered');
  const checkboxes=page.locator('.harvest-multi-field-row input[type=checkbox]');
  assert.equal(await checkboxes.count(),2);
  await checkboxes.nth(0).check();await checkboxes.nth(1).check();
