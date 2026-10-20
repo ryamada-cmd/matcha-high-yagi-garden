@@ -55,6 +55,9 @@ test('UI refuses blank dates; DB migration proposal also removes fallback',()=>{
  assert.match(page,/validHarvestDate\(hDate\)/);
  assert.match(page,/摘採日（実際の日付・必須）<input type="date" required/);
  assert.match(page,/harvest-provenance-summary/);
+ assert.match(page,/reviewReadOnly/);
+ assert.match(page,/canManage=allowed\('harvest_processing\.manage'\)&&!reviewReadOnly/);
+ assert.match(page,/canDelete=allowed\('harvest_processing\.delete'\)&&!reviewReadOnly/);
  assert.match(save,/if\(!validHarvestDate\(input\.date\)\)/);
  assert.match(migration,/v_date:=nullif\(p_payload->>'harvest_date',''\)::date/);
  assert.doesNotMatch(migration,/coalesce\(nullif\(p_payload->>'harvest_date',''\)::date,current_date\)/);
