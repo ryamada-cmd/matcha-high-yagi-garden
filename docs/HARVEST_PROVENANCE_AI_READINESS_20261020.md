@@ -184,3 +184,53 @@ migration folder, and has **not** been executed.
 **Current hold point:** synthetic SQL tests succeeded; QA schema removed;
 Production functions and all 17 undated records untouched. A separate
 approval is required to deploy either functional change to Yagi Production.
+
+
+## Production SQL function migration approved and applied — 2026-10-20
+
+**Supabase migration:** \`yagi_harvest_date_required_and_attributed_subset_20261020\`
+on Yagi Production project \`mdbtngousidfanmrjybt\`. The owner separately
+approved these **two routine updates**, not a deployment of the web app.
+
+**Applied to Production:**
+- \`public.save_harvest_record(jsonb)\`: the date fallback
+  \`coalesce(...,current_date)\` was replaced with an explicit
+  null-date error. The migration's function body was compared against the
+  live prior definition and verified **identical apart from this date guard**.
+  Existing editing logic, audit trail and processing constraints remain.
+- \`public.ai_office_harvest_aggregate(date,date)\`: includes
+  \`attributed_subset\` for date/area-confirmed records when undated imports
+  coexist, plus non-null per-field weight verification. All existing
+  source authorization and the three-field output contract remain.
+
+**Verified after migration on live Yagi database:**
+- SQL function bodies contain the approved changes and maintain
+  \`SECURITY DEFINER\` and previous EXECUTE privileges.
+- \`anon\` cannot execute harvest saves; \`authenticated\` can.
+  Read-only aggregate RPC remains callable only by \`anon\` with the
+  approved per-request secret header. Authenticated role cannot call it.
+  The private hashed-token table is not selectable by \`anon\`.
+- No-header aggregate call denied. A freshly generated **temporary**
+  aggregate credential succeeded on existing data and was deleted in
+  the same SQL command. Invalid date window rejected.
+- Actual 2026-01-01 through 2026-10-20 aggregate returned
+  \`incomplete_provenance\` and exactly three JSON null metrics,
+  as all 17 active historical lots still lack known harvest dates.
+- Active harvests **17**, undated harvests **17**, field links **4**,
+  active tea processing batches **17**, existing enabled dedicated
+  aggregate token **1** — unchanged from pre-migration baseline.
+- The Yagi Garden Manager web application's **Production deployment**
+  and Riverside AI Office's Production deployment were **not changed**.
+
+**Recovery:**
+The pre-migration function definitions are preserved in
+[\`rollback/yagi_harvest_sql_functions_20261020_SOURCE_SNAPSHOT_NOT_APPLIED.sql\`](rollback/yagi_harvest_sql_functions_20261020_SOURCE_SNAPSHOT_NOT_APPLIED.sql).
+Do not execute this file without an explicit rollback approval and
+verification of the current function access grants.
+
+**Remaining steps:** PR #13 is still a draft; the frontend date-required
+and provenance UI changes have **not been merged or deployed to
+Production**. The new DB functions can be used by existing clients with
+valid harvest dates. Before releasing the frontend, ensure a fully
+isolated write-test database, review permission/session behavior in browser,
+confirm rollback procedure, and separately approve application deployment.
