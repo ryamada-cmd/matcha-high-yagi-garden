@@ -4,9 +4,11 @@
  * Run only with qa/vite.config.ts. Browser network is denylisted outside local.
  */
 import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
 import {chromium} from 'playwright';
 
 const origin='http://127.0.0.1:5178';
+mkdirSync('qa/screenshots',{recursive:true});
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 let passed=0;
 const fail=e=>{throw e};
