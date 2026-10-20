@@ -164,3 +164,23 @@ IS NULL`. No persistent QA tables or records remain.
 - Vercel Yagi Preview shares the default Production Supabase connection:
   its harvest/processing UI write controls are disabled, but the full app
   is not database-isolated and must be treated as view-only.
+
+## Rollback preparation
+
+The original source Production definitions of `public.save_harvest_record(jsonb)`
+and `public.ai_office_harvest_aggregate(date,date)` were captured using
+`pg_get_functiondef`, read-only, and saved in
+[`docs/rollback/yagi_harvest_sql_functions_20261020_SOURCE_SNAPSHOT_NOT_APPLIED.sql`](rollback/yagi_harvest_sql_functions_20261020_SOURCE_SNAPSHOT_NOT_APPLIED.sql).
+No raw data, credential values or token hashes were exported.
+
+In the event of a future authorized rollout issue, restore **only these
+functions** with the reviewed snapshot under a new approved migration;
+verify `proacl` and `SECURITY DEFINER` posture, and re-run auth checks
+and period-quality tests. This is not an instruction to change any
+harvest/processing tables, or automatically revert data already written by
+an operator. The rollback SQL is stored under `docs/`, not the
+migration folder, and has **not** been executed.
+
+**Current hold point:** synthetic SQL tests succeeded; QA schema removed;
+Production functions and all 17 undated records untouched. A separate
+approval is required to deploy either functional change to Yagi Production.
