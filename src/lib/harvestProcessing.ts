@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { validHarvestDate } from './harvestProvenance'
 
 export type HarvestField={id:string;legacyId:string;name:string;location:string;areaM2:number;variety:string}
 export type HarvestFieldYield={fieldId:string;fieldLegacyId:string;fieldName:string;areaM2:number;variety:string;freshLeafKg:number;harvestedAreaM2:number|null}
@@ -36,6 +37,18 @@ export async function loadHarvestRecords(limit=300):Promise<HarvestRecord[]>{
 }
 
 export async function saveHarvestRecord(input:{id?:string;date:string;fieldId:string;yieldEntryMode:'PER_FIELD'|'TOTAL_AREA_ESTIMATE';fields:Array<{fieldId:string;freshLeafKg:number;harvestedAreaM2:number|null}>;season:string;method:string;freshLeafKg:number;harvestedAreaM2:number|null;operator:string;destination:string;qualityNote:string;note:string}){
+ // A blank date must never silently become 'today' in the DB function.
+ if(!validHarvestDate(input.date))throw new Error('実際に確認できる摘採日を入力してください。');
+ if(!input.fields.length||input.fields.some(f=>!f.fieldId))throw new Error('圃場を1件以上選択してください。');
+ if(new Set(input.fields.map(f=>f.fieldId)).size!==input.fields.length)throw new Error('同じ圃場が重複しています。');
+ if(!Number.isFinite(input.freshLeafKg)||input.freshLeafKg<=0||
+    input.fields.some(f=>!Number.isFinite(f.freshLeafKg)||f.freshLeafKg<=0))
+   throw new Error('生葉重量は正の数値で入力してください。');
+ if(input.fields.some(f=>f.harvestedAreaM2!==null&&
+       (!Number.isFinite(f.harvestedAreaM2)||f.harvestedAreaM2<=0)))
+   throw new Error('摘採面積は実測値、または未入力にしてください。');
+ const sum=input.fields.reduce((t,f)=>t+f.freshLeafKg,0);
+ if(Math.abs(sum-input.freshLeafKg)>0.001)throw new Error('生葉合計と圃場別収量の合計が一致しません。');
  const {data,error}=await supabase.rpc('save_harvest_record',{p_payload:{
    id:input.id||'',harvest_date:input.date,field_id:input.fieldId,yield_entry_mode:input.yieldEntryMode,
    fields:input.fields.map(f=>({field_id:f.fieldId,fresh_leaf_kg:f.freshLeafKg,harvested_area_m2:f.harvestedAreaM2??''})),
