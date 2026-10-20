@@ -3,7 +3,13 @@
  * No OCR inference, guessed dates/fields, document association, writes or
  * external data transfer. Confirmation of evidence is a human action.
  */
-import {validHarvestDate} from './harvestProvenance';
+// Keep this lightweight helper self-contained so the same review logic can
+// run in Node's no-network TypeScript safety tests without a bundler.
+const validHarvestDate=(value:string):boolean=>{
+ if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(value))return false;
+ const time=Date.parse(value+'T00:00:00.000Z');
+ return Number.isFinite(time)&&new Date(time).toISOString().slice(0,10)===value;
+};
 import type {HarvestRecord} from './harvestProcessing';
 
 export type HarvestEvidenceMissing = 'date'|'field'|'measured_area'|'field_yield';
