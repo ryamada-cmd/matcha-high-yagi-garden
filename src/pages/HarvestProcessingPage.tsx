@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Edit3, Factory, Leaf, RefreshCw, Scissors, Trash2 } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAppPermissions } from '../lib/permissions'
 import { allocateHarvestTotalByArea } from '../lib/harvestAllocations'
 import { inspectHarvestProvenance, summarizeHarvestProvenance, validHarvestDate } from '../lib/harvestProvenance'
+import { harvestEvidenceRow, harvestEvidenceSummary, harvestEvidenceCsv, HARVEST_EVIDENCE_MISSING_LABELS } from '../lib/harvestEvidenceReview'
 import { deleteHarvestRecord, deleteProcessingBatch, finalizeImportedHarvestSource, loadHarvestFields, loadHarvestRecords, loadProcessingBatches, saveHarvestRecord, saveProcessingBatch, type HarvestField, type HarvestRecord, type ProcessingBatch } from '../lib/harvestProcessing'
 
 const today=()=>new Intl.DateTimeFormat('sv-SE').format(new Date())
@@ -18,6 +19,7 @@ export default function HarvestProcessingPage(){
  const[hId,setHId]=useState(''),[hDate,setHDate]=useState(''),[hFieldQty,setHFieldQty]=useState<Record<string,string>>(()=>params.get('field')?{[params.get('field')!] : ''}:{}),[hFieldAreas,setHFieldAreas]=useState<Record<string,string>>({}),[hSeason,setHSeason]=useState(''),[hMethod,setHMethod]=useState(''),[hOperator,setHOperator]=useState(''),[hDestination,setHDestination]=useState(''),[hQuality,setHQuality]=useState(''),[hNote,setHNote]=useState('')
  const[hEntryMode,setHEntryMode]=useState<'PER_FIELD'|'TOTAL_AREA_ESTIMATE'>('PER_FIELD'),[hTotalQty,setHTotalQty]=useState('')
  const[showHarvestDetails,setShowHarvestDetails]=useState(false)
+ const[showEvidenceReview,setShowEvidenceReview]=useState(false),[evidenceSearch,setEvidenceSearch]=useState(''),[onlyEvidenceMissing,setOnlyEvidenceMissing]=useState(true)
  const[sourceFixId,setSourceFixId]=useState(''),[sourceFixField,setSourceFixField]=useState(''),[sourceFixDate,setSourceFixDate]=useState('')
  const[pId,setPId]=useState(''),[pDate,setPDate]=useState(today()),[pType,setPType]=useState('生葉→碾茶'),[pOutputMaterial,setPOutputMaterial]=useState('碾茶'),[pOutput,setPOutput]=useState(''),[pFacility,setPFacility]=useState(''),[pCost,setPCost]=useState('0'),[pOperator,setPOperator]=useState(''),[pNote,setPNote]=useState(''),[sourceInputs,setSourceInputs]=useState<Record<string,string>>({})
  async function refresh(){setLoading(true);setError('');try{const[f,h,b]=await Promise.all([loadHarvestFields(),loadHarvestRecords(),loadProcessingBatches()]);setFields(f);setHarvests(h);setBatches(b)}catch(e:any){setError(e?.message||'摘採・製茶データを読み込めませんでした。')}finally{setLoading(false)}}useEffect(()=>{void refresh()},[])
@@ -101,6 +103,21 @@ export default function HarvestProcessingPage(){
  async function submitProcess(e:FormEvent){e.preventDefault();if(!canManage)return setError('製茶実績を登録・編集する権限がありません。');setBusy(true);setError('');setSuccess('');try{const sources=sourceRows.filter(x=>x.input>0);if(!sources.length)throw new Error('原料となる摘採記録を選択してください。');for(const x of sources)if(x.input>x.available+0.0005)throw new Error(`${x.h.legacyId} の未加工残量を超えています。`);if(Number(pOutput)<=0)throw new Error('出来高を入力してください。');if(Number(pOutput)>inputTotal+0.0005)throw new Error('出来高が生葉投入量を超えています。');await saveProcessingBatch({id:pId||undefined,date:pDate,processType:pType,outputMaterial:pOutputMaterial,outputKg:Number(pOutput),facility:pFacility,costYen:Number(pCost||0),operator:pOperator,note:pNote,sources:sources.map(x=>({harvestId:x.h.id,inputKg:x.input}))});setSuccess(pId?'製茶実績を更新しました。':'製茶実績を登録しました。');resetProcess();await refresh()}catch(e:any){setError(e?.message||'製茶実績の保存に失敗しました。')}finally{setBusy(false)}}
  async function removeProcess(b:ProcessingBatch){if(!canDelete)return setError('製茶実績を削除する権限がありません。');const reason=window.prompt('製茶実績を削除する理由を入力してください。削除すると原料の未加工残量へ戻ります。','入力誤り');if(reason===null)return;setBusy(true);try{await deleteProcessingBatch(b.id,reason);setSuccess('製茶実績を削除しました。');await refresh()}catch(e:any){setError(e?.message||'削除できませんでした。')}finally{setBusy(false)}}
  const harvestReadiness=useMemo(()=>summarizeHarvestProvenance(harvests),[harvests]);
+ const evidenceSummary=useMemo(()=>harvestEvidenceSummary(harvests),[harvests]);
+ const evidenceRows=useMemo(()=>harvests.filter(h=>{
+  const row=harvestEvidenceRow(h);
+  return (!onlyEvidenceMissing||row.status==='needs_evidence')&&
+    (!evidenceSearch.trim()||[row.legacyId,row.sourceLotNo,row.recordedFields].some(v=>v.toLocaleLowerCase().includes(evidenceSearch.trim().toLocaleLowerCase())));
+ }),[harvests,onlyEvidenceMissing,evidenceSearch]);
+ function exportEvidenceChecklist(){
+  const text=harvestEvidenceCsv(harvests); // All loaded records, not filtered search results.
+  const objectUrl=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));
+  const el=document.createElement('a');
+  el.href=objectUrl;el.download='yagi-harvest-evidence-checklist.csv';
+  document.body.appendChild(el);el.click();el.remove();
+  // Revoke on a subsequent task to allow browser download to start.
+  window.setTimeout(()=>URL.revokeObjectURL(objectUrl),1000);
+ }
  const freshTotal=harvests.reduce((s,h)=>s+h.freshLeafKg,0),unprocessedTotal=harvests.reduce((s,h)=>s+h.remainingKg,0),processedOutput=batches.reduce((s,b)=>s+b.totalOutputKg,0)
  return <div className="page harvest-page"><div className="page-head"><div><p className="eyebrow">HARVEST & PROCESSING</p><h1>摘採・製茶</h1><p className="sub">圃場の生葉収量から製茶バッチ・歩留までつなげて記録します。</p></div><button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div>{reviewReadOnly&&<div className="notice dashboard-notice" role="status">このPreviewは検証専用です。誤って実業務データを変更しないよう、摘採・製茶の登録・編集・削除を停止しています。画面と表示内容の確認だけ行ってください。</div>}{error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
  <div className="metrics harvest-metrics"><article className="metric"><span>生葉収量</span><strong>{num.format(freshTotal)}kg</strong></article><article className="metric"><span>未加工生葉</span><strong>{num.format(unprocessedTotal)}kg</strong></article><article className="metric"><span>製茶バッチ</span><strong>{batches.length}件</strong></article><article className="metric"><span>製茶総出来高</span><strong>{num.format(processedOutput)}kg</strong></article></div>
@@ -122,7 +139,30 @@ export default function HarvestProcessingPage(){
     </div>
   })}</div>
  </div><div className="harvest-quick-picks"><div><span>茶期</span><button type="button" className={hSeason==="一番茶"?"active":""} onClick={()=>setHSeason("一番茶")}>一番茶</button><button type="button" className={hSeason==="二番茶"?"active":""} onClick={()=>setHSeason("二番茶")}>二番茶</button><button type="button" className={hSeason==="秋番茶"?"active":""} onClick={()=>setHSeason("秋番茶")}>秋番茶</button></div><div><span>摘採方法</span><button type="button" className={hMethod==="手摘み"?"active":""} onClick={()=>setHMethod("手摘み")}>手摘み</button><button type="button" className={hMethod==="ハサミ摘み"?"active":""} onClick={()=>setHMethod("ハサミ摘み")}>ハサミ</button><button type="button" className={hMethod==="乗用摘採"?"active":""} onClick={()=>setHMethod("乗用摘採")}>乗用</button></div></div><div className="harvest-yield-preview"><div><span>計算面積{previewIsReference?"（圃場全面積を含む参考）":"（実測）"}</span><b>{areaBasis?`${num.format(areaBasis)}㎡`:'—'}</b></div><div><span>参考：1反（1,000㎡）あたり平均収量</span><b>{hYield?`${num.format(hYield)}kg/反`:'—'}</b></div><div><span>圃場品種</span><b>{varieties}</b></div></div>{selectedFieldIds.length>0&&<p className="harvest-area-note">{previewIsReference?'※ 摘採面積が未入力の圃場は、登録済みの圃場全面積を用いた参考計算です。':'※ 入力した摘採面積を合算して計算しています。'}{isTotalMode?' 圃場別の生葉量は面積按分の推定値です。':''}{previewIsReference?' 実測した摘採面積がない記録は、AIの面積・収量集計では未確定と扱います。':''}</p>}<button type="button" className="harvest-detail-toggle" onClick={()=>setShowHarvestDetails(v=>!v)}>{showHarvestDetails?'詳細入力を閉じる' :'担当者・搬入先・品質メモを入力'}</button>{showHarvestDetails&&<div className="harvest-detail-panel"><div className="form-grid three"><div className="harvest-area-help">摘採面積は上の圃場別入力欄で指定できます。</div><label>担当者<input value={hOperator} onChange={e=>setHOperator(e.target.value)}/></label><label>搬入先・販売先<input value={hDestination} onChange={e=>setHDestination(e.target.value)} placeholder="製茶工場 / 生葉売却先"/></label></div><label>品質メモ<textarea rows={2} value={hQuality} onChange={e=>setHQuality(e.target.value)} placeholder="芽の状態、水分、等級など"/></label><label>備考<textarea rows={2} value={hNote} onChange={e=>setHNote(e.target.value)}/></label></div>}<button className="primary-button harvest-save" disabled={busy||!selectedFieldIds.length||!totalIsValid||!hSeason||!hMethod}>{busy?'保存中…':hId?'変更を保存':'摘採を登録'}</button></form>}
- <section className="panel harvest-history"><div className="panel-title"><div><h2>摘採履歴</h2><p>未加工残量も自動追跡 ／ AI集計に必要な日付・圃場・実測面積を区別</p></div><Leaf size={19}/></div><p className="harvest-provenance-summary">期間別集計に必要な記録が揃った摘採：{harvestReadiness.ready}件 ／ 未確定：{harvestReadiness.incomplete}件（出所未特定 {harvestReadiness.unattributed}件・面積未確認 {harvestReadiness.areaUnverified}件・重量要確認 {harvestReadiness.quantityUnverified}件）。未確定の履歴を自動補完しません。</p><div className="harvest-history-list">{harvests.map(h=><article key={h.id}>
+ <section className="panel harvest-history"><div className="panel-title"><div><h2>摘採履歴</h2><p>未加工残量も自動追跡 ／ AI集計に必要な日付・圃場・実測面積を区別</p></div><Leaf size={19}/></div><p className="harvest-provenance-summary">期間別集計に必要な記録が揃った摘採：{harvestReadiness.ready}件 ／ 未確定：{harvestReadiness.incomplete}件（出所未特定 {harvestReadiness.unattributed}件・面積未確認 {harvestReadiness.areaUnverified}件・重量要確認 {harvestReadiness.quantityUnverified}件）。未確定の履歴を自動補完しません。</p><section className="harvest-review-panel" aria-label="摘採ロットの根拠資料照合">
+ <div className="harvest-review-head">
+  <div><h3>未確定ロットの根拠資料照合</h3><p>実データを編集せず、資料確認に必要な項目を洗い出します。CSVは端末へのダウンロードのみです。</p></div>
+  <button type="button" className="secondary-button" aria-expanded={showEvidenceReview} onClick={()=>setShowEvidenceReview(v=>!v)}>{showEvidenceReview?'照合リストを閉じる':'照合リストを開く'}</button>
+ </div>
+ {showEvidenceReview&&<div className="harvest-review-body">
+  <div className="harvest-review-stats" role="status"><span>要確認：<b>{evidenceSummary.needsEvidence}件</b></span><span>摘採日未登録：{evidenceSummary.dateMissing}件</span><span>圃場未登録：{evidenceSummary.fieldMissing}件</span><span>実測面積未登録：{evidenceSummary.areaMissing}件</span></div>
+  <p className="harvest-review-warning">登録項目の有無を点検した一覧です。根拠資料を照合済みであることを示しません。JAロット番号や製茶記録だけから摘採日・圃場を推測しません。</p>
+  <div className="harvest-review-controls">
+   <label>ロット番号で検索<input type="search" value={evidenceSearch} onChange={e=>setEvidenceSearch(e.target.value)} placeholder="摘採LOT・JAロット" /></label>
+   <label className="harvest-review-toggle"><input type="checkbox" checked={onlyEvidenceMissing} onChange={e=>setOnlyEvidenceMissing(e.target.checked)} /> 要確認のみ</label>
+   <button type="button" className="secondary-button" onClick={exportEvidenceChecklist} disabled={!harvests.length}>資料照合用CSVを出力</button>
+   {allowed('storage.view')&&<Link className="secondary-button harvest-review-library" to="/library">資料ライブラリを見る</Link>}
+  </div>
+  <p className="harvest-review-warning">CSVに「資料名・確認根拠・確認者・確認結果」を記入して照合してください。CSV編集は元の摘採データへ反映されません。日付・圃場の確定は実資料を確認後、権限のある担当者が別途行います。</p>
+  <div className="harvest-review-list">
+   {evidenceRows.map(h=>{const row=harvestEvidenceRow(h);return <article key={row.id} className="harvest-review-row">
+     <div><b>摘採LOT：{row.legacyId||'番号未登録'}</b><span>{row.sourceLotNo?'JAロット '+row.sourceLotNo+' ／ ':''}生葉 {row.freshLeafKg===null?'未登録':num.format(row.freshLeafKg)+'kg'}</span></div>
+     <div className="harvest-review-flags">{row.missing.length?row.missing.map(m=><span key={m}>{HARVEST_EVIDENCE_MISSING_LABELS[m]}</span>):<span className="complete">必要な記録項目は入力済み（資料照合は別途）</span>}</div>
+   </article>})}
+   {!evidenceRows.length&&<p className="empty">条件に一致するロットはありません。</p>}
+  </div>
+ </div>}
+</section><div className="harvest-history-list">{harvests.map(h=><article key={h.id}>
 <div><span>{h.date||'摘採日未特定'}｜{h.season||'茶期未入力'}</span><h3>{h.fieldLegacyId} {h.fieldName}</h3><small><strong>摘採LOT：{h.legacyId}</strong><span className={`harvest-provenance-tag ${inspectHarvestProvenance(h).periodAggregationReady?"verified":"needs-evidence"}`}>{inspectHarvestProvenance(h).label}</span>{h.yieldEntryMode==='TOTAL_AREA_ESTIMATE'?' / 圃場別収量は面積按分（推定）':''}{h.sourceLotNo?' / JAロット '+h.sourceLotNo:''}{h.variety?' / '+h.variety:''} / {h.method||'方法未入力'} / {h.operator||'担当未入力'}</small>{h.fieldYields.length>0&&<div className="harvest-field-breakdown">{h.fieldYields.map(f=><span key={f.fieldId}>{f.fieldLegacyId} {f.fieldName}：{num.format(f.freshLeafKg)}kg{h.yieldEntryMode==='TOTAL_AREA_ESTIMATE'?'（推定）':''}</span>)}</div>}</div>
 <div className="harvest-qty"><strong>{num.format(h.freshLeafKg)}kg</strong><span>{h.yieldKgPer10a?'参考平均 '+num.format(h.yieldKgPer10a)+'kg/反':'参考平均 未算定'}</span></div>
 <div className="harvest-use"><span>製茶使用 {num.format(h.processedKg)}kg</span><b>未加工 {num.format(h.remainingKg)}kg</b></div>

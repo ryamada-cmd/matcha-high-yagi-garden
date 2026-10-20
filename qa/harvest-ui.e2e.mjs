@@ -4,7 +4,7 @@
  * Run only with qa/vite.config.ts. Browser network is denylisted outside local.
  */
 import assert from 'node:assert/strict';
-import {mkdirSync} from 'node:fs';
+import {mkdirSync,readFileSync} from 'node:fs';
 import {chromium} from 'playwright';
 
 const origin='http://127.0.0.1:5178';
@@ -42,6 +42,24 @@ try{
  assert.match(await page.locator('.harvest-provenance-summary').innerText(),/出所未特定 17件/);
  assert.equal(await page.getByText('摘採日未特定').count(),17);
  assert.equal(await page.locator('.harvest-provenance-tag.needs-evidence').count(),17);
+ await page.getByRole('button',{name:'照合リストを開く'}).click();
+ const panel=page.getByRole('region',{name:'摘採ロットの根拠資料照合'});
+ assert.equal(await panel.locator('.harvest-review-row').count(),17);
+ assert.match(await panel.locator('.harvest-review-stats').innerText(),/摘採日未登録：17件/);
+ assert.equal(await panel.getByRole('link',{name:'資料ライブラリを見る'}).getAttribute('href'),'/library');
+ await panel.getByRole('searchbox',{name:'ロット番号で検索'}).fill('QA-LOT-17');
+ assert.equal(await panel.locator('.harvest-review-row').count(),1);
+ await panel.getByRole('searchbox',{name:'ロット番号で検索'}).fill('');
+ const requestedDownload=page.waitForEvent('download');
+ await panel.getByRole('button',{name:'資料照合用CSVを出力'}).click();
+ const download=await requestedDownload;
+ assert.equal(download.suggestedFilename(),'yagi-harvest-evidence-checklist.csv');
+ const exported=readFileSync(await download.path(),'utf8');
+ assert.match(exported,/摘採日（登録値・未照合）/);
+ assert.match(exported,/証拠資料名・保管場所（手入力）/);
+ assert.match(exported,/QA-LOT-17/);
+ assert.equal(exported.trim().split('\r\n').length,18);
+ await panel.getByRole('button',{name:'照合リストを閉じる'}).click();
  assert.equal(await page.locator('input[type=date]').first().getAttribute('required'),'');
  assert.equal(await page.locator('.harvest-core-grid input[type=date]').inputValue(),'','new harvest date must be intentionally entered');
  const checkboxes=page.locator('.harvest-multi-field-row input[type=checkbox]');
