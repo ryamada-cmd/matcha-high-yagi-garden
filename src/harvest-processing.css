@@ -53,3 +53,10 @@
 .harvest-yield-preview>div:nth-child(2) span{font-size:11px;font-weight:700}
 .harvest-yield-preview>div:nth-child(2) b{font-size:17px}
 @media(max-width:520px){.harvest-entry-mode{padding:9px}.harvest-entry-switch button{padding:9px 5px;font-size:12px}.harvest-entry-mode p{font-size:11px}.harvest-qty-input input:not([readonly]){font-size:18px}}
+
+/* Harvest provenance is advisory only; legacy imported lots are never inferred. */
+.harvest-provenance-summary{padding:10px 14px;margin:10px 0 16px;border:1px solid var(--border,#dce3e9);border-radius:10px;font-size:.88rem;line-height:1.65;background:var(--surface-subtle,#f7faf9)}
+.harvest-provenance-tag{display:inline-block;padding:2px 8px;margin:4px 5px;border-radius:999px;font-size:.73rem;font-weight:700;white-space:normal;vertical-align:middle}
+.harvest-provenance-tag.verified{color:#0b664b;background:#d4f3e6}
+.harvest-provenance-tag.needs-evidence{color:#8a4c10;background:#fff0d1}
+@media(max-width:640px){.harvest-provenance-summary{font-size:.81rem;margin:10px 0;padding:10px}.harvest-provenance-tag{display:inline-block;max-width:100%;margin:5px 3px}}
