@@ -68,15 +68,18 @@ BEGIN
   SELECT 1 FROM public.harvest_records h
   CROSS JOIN LATERAL (
    SELECT COUNT(*) n,COUNT(rf.harvested_area_m2) n_area,
+          COUNT(rf.fresh_leaf_kg) n_qty,
           SUM(rf.fresh_leaf_kg) field_kg
    FROM public.harvest_record_fields rf
    WHERE rf.harvest_record_id=h.id
   ) child
   WHERE h.deleted_at IS NULL AND h.harvest_date BETWEEN p_from AND p_to
-  AND (h.fresh_leaf_kg IS NULL OR
-    (child.n=0 AND (h.field_id IS NULL OR h.harvested_area_m2 IS NULL)) OR
+  AND (h.fresh_leaf_kg IS NULL OR h.fresh_leaf_kg<=0 OR
+    (child.n=0 AND (h.field_id IS NULL OR h.harvested_area_m2 IS NULL
+       OR h.harvested_area_m2<=0)) OR
     (child.n>0 AND
-     (child.n<>child.n_area OR
+     (child.n<>child.n_area OR child.n<>child.n_qty OR
+      child.field_kg IS NULL OR child.field_kg<=0 OR
       abs(child.field_kg-h.fresh_leaf_kg)>0.001)))
  ) INTO v_bad;
  IF v_bad THEN
@@ -125,4 +128,4 @@ BEGIN
     'harvest_area_ha',v_ha,'fresh_leaf_kg',v_kg,'field_count',v_fields)
  );
 END;
-$function$
+$function$;
