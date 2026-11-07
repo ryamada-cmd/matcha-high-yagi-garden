@@ -13,7 +13,7 @@ type Tab = 'inquiries' | 'contacts' | 'mail'
 type DocRef = { id: string; document_no: string; document_type: string; customer_name: string; issue_date: string }
 type DocCustomer = { id: string; name: string }
 type Draft = Record<string, string>
-const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', assigned_to: '', sales_document_id: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
+const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', assigned_to: '', sales_document_id: '', received_address: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
 const stamp = (value: string | null) => value ? new Intl.DateTimeFormat('ja-JP', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—'
 const localDate = (value: string | null) => value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 const opt = (value: string) => value.trim() || null
@@ -125,6 +125,7 @@ export default function CrmPage() {
         company_id: opt(draft.company_id), contact_id: opt(draft.contact_id), assigned_to: opt(draft.assigned_to),
         sales_document_id: allowed('documents.view') ? opt(draft.sales_document_id) : (selected?.sales_document_id || null),
         summary: opt(draft.summary), notes: opt(draft.notes), country: opt(draft.country),
+        received_address: opt(draft.received_address),
         requested_product: opt(draft.requested_product), currency: draft.currency || 'JPY',
         quantity_kg: number(draft.quantity_kg), monthly_quantity_kg: number(draft.monthly_quantity_kg),
         expected_amount: number(draft.expected_amount),
@@ -229,6 +230,7 @@ export default function CrmPage() {
               <label>優先度<select disabled={!canManage} value={draft.priority} onChange={e => field('priority', e.target.value)}>{selection(PRIORITIES)}</select></label>
               <label>取引先<select disabled={!canManage} value={draft.company_id} onChange={e => field('company_id', e.target.value)}><option value="">未設定</option>{companies.map(c => <option value={c.id} key={c.id}>{c.name}</option>)}</select></label>
               <label>担当者<select disabled={!canManage} value={draft.contact_id} onChange={e => field('contact_id', e.target.value)}><option value="">未設定</option>{contacts.filter(c => !draft.company_id || !c.company_id || c.company_id === draft.company_id || c.id === draft.contact_id).map(c => <option value={c.id} key={c.id}>{c.name || c.email}</option>)}</select></label>
+              <label>受付メールアドレス<select disabled={!canManage} value={draft.received_address} onChange={e => field('received_address', e.target.value)}><option value="">未設定・その他</option>{PRIMARY_INQUIRY_RECIPIENTS.map(addr => <option value={addr} key={addr}>{addr}</option>)}</select></label>
               <label>営業担当<select disabled={!canManage} value={draft.assigned_to} onChange={e => field('assigned_to', e.target.value)}><option value="">未設定</option>{assignees.map(a => <option key={a.id} value={a.id}>{a.display_name || 'ユーザー'}</option>)}</select></label>
               <label>国・地域<input disabled={!canManage} value={draft.country} onChange={e => field('country', e.target.value)} placeholder="例：日本・フランス"/></label>
               <label>次回対応日時<input type="datetime-local" disabled={!canManage} value={draft.next_action_at} onChange={e => field('next_action_at', e.target.value)}/></label>
