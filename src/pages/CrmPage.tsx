@@ -176,7 +176,8 @@ export default function CrmPage() {
         if (url.protocol !== 'https:' || url.hostname !== 'accounts.google.com') throw new Error('認証URLを確認できません')
         window.location.assign(url.toString()); return
       }
-      setNotice(action === 'sync' ? '同期完了：' + (result.imported ?? 0) + '件のメールを取り込みました' : '設定を更新しました')
+      if (Array.isArray(result.errors) && result.errors.length) setError(result.errors.join(' / '))
+      setNotice(action === 'sync' ? '同期結果：' + (result.imported ?? 0) + '件のメールを取り込みました' : '設定を更新しました')
       await refresh()
     } catch (error) { setError(errText(error)) } finally { setBusy(false) }
   }
