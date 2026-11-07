@@ -9,6 +9,7 @@ const CLIENT_ID = Deno.env.get('CRM_GOOGLE_CLIENT_ID') || ''
 const CLIENT_SECRET = Deno.env.get('CRM_GOOGLE_CLIENT_SECRET') || ''
 const TOKEN_SECRET = Deno.env.get('CRM_TOKEN_ENCRYPTION_SECRET') || ''
 const SITE = 'https://yagi-garden-manager.vercel.app'
+const PRIMARY_INQUIRY_RECIPIENTS = ['info@matchahigh.com', 'info@godaimeyagiichibei.com']
 const REDIRECT_URI = SUPABASE_URL + '/functions/v1/crm-gmail'
 const admin = createClient(SUPABASE_URL, SERVICE_KEY)
 const allowedOrigins = new Set([SITE, 'https://ryamada-cmd.github.io', 'http://localhost:5173'])
@@ -87,6 +88,13 @@ function head(payload: any, name: string) {
 function address(value: string) {
   const match = value.match(/<([^>]+)>/)
   return (match ? match[1] : value).trim().replace(/^mailto:/i, '').toLowerCase()
+}
+function detectedInquiryRecipient(payload: any): string | null {
+  // A sales alias can forward into a different Gmail account.
+  const received = ['To', 'Cc', 'Delivered-To', 'X-Original-To', 'Envelope-To']
+    .map(key => head(payload, key)).join(' ')
+  const addresses = (received.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []).map(x => x.toLowerCase())
+  return PRIMARY_INQUIRY_RECIPIENTS.find(target => addresses.includes(target)) || null
 }
 function senderName(value: string) {
   return value.replace(/<[^>]+>/g, '').replace(/^["']|["']$/g, '').trim().slice(0, 150)
@@ -180,9 +188,10 @@ async function ingestMessage(mailbox: any, raw: any) {
   const direction = raw.labelIds?.includes('SENT') || address(from) === String(mailbox.email).toLowerCase() ? 'outbound' : 'inbound'
   const subject = head(raw.payload, 'Subject') || '(件名なし)'
   const snippet = String(raw.snippet || '').slice(0, 2000)
+  const receivedAddress = direction === 'inbound' ? detectedInquiryRecipient(raw.payload) : null
   const allParts = flattenParts(raw.payload)
   const attachmentParts = allParts.filter((p: any) => p?.filename && p?.body?.attachmentId)
-  let inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage')
+  let inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage,received_address')
     .eq('mailbox_id', mailbox.id).eq('gmail_thread_id', threadId).maybeSingle()
   if (inquiry.error) throw inquiry.error
   let contactId: string | null = null
@@ -193,10 +202,10 @@ async function ingestMessage(mailbox: any, raw: any) {
       waiting_on: direction === 'inbound' ? 'our_team' : 'customer',
       priority: 'normal',source: 'gmail',contact_id: contactId,
       mailbox_id: mailbox.id,gmail_thread_id: threadId,
-      summary: snippet, first_received_at: sent,last_message_at: sent
-    }).select('id,last_message_at,contact_id,stage').single()
+      summary: snippet, received_address: receivedAddress, first_received_at: sent,last_message_at: sent
+    }).select('id,last_message_at,contact_id,stage,received_address').single()
     if (created.error) {
-      inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage')
+      inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage,received_address')
         .eq('mailbox_id', mailbox.id).eq('gmail_thread_id', threadId).maybeSingle()
       if (!inquiry.data) throw created.error
     } else inquiry = created
@@ -223,6 +232,7 @@ async function ingestMessage(mailbox: any, raw: any) {
       waiting_on: direction === 'inbound' ? 'our_team' : 'customer'
     }
     if (!inquiry.data?.contact_id && contactId) update.contact_id = contactId
+    if (!inquiry.data?.received_address && receivedAddress) update.received_address = receivedAddress
     if (['won','lost'].includes(String(inquiry.data?.stage))) delete update.waiting_on
     const saved = await admin.from('crm_inquiries').update(update).eq('id', inquiry.data!.id)
     if (saved.error) throw saved.error
