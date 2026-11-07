@@ -9,7 +9,7 @@ const CLIENT_ID = Deno.env.get('CRM_GOOGLE_CLIENT_ID') || ''
 const CLIENT_SECRET = Deno.env.get('CRM_GOOGLE_CLIENT_SECRET') || ''
 const TOKEN_SECRET = Deno.env.get('CRM_TOKEN_ENCRYPTION_SECRET') || ''
 const SITE = 'https://yagi-garden-manager.vercel.app'
-const REDIRECT_URI = SUPABASE_URL + '/functions/v1/crm-gmail?action=callback'
+const REDIRECT_URI = SUPABASE_URL + '/functions/v1/crm-gmail'
 const admin = createClient(SUPABASE_URL, SERVICE_KEY)
 const allowedOrigins = new Set([SITE, 'https://ryamada-cmd.github.io', 'http://localhost:5173'])
 
@@ -283,7 +283,7 @@ Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors(request) })
   try {
     const url = new URL(request.url)
-    if (request.method === 'GET' && url.searchParams.get('action') === 'callback') {
+    if (request.method === 'GET' && url.searchParams.has('state')) {
       try {
         await callback(url)
         return Response.redirect(SITE + '/crm?gmail=connected', 302)
