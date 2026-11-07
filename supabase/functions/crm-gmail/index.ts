@@ -8,7 +8,6 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
 const CLIENT_ID = Deno.env.get('CRM_GOOGLE_CLIENT_ID') || ''
 const CLIENT_SECRET = Deno.env.get('CRM_GOOGLE_CLIENT_SECRET') || ''
 const TOKEN_SECRET = Deno.env.get('CRM_TOKEN_ENCRYPTION_SECRET') || ''
-const CRON_SECRET = Deno.env.get('CRM_CRON_SECRET') || ''
 const SITE = 'https://yagi-garden-manager.vercel.app'
 const REDIRECT_URI = SUPABASE_URL + '/functions/v1/crm-gmail?action=callback'
 const admin = createClient(SUPABASE_URL, SERVICE_KEY)
@@ -293,7 +292,9 @@ Deno.serve(async (request: Request) => {
     if (request.method !== 'POST') return json(request, { error: 'Method not allowed' }, 405)
     const payload = await request.json()
     const action = String(payload.action || '')
-    const isCron = action === 'cron' && CRON_SECRET.length >= 32 && request.headers.get('x-crm-cron') === CRON_SECRET
+    const cronHeader = request.headers.get('x-crm-cron')
+    const verification = action === 'cron' && cronHeader ? await admin.rpc('crm_backend_validate_cron', { p_secret: cronHeader }) : null
+    const isCron = verification?.data === true && !verification.error
     if (!isCron) await permission(request)
     if (action === 'connect') return json(request, await connect((await permission(request)), String(payload.filterQuery || '').trim()))
     if (action === 'sync' || isCron) {
