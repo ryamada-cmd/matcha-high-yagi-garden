@@ -274,7 +274,7 @@ async function sync(mailboxId?: string) {
     try { imported += await syncMailbox(box) } catch (error) {
       const message = error instanceof Error ? error.message : '同期に失敗しました'
       errors.push(box.email + ': ' + message)
-      await admin.from('crm_mailboxes').update({status:'error',last_error:message,updated_at:new Date().toISOString()}).eq('id',box.id)
+      await admin.from('crm_mailboxes').update({status: /再接続|認証情報がありません|復号できません/.test(message) ? 'error' : 'active',last_error:message,updated_at:new Date().toISOString()}).eq('id',box.id)
     }
   }
   return { imported, checked: (result.data || []).length, errors }
