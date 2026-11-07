@@ -326,6 +326,15 @@ Deno.serve(async (request: Request) => {
     const verification = action === 'cron' && cronHeader ? await admin.rpc('crm_backend_validate_cron', { p_secret: cronHeader }) : null
     const isCron = verification?.data === true && !verification.error
     const user = isCron ? null : await permission(request)
+    if (action === 'status') {
+      // Authenticated CRM mailbox administrators only; expose presence, never values.
+      const missing = [
+        !CLIENT_ID && 'CRM_GOOGLE_CLIENT_ID',
+        !CLIENT_SECRET && 'CRM_GOOGLE_CLIENT_SECRET',
+        TOKEN_SECRET.length < 32 && 'CRM_TOKEN_ENCRYPTION_SECRET'
+      ].filter(Boolean)
+      return json(request, { ready: missing.length === 0, missing })
+    }
     if (action === 'connect') return json(request, await connect(user!, String(payload.mailboxId || '')))
     if (action === 'sync' || isCron) {
       if (payload.mailboxId && !validId(payload.mailboxId)) throw new Error('メールアカウントIDが正しくありません')
