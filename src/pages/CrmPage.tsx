@@ -4,7 +4,7 @@ import { Building2, CalendarClock, CircleCheck, Inbox, Mail, MessageSquareText, 
 import { useAppPermissions } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import {
-  CATEGORIES, PRIORITIES, STAGES, WAITING, addActivity, invokeCrmMail, loadCrm, loadCrmMailboxes,
+  CATEGORIES, DEFAULT_GMAIL_SEARCH, PRIMARY_INQUIRY_RECIPIENTS, PRIORITIES, STAGES, WAITING, addActivity, invokeCrmMail, loadCrm, loadCrmMailboxes,
   loadInquiryHistory, saveCompany, saveContact, saveInquiry, updateCrmMailbox,
   type CrmActivity, type CrmAttachment, type CrmAssignee, type CrmCompany, type CrmContact, type CrmInquiry, type CrmMailbox, type CrmMessage
 } from '../lib/crm'
@@ -13,7 +13,7 @@ type Tab = 'inquiries' | 'contacts' | 'mail'
 type DocRef = { id: string; document_no: string; document_type: string; customer_name: string; issue_date: string }
 type DocCustomer = { id: string; name: string }
 type Draft = Record<string, string>
-const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', assigned_to: '', sales_document_id: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
+const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', assigned_to: '', sales_document_id: '', received_address: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
 const stamp = (value: string | null) => value ? new Intl.DateTimeFormat('ja-JP', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—'
 const localDate = (value: string | null) => value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 const opt = (value: string) => value.trim() || null
@@ -55,12 +55,13 @@ export default function CrmPage() {
   const [filter, setFilter] = useState('')
   const [stageFilter, setStageFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [receivedFilter, setReceivedFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [mailQuery, setMailQuery] = useState('')
+  const [mailQuery, setMailQuery] = useState(DEFAULT_GMAIL_SEARCH)
   const selected = inquiries.find(x => x.id === selectedId)
   const contactName = (id: string | null) => contacts.find(x => x.id === id)?.name || '担当者未登録'
   const companyName = (id: string | null) => companies.find(x => x.id === id)?.name || '会社未登録'
@@ -101,12 +102,13 @@ export default function CrmPage() {
   const filtered = useMemo(() => inquiries.filter(item => {
     if (stageFilter !== 'all' && item.stage !== stageFilter) return false
     if (categoryFilter !== 'all' && item.category !== categoryFilter) return false
+    if (receivedFilter !== 'all' && item.received_address !== receivedFilter) return false
     if (filter === 'pending' && (item.waiting_on !== 'our_team' || ['won', 'lost'].includes(item.stage))) return false
     if (filter === 'overdue' && (!item.next_action_at || new Date(item.next_action_at).getTime() >= Date.now())) return false
     const contact = contacts.find(x => x.id === item.contact_id)
     const company = companies.find(x => x.id === item.company_id)
     return (item.subject + ' ' + (item.summary || '') + ' ' + (contact?.email || '') + ' ' + (contact?.name || '') + ' ' + (company?.name || '')).toLowerCase().includes(query.toLowerCase())
-  }), [inquiries, stageFilter, categoryFilter, filter, contacts, companies, query])
+  }), [inquiries, stageFilter, categoryFilter, receivedFilter, filter, contacts, companies, query])
   const pending = inquiries.filter(i => i.waiting_on === 'our_team' && !['won','lost'].includes(i.stage)).length
   const overdue = inquiries.filter(i => i.next_action_at && new Date(i.next_action_at) < new Date() && !['won','lost'].includes(i.stage)).length
   const won = inquiries.filter(i => i.stage === 'won').length
@@ -123,6 +125,7 @@ export default function CrmPage() {
         company_id: opt(draft.company_id), contact_id: opt(draft.contact_id), assigned_to: opt(draft.assigned_to),
         sales_document_id: allowed('documents.view') ? opt(draft.sales_document_id) : (selected?.sales_document_id || null),
         summary: opt(draft.summary), notes: opt(draft.notes), country: opt(draft.country),
+        received_address: opt(draft.received_address),
         requested_product: opt(draft.requested_product), currency: draft.currency || 'JPY',
         quantity_kg: number(draft.quantity_kg), monthly_quantity_kg: number(draft.monthly_quantity_kg),
         expected_amount: number(draft.expected_amount),
@@ -204,11 +207,13 @@ export default function CrmPage() {
           <div className="crm-filter"><label><Search size={16}/><input aria-label="案件検索" placeholder="企業名・メール・内容で検索" value={query} onChange={e => setQuery(e.target.value)}/></label>
             <select aria-label="進捗で絞り込み" value={stageFilter} onChange={e => setStageFilter(e.target.value)}><option value="all">すべての進捗</option>{selection(STAGES)}</select>
             <select aria-label="種別で絞り込み" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}><option value="all">すべての種別</option>{selection(CATEGORIES)}</select>
+            <select aria-label="受付アドレスで絞り込み" value={receivedFilter} onChange={e => setReceivedFilter(e.target.value)}><option value="all">すべての受付アドレス</option>{PRIMARY_INQUIRY_RECIPIENTS.map(addr => <option key={addr} value={addr}>{addr}</option>)}</select>
             {filter && <button className="secondary-button" onClick={() => setFilter('')}>絞り込み解除</button>}</div>
           <div className="crm-list-rows">{loading && <p>読み込み中…</p>}{!loading && filtered.length === 0 && <p className="crm-empty">該当する案件はありません。</p>}
             {filtered.map(item => <button key={item.id} className={'crm-item ' + (selectedId === item.id ? 'selected' : '')} type="button" onClick={() => setSelectedId(item.id)}>
               <div className="crm-item-top"><b>{item.subject}</b><small>{stamp(item.last_message_at || item.created_at)}</small></div>
               <div className="crm-item-sub">{companyName(item.company_id)} / {contactName(item.contact_id)}{item.country ? ' · ' + item.country : ''} · 担当：{assignees.find(a => a.id === item.assigned_to)?.display_name || '未設定'}</div>
+              {item.received_address && <small className="crm-inquiry-recipient">受信先：{item.received_address}</small>}
               <div className="crm-chips"><span>{CATEGORIES[item.category] || item.category}</span><span>{STAGES[item.stage] || item.stage}</span><span className={item.waiting_on === 'our_team' ? 'attention' : ''}>{WAITING[item.waiting_on] || item.waiting_on}</span></div>
               {item.next_action_at && <small>次回対応：{stamp(item.next_action_at)}</small>}
             </button>)}
@@ -225,6 +230,7 @@ export default function CrmPage() {
               <label>優先度<select disabled={!canManage} value={draft.priority} onChange={e => field('priority', e.target.value)}>{selection(PRIORITIES)}</select></label>
               <label>取引先<select disabled={!canManage} value={draft.company_id} onChange={e => field('company_id', e.target.value)}><option value="">未設定</option>{companies.map(c => <option value={c.id} key={c.id}>{c.name}</option>)}</select></label>
               <label>担当者<select disabled={!canManage} value={draft.contact_id} onChange={e => field('contact_id', e.target.value)}><option value="">未設定</option>{contacts.filter(c => !draft.company_id || !c.company_id || c.company_id === draft.company_id || c.id === draft.contact_id).map(c => <option value={c.id} key={c.id}>{c.name || c.email}</option>)}</select></label>
+              <label>受付メールアドレス<select disabled={!canManage} value={draft.received_address} onChange={e => field('received_address', e.target.value)}><option value="">未設定・その他</option>{PRIMARY_INQUIRY_RECIPIENTS.map(addr => <option value={addr} key={addr}>{addr}</option>)}</select></label>
               <label>営業担当<select disabled={!canManage} value={draft.assigned_to} onChange={e => field('assigned_to', e.target.value)}><option value="">未設定</option>{assignees.map(a => <option key={a.id} value={a.id}>{a.display_name || 'ユーザー'}</option>)}</select></label>
               <label>国・地域<input disabled={!canManage} value={draft.country} onChange={e => field('country', e.target.value)} placeholder="例：日本・フランス"/></label>
               <label>次回対応日時<input type="datetime-local" disabled={!canManage} value={draft.next_action_at} onChange={e => field('next_action_at', e.target.value)}/></label>
@@ -280,7 +286,8 @@ export default function CrmPage() {
       </section>
     </div>}
     {tab === 'mail' && canMail && <section className="panel crm-mail-settings">
-      <h2><Mail size={19}/>Gmail自動連携</h2><p>対象メールアカウントをGoogle認証で接続します。取り込む範囲をGmail検索条件で指定してから、有効化してください。既存Google連携のメールを無断で取得しません。</p>
+      <h2><Mail size={19}/>Gmail自動連携</h2><p>主な受付先：<strong>{PRIMARY_INQUIRY_RECIPIENTS.join(' / ')}</strong>。メールを受信するGoogleアカウントを接続し、受付先を検索条件で絞り込んでください。既存Google連携のメールを無断で取得しません。</p>
+      <p className="crm-hint">2つの受付先が同じGmailに転送されている場合は受信先のGoogleアカウント1件を接続し、両方を対象にします。別々の受信箱ならそれぞれ接続してください。Google以外のメールサービスの場合は別途連携が必要です。</p>
       {mailboxes.length === 0 && <p className="crm-empty">CRM専用のメールアカウントは未接続です。</p>}
       {mailboxes.map(box => <div className="crm-mailbox" key={box.id}><div><b>{box.email}</b><small>状態：{box.status}　最終同期：{stamp(box.last_sync_at)}</small>{box.last_error && <small className="crm-error">{box.last_error}</small>}</div>
         <label>Gmail検索条件<input value={box.filter_query} onChange={e => setMailboxes(items => items.map(item => item.id === box.id ? { ...item, filter_query: e.target.value } : item))} placeholder="例：label:CRM または to:sales@example.com"/></label>
@@ -289,7 +296,8 @@ export default function CrmPage() {
           <button className="primary-button" disabled={busy || box.status !== 'active'} onClick={() => void mailAction('sync',{mailboxId:box.id})}><RefreshCw size={16}/>今すぐ同期</button></div>
       </div>)}
       <h3>Gmailアカウントを追加</h3>
-      <label>初回取込のGmail検索条件<input value={mailQuery} onChange={e => setMailQuery(e.target.value)} placeholder="例：label:CRM"/></label>
+      <div className="crm-actions"><button className="secondary-button" type="button" onClick={() => setMailQuery(DEFAULT_GMAIL_SEARCH)}>2アドレス両方</button>{PRIMARY_INQUIRY_RECIPIENTS.map(addr => <button className="secondary-button" type="button" key={addr} onClick={() => setMailQuery('to:' + addr)}>{addr}</button>)}</div>
+      <label>初回取込のGmail検索条件<input value={mailQuery} onChange={e => setMailQuery(e.target.value)} placeholder={DEFAULT_GMAIL_SEARCH}/></label>
       <p className="crm-hint">初回の認証完了後は安全のため同期が一時停止された状態です。対象アドレスと条件を確認してから有効化します。初回取込対象は直近7日です。</p>
       <button className="primary-button" disabled={busy || !mailQuery.trim()} onClick={() => void mailAction('connect',{filterQuery:mailQuery.trim()})}><Send size={16}/>Googleアカウントを接続</button>
     </section>}

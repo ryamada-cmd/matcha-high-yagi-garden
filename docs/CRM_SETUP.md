@@ -9,6 +9,23 @@
 - Gmail：Supabase Edge Function `crm-gmail`。Google OAuth、スレッド単位の取込、サーバー側暗号化、重複防止。
 - 自動同期：Supabase Cron `yagi-crm-gmail-every-5m`。5分ごと。ただし明示的に有効化したメールボックスがゼロならAPIリクエストを送らない。
 
+## 主要な受付メールアドレス（2026-11-07設定）
+
+| ブランド | 問い合わせ先 |
+| --- | --- |
+| MATCHA HIGH | `info@matchahigh.com` |
+| 五代目 八木一兵衛 | `info@godaimeyagiichibei.com` |
+
+初期のGmail検索条件は `{to:info@matchahigh.com to:info@godaimeyagiichibei.com}` （いずれか一方の宛先へのメール）です。管理画面の「メール連携」タブで両方／片方の条件を選択できます。
+
+* 2つのメールアドレスが**同じGmail/Google Workspace受信箱に転送**されている場合：実際の受信箱を1アカウント接続し、「両方」を選択。
+* それぞれ**別々のGmail受信箱**の場合：各受信箱のGoogleアカウントを接続し、該当する宛先を選択。
+* Gmail以外のメールホストの場合：このGmail API連携だけでは同期できません。Google Workspaceへの転送、あるいはメールホスト別の連携が必要。
+* Gmailの転送・エイリアス構成によっては`to:`が元の宛先に一致しないことがあります。その際は対象メールのGmailヘッダー／ラベルを確認して検索条件を調整。
+* 新たに取り込む**受信メールの宛先ヘッダー**から2つのいずれかを識別した場合、`crm_inquiries.received_address`に記録して一覧と詳細に表示します。判定不能な案件は未設定のままなので、手動修正できます。
+
+2026-11-07時点：CRM専用OAuthメールボックスは未接続。既存のRiverside AI Office用Googleアカウント認証はCRMへ自動転用しません。
+
 ## 本番Gmail連携の初期設定（管理者が実施）
 
 **この設定が終わるまではGmailは自動取込されません。システム本体は手入力で利用できます。**
@@ -22,7 +39,7 @@
    - `CRM_GOOGLE_CLIENT_SECRET`：Google OAuthクライアントシークレット
    - `CRM_TOKEN_ENCRYPTION_SECRET`：新規生成した強度の高いランダム文字列（32文字以上）。保存した接続トークンが読めなくなるため、接続済みのまま変更しない。
 6. 茶園管理システムへ管理者でログインし、`/crm` →「メール連携」を開く。
-7. Gmail検索条件（例：`label:CRM` または `to:info@example.com`）を設定し、「Googleアカウントを接続」から対象アカウントの承認画面を進む。
+7. Gmail検索条件（既定：`{to:info@matchahigh.com to:info@godaimeyagiichibei.com}`）を設定し、「Googleアカウントを接続」から対象アカウントの承認画面を進む。
 8. 接続後は **一時停止** 状態。メールアドレスと検索条件を確認して「自動同期を有効化」を押す。
 9. 「今すぐ同期」ボタンで動作を検証。以後は5分間隔のCronで同期される。設定画面に最終同期・エラーを表示。
 
