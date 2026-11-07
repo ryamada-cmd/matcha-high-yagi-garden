@@ -4,7 +4,7 @@ import { Building2, CalendarClock, CircleCheck, Inbox, Mail, MessageSquareText, 
 import { useAppPermissions } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import {
-  CATEGORIES, DEFAULT_GMAIL_SEARCH, PRIMARY_INQUIRY_RECIPIENTS, PRIORITIES, STAGES, WAITING, addActivity, invokeCrmMail, loadCrm, loadCrmMailboxes,
+  CATEGORIES, PRIMARY_INQUIRY_RECIPIENTS, PRIORITIES, STAGES, WAITING, addActivity, invokeCrmMail, loadCrm, loadCrmMailboxes,
   loadInquiryHistory, saveCompany, saveContact, saveInquiry, updateCrmMailbox,
   type CrmActivity, type CrmAttachment, type CrmAssignee, type CrmCompany, type CrmContact, type CrmInquiry, type CrmMailbox, type CrmMessage
 } from '../lib/crm'
@@ -61,7 +61,6 @@ export default function CrmPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [mailQuery, setMailQuery] = useState(DEFAULT_GMAIL_SEARCH)
   const selected = inquiries.find(x => x.id === selectedId)
   const contactName = (id: string | null) => contacts.find(x => x.id === id)?.name || '担当者未登録'
   const companyName = (id: string | null) => companies.find(x => x.id === id)?.name || '会社未登録'
@@ -287,19 +286,15 @@ export default function CrmPage() {
     </div>}
     {tab === 'mail' && canMail && <section className="panel crm-mail-settings">
       <h2><Mail size={19}/>Gmail自動連携</h2><p>主な受付先：<strong>{PRIMARY_INQUIRY_RECIPIENTS.join(' / ')}</strong>。メールを受信するGoogleアカウントを接続し、受付先を検索条件で絞り込んでください。既存Google連携のメールを無断で取得しません。</p>
-      <p className="crm-hint">2つの受付先が同じGmailに転送されている場合は受信先のGoogleアカウント1件を接続し、両方を対象にします。別々の受信箱ならそれぞれ接続してください。Google以外のメールサービスの場合は別途連携が必要です。</p>
-      {mailboxes.length === 0 && <p className="crm-empty">CRM専用のメールアカウントは未接続です。</p>}
-      {mailboxes.map(box => <div className="crm-mailbox" key={box.id}><div><b>{box.email}</b><small>状態：{box.status}　最終同期：{stamp(box.last_sync_at)}</small>{box.last_error && <small className="crm-error">{box.last_error}</small>}</div>
+      <p className="crm-hint">2つは別々のGoogle Workspaceアカウントです。それぞれの行から該当するGoogleアカウントで個別に認証してください。メールの自動取込は認証後に有効化するまで開始しません。</p>
+      {mailboxes.length === 0 && <p className="crm-empty">受付メールアカウントを準備中です。画面を更新してください。</p>}
+      {mailboxes.map(box => <div className="crm-mailbox" key={box.id}><div><b>{box.email}</b><small>接続：{box.connected_at ? (box.status === 'active' ? '自動同期中' : '認証済み・同期停止中') : 'Google Workspace認証待ち'}　最終同期：{stamp(box.last_sync_at)}</small>{box.last_error && <small className="crm-error">{box.last_error}</small>}</div>
         <label>Gmail検索条件<input value={box.filter_query} onChange={e => setMailboxes(items => items.map(item => item.id === box.id ? { ...item, filter_query: e.target.value } : item))} placeholder="例：label:CRM または to:sales@example.com"/></label>
-        <div className="crm-actions"><button className="secondary-button" disabled={busy} onClick={async () => { try { await updateCrmMailbox(box.id,{ filter_query: box.filter_query, status: 'paused' }); setNotice('保存しました。同期は一時停止しています'); await refresh() } catch(e) { setError(errText(e)) } }}>検索条件を保存</button>
-          <button className="secondary-button" disabled={busy || !box.filter_query.trim()} onClick={async () => { try { await updateCrmMailbox(box.id,{status:box.status === 'active' ? 'paused' : 'active',filter_query:box.filter_query}); await refresh() } catch(e) { setError(errText(e)) } }}>{box.status === 'active' ? '同期を一時停止' : '自動同期を有効化'}</button>
+        <div className="crm-actions"><button className="secondary-button" disabled={busy} onClick={() => void mailAction('connect',{mailboxId:box.id})}><Send size={16}/>{box.connected_at ? 'Googleアカウントを再認証' : 'Google Workspaceで認証'}</button><button className="secondary-button" disabled={busy} onClick={async () => { try { await updateCrmMailbox(box.id,{ filter_query: box.filter_query, status: 'paused' }); setNotice('保存しました。同期は一時停止しています'); await refresh() } catch(e) { setError(errText(e)) } }}>検索条件を保存</button>
+          <button className="secondary-button" disabled={busy || !box.connected_at || !box.filter_query.trim()} onClick={async () => { try { await updateCrmMailbox(box.id,{status:box.status === 'active' ? 'paused' : 'active',filter_query:box.filter_query}); await refresh() } catch(e) { setError(errText(e)) } }}>{box.status === 'active' ? '同期を一時停止' : '自動同期を有効化'}</button>
           <button className="primary-button" disabled={busy || box.status !== 'active'} onClick={() => void mailAction('sync',{mailboxId:box.id})}><RefreshCw size={16}/>今すぐ同期</button></div>
       </div>)}
-      <h3>Gmailアカウントを追加</h3>
-      <div className="crm-actions"><button className="secondary-button" type="button" onClick={() => setMailQuery(DEFAULT_GMAIL_SEARCH)}>2アドレス両方</button>{PRIMARY_INQUIRY_RECIPIENTS.map(addr => <button className="secondary-button" type="button" key={addr} onClick={() => setMailQuery('to:' + addr)}>{addr}</button>)}</div>
-      <label>初回取込のGmail検索条件<input value={mailQuery} onChange={e => setMailQuery(e.target.value)} placeholder={DEFAULT_GMAIL_SEARCH}/></label>
-      <p className="crm-hint">初回の認証完了後は安全のため同期が一時停止された状態です。対象アドレスと条件を確認してから有効化します。初回取込対象は直近7日です。</p>
-      <button className="primary-button" disabled={busy || !mailQuery.trim()} onClick={() => void mailAction('connect',{filterQuery:mailQuery.trim()})}><Send size={16}/>Googleアカウントを接続</button>
+      <p className="crm-hint">初回取込は直近7日分です。2つのメールアカウントを1件ずつ認証し、接続済みになったら各行の「自動同期を有効化」を押してください。Google Cloud側のOAuth設定が必要です。</p>
     </section>}
   </div>
 }
