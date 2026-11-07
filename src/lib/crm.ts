@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
 
+export const PRIMARY_INQUIRY_RECIPIENTS = ['info@matchahigh.com', 'info@godaimeyagiichibei.com'] as const
+export const DEFAULT_GMAIL_SEARCH = '{to:info@matchahigh.com to:info@godaimeyagiichibei.com}'
+
 export type CrmAssignee = { id: string; display_name: string }
 export type CrmCompany = {
   id: string; name: string; website: string | null; industry: string | null; country: string | null;
@@ -16,7 +19,7 @@ export type CrmInquiry = {
   gmail_thread_id: string | null; summary: string | null; notes: string | null; assigned_to: string | null;
   next_action_at: string | null; requested_product: string | null; quantity_kg: number | null;
   monthly_quantity_kg: number | null; expected_amount: number | null; currency: string;
-  country: string | null; customer_id: string | null; sales_document_id: string | null;
+  country: string | null; received_address: string | null; customer_id: string | null; sales_document_id: string | null;
   first_received_at: string | null; last_message_at: string | null; created_at: string; updated_at: string
 }
 export type CrmMessage = {
