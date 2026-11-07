@@ -5,12 +5,12 @@ import { useAppPermissions } from '../lib/permissions'
 import {
   CATEGORIES, PRIORITIES, STAGES, WAITING, addActivity, invokeCrmMail, loadCrm, loadCrmMailboxes,
   loadInquiryHistory, saveCompany, saveContact, saveInquiry, updateCrmMailbox,
-  type CrmActivity, type CrmAttachment, type CrmCompany, type CrmContact, type CrmInquiry, type CrmMailbox, type CrmMessage
+  type CrmActivity, type CrmAttachment, type CrmAssignee, type CrmCompany, type CrmContact, type CrmInquiry, type CrmMailbox, type CrmMessage
 } from '../lib/crm'
 
 type Tab = 'inquiries' | 'contacts' | 'mail'
 type Draft = Record<string, string>
-const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
+const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', assigned_to: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
 const stamp = (value: string | null) => value ? new Intl.DateTimeFormat('ja-JP', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—'
 const localDate = (value: string | null) => value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 const opt = (value: string) => value.trim() || null
@@ -34,6 +34,7 @@ export default function CrmPage() {
   const [inquiries, setInquiries] = useState<CrmInquiry[]>([])
   const [companies, setCompanies] = useState<CrmCompany[]>([])
   const [contacts, setContacts] = useState<CrmContact[]>([])
+  const [assignees, setAssignees] = useState<CrmAssignee[]>([])
   const [mailboxes, setMailboxes] = useState<CrmMailbox[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [draft, setDraft] = useState<Draft>({ ...blank })
@@ -63,7 +64,7 @@ export default function CrmPage() {
     setLoading(true)
     try {
       const result = await loadCrm()
-      setInquiries(result.inquiries); setCompanies(result.companies); setContacts(result.contacts)
+      setInquiries(result.inquiries); setCompanies(result.companies); setContacts(result.contacts); setAssignees(result.assignees)
       if (canMail) setMailboxes(await loadCrmMailboxes())
       setError('')
     } catch (error) { setError(errText(error)) }
@@ -106,7 +107,7 @@ export default function CrmPage() {
       const payload = {
         subject: draft.subject.trim(), category: draft.category, stage: draft.stage,
         waiting_on: draft.waiting_on, priority: draft.priority, source: draft.source,
-        company_id: opt(draft.company_id), contact_id: opt(draft.contact_id),
+        company_id: opt(draft.company_id), contact_id: opt(draft.contact_id), assigned_to: opt(draft.assigned_to),
         summary: opt(draft.summary), notes: opt(draft.notes), country: opt(draft.country),
         requested_product: opt(draft.requested_product), currency: draft.currency || 'JPY',
         quantity_kg: number(draft.quantity_kg), monthly_quantity_kg: number(draft.monthly_quantity_kg),
@@ -191,7 +192,7 @@ export default function CrmPage() {
           <div className="crm-list-rows">{loading && <p>読み込み中…</p>}{!loading && filtered.length === 0 && <p className="crm-empty">該当する案件はありません。</p>}
             {filtered.map(item => <button key={item.id} className={'crm-item ' + (selectedId === item.id ? 'selected' : '')} type="button" onClick={() => setSelectedId(item.id)}>
               <div className="crm-item-top"><b>{item.subject}</b><small>{stamp(item.last_message_at || item.created_at)}</small></div>
-              <div className="crm-item-sub">{companyName(item.company_id)} / {contactName(item.contact_id)}{item.country ? ' · ' + item.country : ''}</div>
+              <div className="crm-item-sub">{companyName(item.company_id)} / {contactName(item.contact_id)}{item.country ? ' · ' + item.country : ''} · 担当：{assignees.find(a => a.id === item.assigned_to)?.display_name || '未設定'}</div>
               <div className="crm-chips"><span>{CATEGORIES[item.category] || item.category}</span><span>{STAGES[item.stage] || item.stage}</span><span className={item.waiting_on === 'our_team' ? 'attention' : ''}>{WAITING[item.waiting_on] || item.waiting_on}</span></div>
               {item.next_action_at && <small>次回対応：{stamp(item.next_action_at)}</small>}
             </button>)}
@@ -208,6 +209,7 @@ export default function CrmPage() {
               <label>優先度<select disabled={!canManage} value={draft.priority} onChange={e => field('priority', e.target.value)}>{selection(PRIORITIES)}</select></label>
               <label>取引先<select disabled={!canManage} value={draft.company_id} onChange={e => field('company_id', e.target.value)}><option value="">未設定</option>{companies.map(c => <option value={c.id} key={c.id}>{c.name}</option>)}</select></label>
               <label>担当者<select disabled={!canManage} value={draft.contact_id} onChange={e => field('contact_id', e.target.value)}><option value="">未設定</option>{contacts.filter(c => !draft.company_id || !c.company_id || c.company_id === draft.company_id || c.id === draft.contact_id).map(c => <option value={c.id} key={c.id}>{c.name || c.email}</option>)}</select></label>
+              <label>営業担当<select disabled={!canManage} value={draft.assigned_to} onChange={e => field('assigned_to', e.target.value)}><option value="">未設定</option>{assignees.map(a => <option key={a.id} value={a.id}>{a.display_name || 'ユーザー'}</option>)}</select></label>
               <label>国・地域<input disabled={!canManage} value={draft.country} onChange={e => field('country', e.target.value)} placeholder="例：日本・フランス"/></label>
               <label>次回対応日時<input type="datetime-local" disabled={!canManage} value={draft.next_action_at} onChange={e => field('next_action_at', e.target.value)}/></label>
               <label>希望商品<input disabled={!canManage} value={draft.requested_product} onChange={e => field('requested_product', e.target.value)}/></label>
