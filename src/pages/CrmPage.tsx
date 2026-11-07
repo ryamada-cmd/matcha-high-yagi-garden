@@ -61,6 +61,7 @@ export default function CrmPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [oauthStatus, setOauthStatus] = useState<{ ready: boolean; missing: string[] } | null>(null)
   const selected = inquiries.find(x => x.id === selectedId)
   const contactName = (id: string | null) => contacts.find(x => x.id === id)?.name || '担当者未登録'
   const companyName = (id: string | null) => companies.find(x => x.id === id)?.name || '会社未登録'
@@ -84,6 +85,17 @@ export default function CrmPage() {
     finally { setLoading(false) }
   }
   useEffect(() => { void refresh() }, [canMail])
+  useEffect(() => {
+    if (tab !== 'mail' || !canMail) return
+    let active = true
+    void invokeCrmMail('status').then(data => {
+      if (active) setOauthStatus({
+        ready: data.ready === true,
+        missing: Array.isArray(data.missing) ? data.missing : []
+      })
+    }).catch(error => { if (active) setError(errText(error)) })
+    return () => { active = false }
+  }, [tab, canMail])
   useEffect(() => {
     if (selected) setDraft(draftFrom(selected))
     else if (selectedId === 'new') setDraft({ ...blank })
@@ -287,6 +299,13 @@ export default function CrmPage() {
     {tab === 'mail' && canMail && <section className="panel crm-mail-settings">
       <h2><Mail size={19}/>Gmail自動連携</h2><p>主な受付先：<strong>{PRIMARY_INQUIRY_RECIPIENTS.join(' / ')}</strong>。メールを受信するGoogleアカウントを接続し、受付先を検索条件で絞り込んでください。既存Google連携のメールを無断で取得しません。</p>
       <p className="crm-hint">2つは別々のGoogle Workspaceアカウントです。それぞれの行から該当するGoogleアカウントで個別に認証してください。メールの自動取込は認証後に有効化するまで開始しません。</p>
+      {oauthStatus && !oauthStatus.ready && <div className="notice error" role="alert">
+        <strong>Google認証を開始できません：サーバー側の設定が未完了です。</strong>
+        <p>未設定または不正な項目：{oauthStatus.missing.join(' / ')}</p>
+        <p>Google CloudのOAuthクライアント情報と暗号鍵を、SupabaseのEdge Function Secretsに設定してください。値をチャットやGitHubには貼り付けないでください。</p>
+        <a href="https://supabase.com/dashboard/project/mdbtngousidfanmrjybt/functions/secrets" target="_blank" rel="noopener noreferrer">Supabaseの認証設定を開く</a>
+      </div>}
+      {oauthStatus?.ready && <p className="crm-hint">サーバー側のOAuth設定は登録済みです。Google Workspaceで認証を進めてください。</p>}
       {mailboxes.length === 0 && <p className="crm-empty">受付メールアカウントを準備中です。画面を更新してください。</p>}
       {mailboxes.map(box => <div className="crm-mailbox" key={box.id}><div><b>{box.email}</b><small>接続：{box.connected_at ? (box.status === 'active' ? '自動同期中' : '認証済み・同期停止中') : 'Google Workspace認証待ち'}　最終同期：{stamp(box.last_sync_at)}</small>{box.last_error && <small className="crm-error">{box.last_error}</small>}</div>
         <label>Gmail検索条件<input value={box.filter_query} onChange={e => setMailboxes(items => items.map(item => item.id === box.id ? { ...item, filter_query: e.target.value } : item))} placeholder="例：label:CRM または to:sales@example.com"/></label>
