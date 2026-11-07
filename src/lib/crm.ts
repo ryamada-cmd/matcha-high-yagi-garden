@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 
+export type CrmAssignee = { id: string; display_name: string }
 export type CrmCompany = {
   id: string; name: string; website: string | null; industry: string | null; country: string | null;
   region: string | null; address: string | null; phone: string | null; notes: string | null;
@@ -52,16 +53,18 @@ function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message)
 }
 export async function loadCrm() {
-  const [inquiries, companies, contacts] = await Promise.all([
+  const [inquiries, companies, contacts, assignees] = await Promise.all([
     supabase.from('crm_inquiries').select('*').order('created_at', { ascending: false }).limit(1000),
     supabase.from('crm_companies').select('*').order('name').limit(1000),
     supabase.from('crm_contacts').select('*').order('name').limit(1500),
+    supabase.rpc('crm_list_assignees'),
   ])
-  fail(inquiries.error); fail(companies.error); fail(contacts.error)
+  fail(inquiries.error); fail(companies.error); fail(contacts.error); fail(assignees.error)
   return {
     inquiries: (inquiries.data || []) as CrmInquiry[],
     companies: (companies.data || []) as CrmCompany[],
     contacts: (contacts.data || []) as CrmContact[],
+    assignees: (assignees.data || []) as CrmAssignee[],
   }
 }
 export async function loadInquiryHistory(inquiryId: string) {
