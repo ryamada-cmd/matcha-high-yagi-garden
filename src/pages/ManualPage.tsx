@@ -11,7 +11,7 @@ const permissionCoverageKeys=[
   'dashboard.view','calendar.view','calendar.manage','costing.view','costing.manage','sprays.view','pesticide_inventory.view','pesticides.view','spray_plans.view',
   'fertilizer_applications.view','fertilizer_inventory.view','fertilizers.view','fertilizer_plans.view',
   'harvest_processing.view','production.view','products.view','packaging.view','sales.view',
-  'documents.view','documents.manage','equipment.view','daily_reports.view','expenses.view',
+  'documents.view','documents.manage','crm.view','crm.manage','crm.mailboxes','equipment.view','daily_reports.view','expenses.view',
   'vendor_invoices.view','fields.view','storage.view','storage.upload','storage.manage',
   'manual.view','settings.view','products.manage'
 ] as const
@@ -59,6 +59,11 @@ const guideSections:GuideSection[]=[
     {title:'商品マスタ',summary:'SKU、商品名、規格、容器、卸・小売・その他価格、包材原価を管理します。',path:'/products',adminOnly:true,steps:['SKUと商品名を入力します。','内容量・単位・容器タイプ・カテゴリを設定します。','卸価格、小売価格、その他価格をそれぞれ登録します。','必要に応じて包材原価などの商品情報も登録します。'],notes:['価格変更は商品価格表にも即時反映され、帳票作成時の単価候補になります。','閲覧は products.view、変更は products.manage で制御します。']},
     {title:'商品価格表',summary:'販売中の商品について、卸・小売・その他の3価格を一覧で確認・編集します。',path:'/price-list',adminOnly:true,steps:['「商品価格表」を開きます。','商品名・SKU・カテゴリで検索し、必要ならカテゴリで絞り込みます。','規格と、卸・小売・その他の価格を横並びで確認します。','products.manage 権限がある場合は「編集」から3価格を変更して保存します。','保存した価格は商品マスタと共通データとして保持され、見積書・請求書・納品書の単価に利用されます。'],notes:['帳票作成時に販売区分を「卸・小売・その他」から選ぶと、選択商品の対応価格が自動入力されます。']},
     {title:'商品化・SKU在庫',summary:'自社製造・外部調達・ブレンドの原料ロットを商品マスタの仕様で小分けし、完成品在庫と原価を作成します。',path:'/product-packaging',adminOnly:true,steps:['商品マスタから商品を選びます。','原料ロットを選びます。調達・ブレンド画面から移動した場合は対象ロットが自動選択されます。','製造個数を指定します。内容量と原料単位から必要原料量を自動計算します。','加工費・その他費用を入力し、必要原料量・総原価・個当たり原価を確認します。','登録すると完成品SKU在庫が作成されます。'],notes:['ブレンドしない調達茶は調達ロットを直接選択できます。ブレンドする場合は作成したブレンドロットを選択します。']}
+  ]},
+  {id:'crm',label:'営業・問い合わせ',description:'海外・国内の見込客と商談を案件ごとに管理',items:[
+    {title:'問い合わせと商談の進捗を管理',summary:'Gmail連携で取り込んだメール、手入力の問い合わせ、商談ステージを管理します。',path:'/crm',steps:['「問い合わせ・商談」を開き、未対応件数・期限超過件数を確認します。','自動取込のメールは件名で一覧に表示されます。手入力の新規相談は「新規案件」から登録します。','企業・担当者・問い合わせ種別・商談ステージ・自社対応待ち/顧客返信待ちを設定します。','商品、希望数量、希望納期に関する補足を登録し、次回対応日時を指定します。','メールと社内の電話・サンプル発送の履歴を時系列で確認します。','見積書が必要になれば「見積・帳票管理へ」から既存の帳票機能へ移動します。'],notes:['crm.view は閲覧、crm.manage は案件・取引先・活動履歴の更新に使用します。','メール本文を自動で取り込むには専用Googleアカウント連携が必要です。']},
+    {title:'取引先と担当者を登録',summary:'同一企業に複数の担当者を紐付けて管理します。',path:'/crm',steps:['「取引先・担当者」タブに切り替えます。','取引先を登録し、企業名・国・業種・Webサイトを記録します。','担当者の名前・メールアドレス・所属企業・電話・言語を登録します。','問い合わせ詳細から企業と担当者を選択します。']},
+    {title:'Gmailを接続・手動同期',summary:'管理者のみメール受信範囲と自動同期を設定できます。',path:'/crm',adminOnly:true,steps:['「メール連携」タブを開きます。','Gmail検索条件（例：label:CRM）を指定してGoogleアカウントを接続します。','Googleの認可画面で接続を承認すると一時停止状態で登録されます。','対象アカウントと検索条件を確認し「自動同期を有効化」を押します。','必要なら「今すぐ同期」でメールの追加取り込みを実行します。'],notes:['crm.mailboxes 権限が必要です。管理者が明示的に有効化するまでは同期しません。','Google OAuthの管理者設定とスケジューラの設定が完了していない場合は接続・自動同期は利用できません。']}
   ]},
   {id:'sales',label:'販売・帳票',description:'販売・出庫、商品価格、見積書・請求書・納品書を管理',items:[
     {title:'販売・出庫',summary:'製品ロットを販売先・販売チャネルと紐付けて出庫し、売上と粗利を記録します。',path:'/sales',steps:['販売する在庫ロットを選びます。','販売数量・単価・販売先・販売チャネルなどを入力します。','売上、売上原価、粗利を確認して登録します。','取消時は対象在庫が戻ることを確認します。']},
