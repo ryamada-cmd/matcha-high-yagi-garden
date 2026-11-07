@@ -136,7 +136,23 @@ export async function invokeCrmMail(action: string, values: Record<string, unkno
   const { data, error } = await supabase.functions.invoke('crm-gmail', {
     body: { action, ...values }
   })
-  fail(error)
+  if (error) {
+    // Supabase FunctionsHttpError keeps the server's JSON error in its Response.
+    // Without reading it the UI only showed "Edge Function returned a non-2xx status code".
+    const context = (error as { context?: unknown }).context
+    if (context instanceof Response) {
+      try {
+        const body = await context.clone().json() as { error?: unknown }
+        if (typeof body?.error === 'string' && body.error) throw new Error(body.error)
+      } catch (detail) {
+        if (detail instanceof Error && detail.message !== 'Failed to fetch') {
+          if (detail instanceof SyntaxError) throw new Error(error.message)
+          throw detail
+        }
+      }
+    }
+    throw new Error(error.message)
+  }
   if (data?.error) throw new Error(String(data.error))
   return data
 }

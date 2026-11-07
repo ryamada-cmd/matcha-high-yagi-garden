@@ -84,6 +84,16 @@
 - Gmailアカウントの停止は「同期を一時停止」で操作。自動同期のCronは有効化済みのボックスがあるときだけ動作する。
 - データ保護：CRMテーブルにRLS。OAuthトークンは専用非公開スキーマにAES-GCM暗号化して格納。Cronの認証情報はSupabase Vaultを使用。
 
+## Google Workspaceで認証しても画面が開かない場合
+
+1. CRM「メール連携」を開く。サーバーの認証設定が不足している場合は、`CRM_GOOGLE_CLIENT_ID`、`CRM_GOOGLE_CLIENT_SECRET`、`CRM_TOKEN_ENCRYPTION_SECRET`のうち、未設定の項目名が画面に表示されます。値そのものは表示されません。
+2. [Supabase Edge Function Secrets](https://supabase.com/dashboard/project/mdbtngousidfanmrjybt/functions/secrets)に、必要な3項目を追加してください。秘密情報はチャットやGitHubに貼り付けないでください。暗号鍵は32文字以上。
+3. Google CloudでGmail APIを有効化し、OAuthウェブアプリのリダイレクトURIに`https://mdbtngousidfanmrjybt.supabase.co/functions/v1/crm-gmail`を登録してください。Google Workspace管理ポリシーによりアクセスが制限されている場合は、管理者によるアプリ許可も必要です。
+4. 認証ボタンを押すとエラーになる場合は、画面上部のエラー本文を確認してください。HTTP 400の詳細を直接表示するよう修正しています。
+5. 認証後、メールボックスの状態が「認証済み・同期停止中」になったことを確認し、最後に個別に有効化します。
+
+2026-11-07の問題調査では、Gmail連携Edge FunctionのPOSTリクエストがHTTP 400を返しており、Google認証ページが開く前に処理が失敗していました。サーバーOAuth診断で設定不足と他のサーバーエラーを切り分けます。
+
 ## 運用テスト
 
 - 作成→編集→絞り込み→担当者変更→メモ記録を管理者ログインで実機確認。
