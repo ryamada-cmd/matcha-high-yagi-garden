@@ -235,23 +235,25 @@ async function syncMailbox(box: any) {
   const older = box.last_sync_at ? new Date(new Date(box.last_sync_at).getTime() - 86400000 * 2) : new Date(Date.now() - 86400000 * 7)
   const after = [older.getUTCFullYear(),String(older.getUTCMonth() + 1).padStart(2,'0'),String(older.getUTCDate()).padStart(2,'0')].join('/')
   const q = box.filter_query + ' after:' + after + ' -in:spam -in:trash'
+  // Search threads, then fetch the *whole* thread so replies sent from Gmail
+  // are retained even if the outbound individual message lacks the inbox label.
   const ids: string[] = []
   let pageToken = ''
   for (let page = 0; page < 5; page++) {
     const params = new URLSearchParams({ q, maxResults: '200' })
     if (pageToken) params.set('pageToken', pageToken)
-    const data = await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages?' + params.toString(), access)
-    for (const m of data.messages || []) ids.push(m.id)
+    const data = await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/threads?' + params.toString(), access)
+    for (const item of data.threads || []) ids.push(item.id)
     pageToken = data.nextPageToken || ''
     if (!pageToken) break
   }
-  if (pageToken) throw new Error('同期対象が1000件を超えました。Gmail検索条件を絞り込んでください')
-  const messages: any[] = []
+  if (pageToken) throw new Error('同期対象が1000スレッドを超えました。Gmail検索条件を絞り込んでください')
+  const uniqueMessages = new Map<string, any>()
   for (const id of ids) {
-    const data = await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/messages/' + encodeURIComponent(id) + '?format=full', access)
-    messages.push(data)
+    const data = await googleJson('https://gmail.googleapis.com/gmail/v1/users/me/threads/' + encodeURIComponent(id) + '?format=full', access)
+    for (const message of data.messages || []) uniqueMessages.set(message.id, message)
   }
-  messages.sort((a, b) => Number(a.internalDate || 0) - Number(b.internalDate || 0))
+  const messages = [...uniqueMessages.values()].sort((a, b) => Number(a.internalDate || 0) - Number(b.internalDate || 0))
   let imported = 0
   for (const item of messages) if (await ingestMessage(box, item)) imported++
   const updated = await admin.from('crm_mailboxes').update({
