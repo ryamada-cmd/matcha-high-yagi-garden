@@ -115,16 +115,24 @@ function bodyPlain(payload: any, fallback: string) {
   const body = plain?.body?.data || (payload?.mimeType === 'text/plain' ? payload?.body?.data : '')
   return (body ? base64Text(body) : fallback).slice(0, 150000)
 }
-async function connect(user: { id: string }, filterQuery: string) {
+async function connect(user: { id: string }, mailboxId: string) {
   requiredConfig()
-  if (filterQuery.length < 2 || filterQuery.length > 500) throw new Error('Gmail検索条件を2〜500文字で指定してください')
+  if (!validId(mailboxId)) throw new Error('接続対象のメールボックスを選択してください')
+  const { data: mailbox, error } = await admin.from('crm_mailboxes')
+    .select('id,email,filter_query').eq('id', mailboxId).single()
+  if (error || !mailbox) throw new Error('対象メールアカウントが見つかりません')
+  const allowedEmails = ['info@matchahigh.com', 'info@godaimeyagiichibei.com']
+  if (!allowedEmails.includes(mailbox.email)) throw new Error('対象外のメールアカウントです')
   const state = crypto.randomUUID() + '-' + crypto.randomUUID()
-  const result = await admin.rpc('crm_backend_create_state', { p_state: state, p_requested_by: user.id, p_filter_query: filterQuery })
+  const result = await admin.rpc('crm_backend_create_state_for_mailbox', {
+    p_state: state, p_requested_by: user.id, p_mailbox_id: mailbox.id
+  })
   if (result.error) throw result.error
   const params = new URLSearchParams({
     client_id: CLIENT_ID, redirect_uri: REDIRECT_URI, response_type: 'code',
     scope: 'openid email https://www.googleapis.com/auth/gmail.readonly',
-    access_type: 'offline', prompt: 'consent', state, include_granted_scopes: 'true'
+    access_type: 'offline', prompt: 'consent select_account', state,
+    login_hint: mailbox.email, include_granted_scopes: 'true'
   })
   return { url: 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString() }
 }
@@ -143,17 +151,27 @@ async function callback(url: URL) {
   const profile = await googleJson('https://www.googleapis.com/oauth2/v2/userinfo', token.access_token)
   const email = String(profile.email || '').trim().toLowerCase()
   if (!email || profile.verified_email === false) throw new Error('認証されたメールアドレスを確認できません')
-  const upsert = await admin.from('crm_mailboxes').upsert({
-    email, google_subject: String(profile.id || email),
-    filter_query: claim.data.filter_query, status: 'paused',
-    connected_at: new Date().toISOString(),created_by: claim.data.requested_by,
-    last_error: null,updated_at: new Date().toISOString()
-  }, { onConflict: 'email' }).select('id').single()
-  if (upsert.error || !upsert.data) throw new Error('メール接続の保存に失敗しました')
-  const result = await admin.rpc('crm_backend_store_token', {
-    p_mailbox_id: upsert.data.id, p_token_enc: await encrypt(String(token.refresh_token))
+  const expectedEmail = String(claim.data.expected_email || '').toLowerCase()
+  if (!expectedEmail || email !== expectedEmail) {
+    throw new Error('選択したメールアドレスとGoogle認証アカウントが一致しません')
+  }
+  const mailbox = await admin.from('crm_mailboxes').select('id')
+    .eq('email', expectedEmail).single()
+  if (mailbox.error || !mailbox.data) throw new Error('接続先メールボックスが見つかりません')
+  // Keep the mailbox paused until the refresh token has been safely persisted.
+  const preparing = await admin.from('crm_mailboxes').update({
+    google_subject: String(profile.id || email), status: 'paused',
+    connected_at: null, last_error: null, updated_at: new Date().toISOString()
+  }).eq('id', mailbox.data.id)
+  if (preparing.error) throw preparing.error
+  const stored = await admin.rpc('crm_backend_store_token', {
+    p_mailbox_id: mailbox.data.id, p_token_enc: await encrypt(String(token.refresh_token))
   })
-  if (result.error) throw new Error('認証情報を安全に保存できませんでした')
+  if (stored.error) throw new Error('認証情報を安全に保存できませんでした')
+  const done = await admin.from('crm_mailboxes').update({
+    connected_at: new Date().toISOString(), updated_at: new Date().toISOString()
+  }).eq('id', mailbox.data.id)
+  if (done.error) throw done.error
 }
 async function accessToken(mailboxId: string) {
   const token = await admin.rpc('crm_backend_get_token', { p_mailbox_id: mailboxId })
@@ -307,8 +325,8 @@ Deno.serve(async (request: Request) => {
     const cronHeader = request.headers.get('x-crm-cron')
     const verification = action === 'cron' && cronHeader ? await admin.rpc('crm_backend_validate_cron', { p_secret: cronHeader }) : null
     const isCron = verification?.data === true && !verification.error
-    if (!isCron) await permission(request)
-    if (action === 'connect') return json(request, await connect((await permission(request)), String(payload.filterQuery || '').trim()))
+    const user = isCron ? null : await permission(request)
+    if (action === 'connect') return json(request, await connect(user!, String(payload.mailboxId || '')))
     if (action === 'sync' || isCron) {
       if (payload.mailboxId && !validId(payload.mailboxId)) throw new Error('メールアカウントIDが正しくありません')
       return json(request, await sync(isCron ? undefined : payload.mailboxId))
