@@ -223,3 +223,16 @@ select cron.schedule('yagi-crm-gmail-every-5m','*/5 * * * *',
   where status='active' and nullif(trim(filter_query),'') is not null)
  $cron$
 );
+
+
+-- Staff names can be used by CRM managers without exposing profile emails.
+create or replace function public.crm_list_assignees()
+returns table(id uuid,display_name text)
+language plpgsql stable security definer set search_path='' as $$
+begin
+ perform public.require_app_permission_('crm.view');
+ return query select p.id,p.display_name from public.profiles p
+ where p.role in('admin','worker') order by p.display_name;
+end $$;
+revoke all on function public.crm_list_assignees() from public,anon;
+grant execute on function public.crm_list_assignees() to authenticated;
