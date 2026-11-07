@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, CalendarClock, CircleCheck, Inbox, Mail, MessageSquareText, Plus, RefreshCw, Save, Search, Send, Settings2, Users } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
+import { supabase } from '../lib/supabase'
 import {
   CATEGORIES, PRIORITIES, STAGES, WAITING, addActivity, invokeCrmMail, loadCrm, loadCrmMailboxes,
   loadInquiryHistory, saveCompany, saveContact, saveInquiry, updateCrmMailbox,
@@ -9,8 +10,10 @@ import {
 } from '../lib/crm'
 
 type Tab = 'inquiries' | 'contacts' | 'mail'
+type DocRef = { id: string; document_no: string; document_type: string; customer_name: string; issue_date: string }
+type DocCustomer = { id: string; name: string }
 type Draft = Record<string, string>
-const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', assigned_to: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
+const blank: Draft = { subject: '', category: 'wholesale', stage: 'new', waiting_on: 'our_team', priority: 'normal', source: 'manual', company_id: '', contact_id: '', assigned_to: '', sales_document_id: '', summary: '', notes: '', country: '', requested_product: '', quantity_kg: '', monthly_quantity_kg: '', expected_amount: '', currency: 'JPY', next_action_at: '' }
 const stamp = (value: string | null) => value ? new Intl.DateTimeFormat('ja-JP', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—'
 const localDate = (value: string | null) => value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 const opt = (value: string) => value.trim() || null
@@ -34,11 +37,13 @@ export default function CrmPage() {
   const [inquiries, setInquiries] = useState<CrmInquiry[]>([])
   const [companies, setCompanies] = useState<CrmCompany[]>([])
   const [contacts, setContacts] = useState<CrmContact[]>([])
+  const [docs, setDocs] = useState<DocRef[]>([])
+  const [docCustomers, setDocCustomers] = useState<DocCustomer[]>([])
   const [assignees, setAssignees] = useState<CrmAssignee[]>([])
   const [mailboxes, setMailboxes] = useState<CrmMailbox[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [draft, setDraft] = useState<Draft>({ ...blank })
-  const [companyDraft, setCompanyDraft] = useState<Draft>({ name: '', country: '', industry: '', website: '', notes: '' })
+  const [companyDraft, setCompanyDraft] = useState<Draft>({ name: '', country: '', industry: '', website: '', notes: '', document_customer_id: '' })
   const [companyEdit, setCompanyEdit] = useState('')
   const [contactDraft, setContactDraft] = useState<Draft>({ name: '', email: '', company_id: '', country: '', phone: '', language: '', position: '', notes: '' })
   const [contactEdit, setContactEdit] = useState('')
@@ -65,6 +70,14 @@ export default function CrmPage() {
     try {
       const result = await loadCrm()
       setInquiries(result.inquiries); setCompanies(result.companies); setContacts(result.contacts); setAssignees(result.assignees)
+      if (allowed('documents.view')) {
+        const [d, c] = await Promise.all([
+          supabase.from('sales_documents').select('id,document_no,document_type,customer_name,issue_date').is('deleted_at', null).order('issue_date',{ascending:false}).limit(300),
+          supabase.from('document_customers').select('id,name').is('deleted_at', null).order('name').limit(500)
+        ])
+        if (d.error || c.error) throw new Error(d.error?.message || c.error?.message || '帳票を読み込めません')
+        setDocs((d.data || []) as DocRef[]); setDocCustomers((c.data || []) as DocCustomer[])
+      }
       if (canMail) setMailboxes(await loadCrmMailboxes())
       setError('')
     } catch (error) { setError(errText(error)) }
@@ -108,6 +121,7 @@ export default function CrmPage() {
         subject: draft.subject.trim(), category: draft.category, stage: draft.stage,
         waiting_on: draft.waiting_on, priority: draft.priority, source: draft.source,
         company_id: opt(draft.company_id), contact_id: opt(draft.contact_id), assigned_to: opt(draft.assigned_to),
+        sales_document_id: allowed('documents.view') ? opt(draft.sales_document_id) : (selected?.sales_document_id || null),
         summary: opt(draft.summary), notes: opt(draft.notes), country: opt(draft.country),
         requested_product: opt(draft.requested_product), currency: draft.currency || 'JPY',
         quantity_kg: number(draft.quantity_kg), monthly_quantity_kg: number(draft.monthly_quantity_kg),
@@ -124,9 +138,10 @@ export default function CrmPage() {
     try {
       await saveCompany(companyEdit || null, {
         name: companyDraft.name.trim(), website: opt(companyDraft.website), industry: opt(companyDraft.industry),
-        country: opt(companyDraft.country), notes: opt(companyDraft.notes)
+        country: opt(companyDraft.country), notes: opt(companyDraft.notes),
+        document_customer_id: allowed('documents.view') ? opt(companyDraft.document_customer_id) : (companies.find(x => x.id === companyEdit)?.document_customer_id || null)
       })
-      setCompanyEdit(''); setCompanyDraft({ name: '', country: '', industry: '', website: '', notes: '' })
+      setCompanyEdit(''); setCompanyDraft({ name: '', country: '', industry: '', website: '', notes: '', document_customer_id: '' })
       setNotice('取引先を保存しました'); await refresh()
     } catch (error) { setError(errText(error)) } finally { setBusy(false) }
   }
@@ -212,6 +227,7 @@ export default function CrmPage() {
               <label>営業担当<select disabled={!canManage} value={draft.assigned_to} onChange={e => field('assigned_to', e.target.value)}><option value="">未設定</option>{assignees.map(a => <option key={a.id} value={a.id}>{a.display_name || 'ユーザー'}</option>)}</select></label>
               <label>国・地域<input disabled={!canManage} value={draft.country} onChange={e => field('country', e.target.value)} placeholder="例：日本・フランス"/></label>
               <label>次回対応日時<input type="datetime-local" disabled={!canManage} value={draft.next_action_at} onChange={e => field('next_action_at', e.target.value)}/></label>
+              {allowed('documents.view') && <label className="crm-wide">関連する見積書・請求書<select disabled={!canManage} value={draft.sales_document_id} onChange={e => field('sales_document_id', e.target.value)}><option value="">未設定</option>{docs.map(d => <option key={d.id} value={d.id}>{d.document_no} · {d.customer_name} · {d.document_type === 'ESTIMATE' ? '見積書' : d.document_type === 'INVOICE' ? '請求書' : '納品書'}</option>)}</select></label>}
               <label>希望商品<input disabled={!canManage} value={draft.requested_product} onChange={e => field('requested_product', e.target.value)}/></label>
               <label>希望数量（kg）<input type="number" min="0" step="0.001" disabled={!canManage} value={draft.quantity_kg} onChange={e => field('quantity_kg', e.target.value)}/></label>
               <label>月間予定数量（kg）<input type="number" min="0" step="0.001" disabled={!canManage} value={draft.monthly_quantity_kg} onChange={e => field('monthly_quantity_kg', e.target.value)}/></label>
@@ -243,12 +259,13 @@ export default function CrmPage() {
     </>}
     {tab === 'contacts' && <div className="crm-contacts-grid">
       <section className="panel"><h2><Building2 size={19}/>取引先（{companies.length}件）</h2>
-        <div className="crm-records">{companies.map(c => <button key={c.id} onClick={() => { setCompanyEdit(c.id); setCompanyDraft({ name: c.name, website: c.website || '', industry: c.industry || '', country: c.country || '', notes: c.notes || '' }) }}><b>{c.name}</b><small>{c.country || '国未登録'} · {c.industry || '業種未登録'}</small></button>)}</div>
+        <div className="crm-records">{companies.map(c => <button key={c.id} onClick={() => { setCompanyEdit(c.id); setCompanyDraft({ name: c.name, website: c.website || '', industry: c.industry || '', country: c.country || '', notes: c.notes || '', document_customer_id: c.document_customer_id || '' }) }}><b>{c.name}</b><small>{c.country || '国未登録'} · {c.industry || '業種未登録'}</small></button>)}</div>
         {canManage && <form onSubmit={saveCompanyForm} className="crm-form"><h3 className="crm-wide">{companyEdit ? '取引先を編集' : '取引先を追加'}</h3>
           <label className="crm-wide">会社・店舗名<input required value={companyDraft.name} onChange={e => setCompanyDraft(x => ({ ...x, name: e.target.value }))}/></label>
           {(['country','industry','website'] as const).map(key => <label key={key}>{({country:'国・地域',industry:'業種',website:'Webサイト'})[key]}<input value={companyDraft[key]} onChange={e => setCompanyDraft(x => ({ ...x, [key]: e.target.value }))}/></label>)}
+          {allowed('documents.view') && <label className="crm-wide">帳票の取引先マスタ<select value={companyDraft.document_customer_id} onChange={e => setCompanyDraft(x => ({ ...x, document_customer_id: e.target.value }))}><option value="">未連携</option>{docCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
           <label className="crm-wide">メモ<textarea rows={2} value={companyDraft.notes} onChange={e => setCompanyDraft(x => ({ ...x, notes: e.target.value }))}/></label>
-          <div className="crm-actions"><button className="primary-button" disabled={busy}><Save size={16}/>保存</button>{companyEdit && <button type="button" className="secondary-button" onClick={() => { setCompanyEdit(''); setCompanyDraft({ name:'',country:'',industry:'',website:'',notes:'' }) }}>新規登録へ</button>}</div></form>}
+          <div className="crm-actions"><button className="primary-button" disabled={busy}><Save size={16}/>保存</button>{companyEdit && <button type="button" className="secondary-button" onClick={() => { setCompanyEdit(''); setCompanyDraft({ name:'',country:'',industry:'',website:'',notes:'',document_customer_id:'' }) }}>新規登録へ</button>}</div></form>}
       </section>
       <section className="panel"><h2><Users size={19}/>担当者（{contacts.length}件）</h2>
         <div className="crm-records">{contacts.map(c => <button key={c.id} onClick={() => { setContactEdit(c.id); setContactDraft({ name:c.name, email:c.email || '',company_id:c.company_id || '',country:c.country || '',phone:c.phone || '',language:c.language || '',position:c.position || '',notes:c.notes || '' }) }}><b>{c.name || c.email}</b><small>{companyName(c.company_id)} · {c.email}</small></button>)}</div>
