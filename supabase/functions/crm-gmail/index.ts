@@ -79,7 +79,33 @@ async function googleToken(body: URLSearchParams) {
 function googleAuth(accessToken: string) { return { Authorization: 'Bearer ' + accessToken } }
 async function googleJson(url: string, accessToken: string) {
   const response = await fetch(url, { headers: googleAuth(accessToken) })
-  if (!response.ok) throw new Error('Gmail APIの取得に失敗しました（HTTP ' + response.status + '）')
+  if (!response.ok) {
+    // Google embeds the actionable reason in the response JSON, not the HTTP status.
+    // Never include Authorization headers or OAuth tokens in errors.
+    const body = await response.json().catch(() => null)
+    const googleError = body?.error
+    const detailsReason = Array.isArray(googleError?.details)
+      ? googleError.details.find((item: any) => typeof item?.reason === 'string')?.reason : ''
+    const legacyReason = Array.isArray(googleError?.errors)
+      ? googleError.errors.find((item: any) => typeof item?.reason === 'string')?.reason : ''
+    const reason = String(detailsReason || legacyReason || googleError?.status || 'unknown').slice(0, 80)
+    const providerMessage = String(googleError?.message || '').slice(0, 240)
+    const disabled = /SERVICE_DISABLED|accessNotConfigured|has not been used|not enabled|disabled/i.test(reason + ' ' + providerMessage)
+    const domainPolicy = /domainPolicy|admin_policy_enforced|orgInternal|domain administrators/i.test(reason + ' ' + providerMessage)
+    const scope = /insufficientPermissions|insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(reason + ' ' + providerMessage)
+    const throttled = /rateLimitExceeded|RESOURCE_EXHAUSTED|dailyLimitExceeded|quotaExceeded/i.test(reason + ' ' + providerMessage)
+    const explanation = disabled
+      ? 'Google CloudでGmail APIが有効になっていません。OAuthを作成したプロジェクトでGmail APIを有効にしてください。'
+      : domainPolicy
+      ? 'Google Workspace管理者のアプリ/APIアクセス制限を確認してください。'
+      : scope
+      ? 'Gmail閲覧権限が不足しています。OAuthのgmail.readonlyスコープを確認し、再認証してください。'
+      : throttled
+      ? 'Google APIの利用上限に達した可能性があります。クォータを確認してください。'
+      : 'Google CloudのGmail API有効化とGoogle Workspaceのアプリアクセス権限を確認してください。'
+    throw new Error('Gmail API HTTP ' + response.status + ' [' + reason + ']：' + explanation
+      + (providerMessage ? ' Googleの応答：' + providerMessage : ''))
+  }
   return await response.json()
 }
 function head(payload: any, name: string) {
