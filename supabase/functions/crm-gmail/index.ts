@@ -119,7 +119,7 @@ async function connect(user: { id: string }, mailboxId: string) {
   requiredConfig()
   if (!validId(mailboxId)) throw new Error('接続対象のメールボックスを選択してください')
   const { data: mailbox, error } = await admin.from('crm_mailboxes')
-    .select('id,email,filter_query').eq('id', mailboxId).single()
+    .select('id,email,oauth_email,filter_query').eq('id', mailboxId).single()
   if (error || !mailbox) throw new Error('対象メールアカウントが見つかりません')
   const allowedEmails = ['info@matchahigh.com', 'info@godaimeyagiichibei.com']
   if (!allowedEmails.includes(mailbox.email)) throw new Error('対象外のメールアカウントです')
@@ -132,7 +132,7 @@ async function connect(user: { id: string }, mailboxId: string) {
     client_id: CLIENT_ID, redirect_uri: REDIRECT_URI, response_type: 'code',
     scope: 'openid email https://www.googleapis.com/auth/gmail.readonly',
     access_type: 'offline', prompt: 'consent select_account', state,
-    login_hint: mailbox.email, include_granted_scopes: 'true'
+    login_hint: mailbox.oauth_email || mailbox.email, include_granted_scopes: 'true'
   })
   return { url: 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString() }
 }
@@ -156,7 +156,7 @@ async function callback(url: URL) {
     throw new Error('選択したメールアドレスとGoogle認証アカウントが一致しません')
   }
   const mailbox = await admin.from('crm_mailboxes').select('id')
-    .eq('email', expectedEmail).single()
+    .eq('oauth_email', expectedEmail).single()
   if (mailbox.error || !mailbox.data) throw new Error('接続先メールボックスが見つかりません')
   // Keep the mailbox paused until the refresh token has been safely persisted.
   const preparing = await admin.from('crm_mailboxes').update({
@@ -203,7 +203,7 @@ async function ingestMessage(mailbox: any, raw: any) {
   const sent = new Date(Number(raw.internalDate || Date.now())).toISOString()
   const from = head(raw.payload, 'From')
   const to = head(raw.payload, 'To')
-  const direction = raw.labelIds?.includes('SENT') || address(from) === String(mailbox.email).toLowerCase() ? 'outbound' : 'inbound'
+  const direction = raw.labelIds?.includes('SENT') || [mailbox.email, mailbox.oauth_email].filter(Boolean).some(identity => address(from) === String(identity).toLowerCase()) ? 'outbound' : 'inbound'
   const subject = head(raw.payload, 'Subject') || '(件名なし)'
   const snippet = String(raw.snippet || '').slice(0, 2000)
   const receivedAddress = direction === 'inbound' ? detectedInquiryRecipient(raw.payload) : null

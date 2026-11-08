@@ -33,7 +33,7 @@ export default function CrmPage() {
   const { allowed } = useAppPermissions()
   const canManage = allowed('crm.manage')
   const canMail = allowed('crm.mailboxes')
-  const [tab, setTab] = useState<Tab>('inquiries')
+  const [tab, setTab] = useState<Tab>(() => new URLSearchParams(window.location.search).has('gmail') ? 'mail' : 'inquiries')
   const [inquiries, setInquiries] = useState<CrmInquiry[]>([])
   const [companies, setCompanies] = useState<CrmCompany[]>([])
   const [contacts, setContacts] = useState<CrmContact[]>([])
@@ -60,7 +60,7 @@ export default function CrmPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState(() => new URLSearchParams(window.location.search).get('gmail') === 'connected' ? 'Google認証が完了しました。接続状態を確認して、自動同期を有効化してください。' : '')
   const [oauthStatus, setOauthStatus] = useState<{ ready: boolean; missing: string[] } | null>(null)
   const selected = inquiries.find(x => x.id === selectedId)
   const contactName = (id: string | null) => contacts.find(x => x.id === id)?.name || '担当者未登録'
@@ -307,7 +307,7 @@ export default function CrmPage() {
       </div>}
       {oauthStatus?.ready && <p className="crm-hint">サーバー側のOAuth設定は登録済みです。Google Workspaceで認証を進めてください。</p>}
       {mailboxes.length === 0 && <p className="crm-empty">受付メールアカウントを準備中です。画面を更新してください。</p>}
-      {mailboxes.map(box => <div className="crm-mailbox" key={box.id}><div><b>{box.email}</b><small>接続：{box.connected_at ? (box.status === 'active' ? '自動同期中' : '認証済み・同期停止中') : 'Google Workspace認証待ち'}　最終同期：{stamp(box.last_sync_at)}</small>{box.last_error && <small className="crm-error">{box.last_error}</small>}</div>
+      {mailboxes.map(box => <div className="crm-mailbox" key={box.id}><div><b>{box.email}</b>{box.oauth_email && box.oauth_email !== box.email && <small>Google Workspaceログイン：{box.oauth_email}</small>}<small>接続：{box.connected_at ? (box.status === 'active' ? '自動同期中' : '認証済み・同期停止中') : 'Google Workspace認証待ち'}　最終同期：{stamp(box.last_sync_at)}</small>{box.last_error && <small className="crm-error">{box.last_error}</small>}</div>
         <label>Gmail検索条件<input value={box.filter_query} onChange={e => setMailboxes(items => items.map(item => item.id === box.id ? { ...item, filter_query: e.target.value } : item))} placeholder="例：label:CRM または to:sales@example.com"/></label>
         <div className="crm-actions"><button className="secondary-button" disabled={busy} onClick={() => void mailAction('connect',{mailboxId:box.id})}><Send size={16}/>{box.connected_at ? 'Googleアカウントを再認証' : 'Google Workspaceで認証'}</button><button className="secondary-button" disabled={busy} onClick={async () => { try { await updateCrmMailbox(box.id,{ filter_query: box.filter_query, status: 'paused' }); setNotice('保存しました。同期は一時停止しています'); await refresh() } catch(e) { setError(errText(e)) } }}>検索条件を保存</button>
           <button className="secondary-button" disabled={busy || !box.connected_at || !box.filter_query.trim()} onClick={async () => { try { await updateCrmMailbox(box.id,{status:box.status === 'active' ? 'paused' : 'active',filter_query:box.filter_query}); await refresh() } catch(e) { setError(errText(e)) } }}>{box.status === 'active' ? '同期を一時停止' : '自動同期を有効化'}</button>
