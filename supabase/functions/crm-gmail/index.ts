@@ -9,7 +9,7 @@ const CLIENT_ID = Deno.env.get('CRM_GOOGLE_CLIENT_ID') || ''
 const CLIENT_SECRET = Deno.env.get('CRM_GOOGLE_CLIENT_SECRET') || ''
 const TOKEN_SECRET = Deno.env.get('CRM_TOKEN_ENCRYPTION_SECRET') || ''
 const SITE = 'https://yagi-garden-manager.vercel.app'
-const PRIMARY_INQUIRY_RECIPIENTS = ['info@matchahigh.com', 'info@godaimeyagiichibei.com']
+const PRIMARY_INQUIRY_RECIPIENTS = ['info@matchahigh.jp', 'info@godaimeyagiichibei.com']
 const REDIRECT_URI = SUPABASE_URL + '/functions/v1/crm-gmail'
 const admin = createClient(SUPABASE_URL, SERVICE_KEY)
 const allowedOrigins = new Set([SITE, 'https://ryamada-cmd.github.io', 'http://localhost:5173'])
@@ -147,7 +147,7 @@ async function connect(user: { id: string }, mailboxId: string) {
   const { data: mailbox, error } = await admin.from('crm_mailboxes')
     .select('id,email,oauth_email,filter_query').eq('id', mailboxId).single()
   if (error || !mailbox) throw new Error('対象メールアカウントが見つかりません')
-  const allowedEmails = ['info@matchahigh.com', 'info@godaimeyagiichibei.com']
+  const allowedEmails = ['info@matchahigh.jp', 'info@godaimeyagiichibei.com']
   if (!allowedEmails.includes(mailbox.email)) throw new Error('対象外のメールアカウントです')
   const state = crypto.randomUUID() + '-' + crypto.randomUUID()
   const result = await admin.rpc('crm_backend_create_state_for_mailbox', {
@@ -260,7 +260,10 @@ async function ingestMessage(mailbox: any, raw: any) {
     subject,body_plain:bodyPlain(raw.payload,snippet),snippet,sent_at:sent,
     has_attachments:attachmentParts.length > 0
   }, { onConflict: 'mailbox_id,gmail_message_id' }).select('id').single()
-  if (message.error || !message.data) throw new Error('メールの保存に失敗しました')
+  if (message.error || !message.data) {
+    const reason = String(message.error?.message || '保存結果が取得できませんでした').slice(0, 250)
+    throw new Error('メールの保存に失敗しました：' + reason)
+  }
   for (const part of attachmentParts) {
     const attachmentId = String(part.body.attachmentId)
     await admin.from('crm_attachments').upsert({
