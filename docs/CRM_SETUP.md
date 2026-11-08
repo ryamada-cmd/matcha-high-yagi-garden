@@ -9,29 +9,26 @@
 - Gmail：Supabase Edge Function `crm-gmail`。Google OAuth、スレッド単位の取込、サーバー側暗号化、重複防止。
 - 自動同期：Supabase Cron `yagi-crm-gmail-every-5m`。5分ごと。ただし明示的に有効化したメールボックスがゼロならAPIリクエストを送らない。
 
-## 主要な受付メールアドレス（2026-11-07設定）
+## 主要な受付メールアドレス（2026-11-09確認）
 
 | ブランド | 問い合わせ先 |
 | --- | --- |
-| MATCHA HIGH | `info@matchahigh.com` |
+| MATCHA HIGH | `info@matchahigh.jp` |
 | 五代目 八木一兵衛 | `info@godaimeyagiichibei.com` |
 
-初期のGmail検索条件は `{to:info@matchahigh.com to:info@godaimeyagiichibei.com}` （いずれか一方の宛先へのメール）です。管理画面の「メール連携」タブで両方／片方の条件を選択できます。
+2つのGoogle Workspaceアカウントは別々の受信箱です。MATCHA HIGHは `to:info@matchahigh.jp`、五代目 八木一兵衛は `to:info@godaimeyagiichibei.com` として個別に接続・同期します。
 
-* 2つのメールアドレスが**同じGmail/Google Workspace受信箱に転送**されている場合：実際の受信箱を1アカウント接続し、「両方」を選択。
-* それぞれ**別々のGmail受信箱**の場合：各受信箱のGoogleアカウントを接続し、該当する宛先を選択。
-* Gmail以外のメールホストの場合：このGmail API連携だけでは同期できません。Google Workspaceへの転送、あるいはメールホスト別の連携が必要。
-* Gmailの転送・エイリアス構成によっては`to:`が元の宛先に一致しないことがあります。その際は対象メールのGmailヘッダー／ラベルを確認して検索条件を調整。
+* Google Workspaceのそれぞれのアカウントで個別にOAuth認証し、対応する宛先の検索条件のみを設定します。
 * 新たに取り込む**受信メールの宛先ヘッダー**から2つのいずれかを識別した場合、`crm_inquiries.received_address`に記録して一覧と詳細に表示します。判定不能な案件は未設定のままなので、手動修正できます。
 
-2026-11-07時点：CRM専用OAuthメールボックスは未接続。既存のRiverside AI Office用Googleアカウント認証はCRMへ自動転用しません。
+2026-11-09時点：MATCHA HIGHはOAuth接続済み。五代目 八木一兵衛は未接続。既存のRiverside AI Office用Googleアカウント認証はCRMへ自動転用しません。
 
-## Google Workspaceは2つの独立した受信箱（2026-11-07確定）
+## Google Workspaceは2つの独立した受信箱（2026-11-09確定）
 
-- 受付：`info@matchahigh.com`／Google Workspaceログイン：`info@matchahigh.jp`（メールの受信トレイは`.jp`アカウント。`.com`宛てが実際に届くことを同期テストで確認する）
+- `info@matchahigh.jp`：MATCHA HIGH受付先とGoogle Workspaceログイン先が同一。以前登録していた `.com` はユーザーによって存在しないと確認されたため廃止。
 - `info@godaimeyagiichibei.com`：Google Workspaceの受信箱B
 - それぞれ別のGoogle OAuth同意を行い、**設定されたGoogle Workspaceログインアドレス**と認証結果が完全一致した場合だけ接続を成立させます。受付アドレスとは別に`crm_mailboxes.oauth_email`へ保存します。
-- 2つの`crm_mailboxes`行を`paused`で事前登録済み。いずれも`connected_at`未設定なので、同期は開始しません。
+- 2つの`crm_mailboxes`行を事前登録済み。MATCHA HIGHは接続・自動同期を有効化済み、八木一兵衛は未接続・停止中。
 - Google認証画面は`login_hint`で`oauth_email`を案内します。実際の接続可否はGoogleから返る検証済みメールアドレスと照合して判断します。
 - 初回同期は各メールボックスについて直近7日間。接続後に管理画面から個別に自動同期を有効化します。
 - 他方のメールボックスの接続状態に影響せず、片方のみ一時停止または再認証できます。
@@ -40,15 +37,15 @@
 
 1. 事前にGoogle CloudのOAuthクライアント設定、Gmail API、Supabase Edge Function Secretsを完了してください（後述）。
 2. [営業・問い合わせ管理](https://yagi-garden-manager.vercel.app/crm)の管理者メニュー「メール連携」へ。
-3. `info@matchahigh.com`のカードの「Google Workspaceで認証」を押し、**`info@matchahigh.jp`のGoogleアカウント**を選択、読み取りを許可します。CRMの宛先とGoogleログインは異なっていても構いません。
+3. `info@matchahigh.jp`のカードの「Google Workspaceで認証」を押し、同じGoogleアカウントを選択、読み取りを許可します（2026-11-09時点で実施済み）。
 4. CRMに戻り、そのカードが「認証済み・同期停止中」であることを確認します。
 5. `info@godaimeyagiichibei.com`のカードでも**別々に**同じ操作を行います。
 6. それぞれ検索条件が `to:info@...` となっていることを確認して「自動同期を有効化」を押します。
 7. 2件の「今すぐ同期」で、テストメールが重複せずそれぞれの受信先の案件に登録されることを確認します。以降は5分ごとの同期処理が動きます。
 
-### 受信先とGoogleログインの区別
+### MATCHA HIGHドメインの修正（2026-11-09）
 
-MATCHA HIGHの公開問い合わせアドレス（`info@matchahigh.com`）と、実際に認証するGoogle Workspaceアカウント（`info@matchahigh.jp`）は異なる。検索条件はまず`to:info@matchahigh.com`を維持し、実際の受信箱に`.com`宛てメールが存在することを確認する。もし存在しない場合は転送・エイリアス・検索条件を調査する。ログインに使う`.jp`を問い合わせ先に無条件に置き換えない。送信済み返信の方向判別では、`.com`と`.jp`の双方を自社送信アドレスとして扱う。
+ユーザーが `info@matchahigh.com` は存在せず、正式なアドレスは `info@matchahigh.jp` と明示したため、CRM受信先・Gmail検索条件・OAuthログインをすべて `.jp` に統一しました。別アカウント `info@godaimeyagiichibei.com` は変更していません。
 
 ## 本番Gmail連携の初期設定（管理者が実施）
 
@@ -105,8 +102,14 @@ Google認証は成功していても、実際のGmail API呼び出しで403に�
 1. OAuthクライアントを作成したGoogle Cloudプロジェクトで、[Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=premium-valor-514223-h7)が**有効**か確認する。`有効にする`が出ていたら操作する。
 2. 有効なのに403なら、CRMの「今すぐ同期」を押して更新された詳細エラーを確認する。`SERVICE_DISABLED`ならAPI未有効化、`domainPolicy`ならGoogle Workspace管理コンソールでアプリアクセス制限を確認する。
 3. 必要なOAuthスコープは`https://www.googleapis.com/auth/gmail.readonly`。アプリ同意画面で権限を承認しても、Gmail API自体が未有効化ならAPI利用はできない。
-4. 問い合わせ先`info@matchahigh.com`に対し、Workspaceログインは`info@matchahigh.jp`。ユーザーがGmail検索条件を`to:info@matchahigh.jp`に変更しているため、`.com`宛ての問い合わせを取り逃さないか、メールの転送/エイリアスと実際のGmail検索結果を確認すること。
+4. MATCHA HIGHの正しいアドレスと検索条件は `info@matchahigh.jp` / `to:info@matchahigh.jp`。
 5. 別アカウント`info@godaimeyagiichibei.com`は未認証で個別認証が必要。
+
+## Gmailメール保存失敗の修正（2026-11-09）
+
+Google OAuth・Gmail APIが通った後、メール保存時に `there is no unique or exclusion constraint matching the ON CONFLICT specification` のPostgreSQLエラーが発生した。原因は `crm_messages(mailbox_id,gmail_message_id)` の重複防止索引が **部分ユニーク索引** であり、Supabase PostgREST `upsert(..., onConflict: 'mailbox_id,gmail_message_id')` の競合判定に使えなかったこと。
+
+本番DBの索引を部分条件なしの複合ユニーク索引に置き換えた。NULLを含む複合キーは通常のPostgreSQL UNIQUEでは重複可能なので手入力・他のレコードへの影響なし。続いてCRMのコードにも修正を追加し、保存エラーのDBメッセージを管理者に表示する。
 
 ## 運用テスト
 
