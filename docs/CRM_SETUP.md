@@ -28,11 +28,11 @@
 
 ## Google Workspaceは2つの独立した受信箱（2026-11-07確定）
 
-- `info@matchahigh.com`：Google Workspaceの受信箱A
+- 受付：`info@matchahigh.com`／Google Workspaceログイン：`info@matchahigh.jp`（メールの受信トレイは`.jp`アカウント。`.com`宛てが実際に届くことを同期テストで確認する）
 - `info@godaimeyagiichibei.com`：Google Workspaceの受信箱B
-- それぞれ別のGoogle OAuth同意を行い、対象アドレスと認証結果が完全一致した場合だけ接続を成立させます。
+- それぞれ別のGoogle OAuth同意を行い、**設定されたGoogle Workspaceログインアドレス**と認証結果が完全一致した場合だけ接続を成立させます。受付アドレスとは別に`crm_mailboxes.oauth_email`へ保存します。
 - 2つの`crm_mailboxes`行を`paused`で事前登録済み。いずれも`connected_at`未設定なので、同期は開始しません。
-- Google認証画面は`login_hint`で対象メールを案内しますが、実際の接続可否はGoogleから返る検証済みメールアドレスと照合して判断します。
+- Google認証画面は`login_hint`で`oauth_email`を案内します。実際の接続可否はGoogleから返る検証済みメールアドレスと照合して判断します。
 - 初回同期は各メールボックスについて直近7日間。接続後に管理画面から個別に自動同期を有効化します。
 - 他方のメールボックスの接続状態に影響せず、片方のみ一時停止または再認証できます。
 
@@ -40,11 +40,15 @@
 
 1. 事前にGoogle CloudのOAuthクライアント設定、Gmail API、Supabase Edge Function Secretsを完了してください（後述）。
 2. [営業・問い合わせ管理](https://yagi-garden-manager.vercel.app/crm)の管理者メニュー「メール連携」へ。
-3. `info@matchahigh.com`のカードの「Google Workspaceで認証」を押し、**同じアドレス**のGoogleアカウントを選択、読み取りを許可します。
+3. `info@matchahigh.com`のカードの「Google Workspaceで認証」を押し、**`info@matchahigh.jp`のGoogleアカウント**を選択、読み取りを許可します。CRMの宛先とGoogleログインは異なっていても構いません。
 4. CRMに戻り、そのカードが「認証済み・同期停止中」であることを確認します。
 5. `info@godaimeyagiichibei.com`のカードでも**別々に**同じ操作を行います。
 6. それぞれ検索条件が `to:info@...` となっていることを確認して「自動同期を有効化」を押します。
 7. 2件の「今すぐ同期」で、テストメールが重複せずそれぞれの受信先の案件に登録されることを確認します。以降は5分ごとの同期処理が動きます。
+
+### 受信先とGoogleログインの区別
+
+MATCHA HIGHの公開問い合わせアドレス（`info@matchahigh.com`）と、実際に認証するGoogle Workspaceアカウント（`info@matchahigh.jp`）は異なる。検索条件はまず`to:info@matchahigh.com`を維持し、実際の受信箱に`.com`宛てメールが存在することを確認する。もし存在しない場合は転送・エイリアス・検索条件を調査する。ログインに使う`.jp`を問い合わせ先に無条件に置き換えない。送信済み返信の方向判別では、`.com`と`.jp`の双方を自社送信アドレスとして扱う。
 
 ## 本番Gmail連携の初期設定（管理者が実施）
 
