@@ -32,7 +32,7 @@ export type CrmActivity = {
   body: string | null; occurred_at: string
 }
 export type CrmMailbox = {
-  id: string; email: string; filter_query: string; status: string; last_error: string | null;
+  id: string; email: string; oauth_email: string | null; filter_query: string; status: string; last_error: string | null;
   last_sync_at: string | null; connected_at: string | null
 }
 export type CrmAttachment = {
