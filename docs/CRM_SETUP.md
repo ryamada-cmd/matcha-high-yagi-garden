@@ -98,6 +98,16 @@ MATCHA HIGHの公開問い合わせアドレス（`info@matchahigh.com`）と、
 
 2026-11-07の問題調査では、Gmail連携Edge FunctionのPOSTリクエストがHTTP 400を返しており、Google認証ページが開く前に処理が失敗していました。サーバーOAuth診断で設定不足と他のサーバーエラーを切り分けます。
 
+## Gmail API HTTP 403 の調査（2026-11-09）
+
+Google認証は成功していても、実際のGmail API呼び出しで403になることがあります。CRMはGoogleのエラーレスポンス内の `reason` と `message` を安全に抜粋して表示し、原因を特定するよう変更しました。
+
+1. OAuthクライアントを作成したGoogle Cloudプロジェクトで、[Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=premium-valor-514223-h7)が**有効**か確認する。`有効にする`が出ていたら操作する。
+2. 有効なのに403なら、CRMの「今すぐ同期」を押して更新された詳細エラーを確認する。`SERVICE_DISABLED`ならAPI未有効化、`domainPolicy`ならGoogle Workspace管理コンソールでアプリアクセス制限を確認する。
+3. 必要なOAuthスコープは`https://www.googleapis.com/auth/gmail.readonly`。アプリ同意画面で権限を承認しても、Gmail API自体が未有効化ならAPI利用はできない。
+4. 問い合わせ先`info@matchahigh.com`に対し、Workspaceログインは`info@matchahigh.jp`。ユーザーがGmail検索条件を`to:info@matchahigh.jp`に変更しているため、`.com`宛ての問い合わせを取り逃さないか、メールの転送/エイリアスと実際のGmail検索結果を確認すること。
+5. 別アカウント`info@godaimeyagiichibei.com`は未認証で個別認証が必要。
+
 ## 運用テスト
 
 - 作成→編集→絞り込み→担当者変更→メモ記録を管理者ログインで実機確認。
