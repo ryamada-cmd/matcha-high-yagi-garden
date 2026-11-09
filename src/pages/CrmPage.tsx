@@ -125,7 +125,7 @@ export default function CrmPage() {
     const contact = contacts.find(x => x.id === item.contact_id)
     const company = companies.find(x => x.id === item.company_id)
     return (item.subject + ' ' + (item.summary || '') + ' ' + (contact?.email || '') + ' ' + (contact?.name || '') + ' ' + (company?.name || '')).toLowerCase().includes(query.toLowerCase())
-  }), [inquiries, stageFilter, categoryFilter, receivedFilter, excludedOnly, filter, contacts, companies, query]
+  }), [inquiries, stageFilter, categoryFilter, receivedFilter, excludedOnly, filter, contacts, companies, query])
   const activeInquiries = inquiries.filter(i => !i.excluded_at)
   const excludedCount = inquiries.length - activeInquiries.length
   const pending = activeInquiries.filter(i => i.waiting_on === 'our_team' && !['won','lost'].includes(i.stage)).length
