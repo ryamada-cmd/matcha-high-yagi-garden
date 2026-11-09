@@ -1,3 +1,4 @@
+import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState } from 'react'
@@ -263,12 +264,12 @@ export default function SprayPage() {
             <div className="form-grid three">
               <label>散布日<input type="date" value={sprayDate} onChange={(e) => setSprayDate(e.target.value)}/></label>
               <label>調製量（L）<input type="number" inputMode="decimal" min="0" step="0.1" value={preparedL} onChange={(e) => setPreparedL(e.target.value)}/></label>
-              <label>担当者<input value={operator} onChange={(e) => setOperator(e.target.value)} placeholder="例：山田"/></label>
+              <TextInput containerClassName="astryx-form-control" label="担当者" value={operator} onChange={setOperator} placeholder="例：山田" width="100%"/>
             </div>
             <div className="quick-buttons"><button type="button" onClick={() => setPreparedL('1000')}>1000L</button><button type="button" onClick={() => setPreparedL('300')}>300L</button><button type="button" onClick={() => setPreparedL('1200')}>1200L</button></div>
             <div className="form-grid three">
-              <label>目的 / 対象病害虫<input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="例：カンザワハダニ"/></label>
-              <label>天候<input value={weather} onChange={(e) => setWeather(e.target.value)} placeholder="例：晴"/></label>
+              <TextInput containerClassName="astryx-form-control" label="目的 / 対象病害虫" value={target} onChange={setTarget} placeholder="例：カンザワハダニ" width="100%"/>
+              <TextInput containerClassName="astryx-form-control" label="天候" value={weather} onChange={setWeather} placeholder="例：晴" width="100%"/>
               <label>気温（℃）<input type="number" inputMode="decimal" step="0.1" value={temperature} onChange={(e) => setTemperature(e.target.value)}/></label>
             </div>
           </Card>

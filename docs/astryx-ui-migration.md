@@ -158,3 +158,19 @@ It **must remain enabled** on every preview tied to a production Supabase URL.
 An approved production release requires explicit env and DB review, removal or
 adjustment of the guard and an isolated staging plan. The gate is not a
 substitute for RLS or a complete security review.
+
+## Stage 8: actual Astryx Table and TextInput adoption
+- Pesticide inventory: both stock and transaction tables now use Astryx
+  `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableCell`,
+  `TableHeaderCell` with original cell actions and row render conditions.
+  Stock search now uses Astryx `TextInput`.
+- Full spray history: searchable, expandable details table moved to actual
+  Astryx Table composition; filters retain state and CSV behavior.
+- Price list: original editable rows and prices moved to Astryx Table;
+  search now uses Astryx TextInput.
+- Spray and fertilizer application: operator/weather/method/target fields
+  use Astryx `TextInput` (value callbacks preserved); numeric/date inputs
+  remain native intentionally to preserve realtime calculations and date
+  serialization.
+- All complex business forms, tables and dialogs not explicitly migrated
+  remain untouched; real device UI QA still required.

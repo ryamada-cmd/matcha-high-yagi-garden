@@ -331,3 +331,22 @@ html, body { background: #f5f7f3; }
 @media (max-width:800px) {
  .astryx-preview-banner { font-size:12px; padding:10px 12px; border-radius:10px; }
 }
+
+/* Stage 8: real Astryx Table and TextInput components in operational screens */
+.astryx-page .astryx-search-field { width:100%; min-width:0; flex:1; }
+.astryx-page .astryx-form-control { width:100%; min-width:0; }
+.astryx-page .form-grid > .astryx-form-control { min-width:0; align-self:stretch; }
+.astryx-page .astryx-form-control .astryx-field-label,
+.astryx-page .astryx-search-field .astryx-field-label { font-size:12px; font-weight:700; }
+.astryx-page .astryx-table { width:100%; min-width:680px; }
+.astryx-price-list .astryx-table { min-width:680px; }
+.astryx-spray-history .astryx-table { min-width:880px; }
+.astryx-inventory .astryx-table { min-width:860px; }
+.astryx-page .astryx-table th { white-space:nowrap; font-size:12px; font-weight:750; }
+.astryx-page .astryx-table td { vertical-align:middle; }
+.astryx-page .astryx-table td code { font-size:11px; }
+.astryx-page .astryx-table tr:focus-within { background:#f3f8f3; }
+@media(max-width:800px) {
+ .astryx-page .astryx-table { font-size:12px; }
+ .astryx-page .astryx-search-field { min-width:0; }
+}
