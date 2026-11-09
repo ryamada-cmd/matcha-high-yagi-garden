@@ -349,3 +349,11 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   TextInput controls while retaining the existing filter states.
 - Next: add isolated equipment browser fixture and verify mobile Escape,
   required inputs, save/read-back and no external network.
+
+### Stage 19 isolated browser QA
+- `EquipmentPage` is mounted in QA with an in-memory `mockEquipment.ts`.
+- At a 390px viewport, tests cover inventory search, required equipment
+  name, asset creation, service-record creation, dialog Escape dismissal,
+  horizontal overflow, and zero external requests.
+- In-memory sample records are clearly fictitious, never copied from
+  production. The real equipment service / Supabase connection is not used.

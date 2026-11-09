@@ -25,7 +25,8 @@ export default defineConfig({
     const calendar=page.endsWith('/src/pages/CalendarPage.tsx');
     const documents=page.endsWith('/src/pages/DocumentsPage.tsx');
     const crm=page.endsWith('/src/pages/CrmPage.tsx');
-    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm){
+    const equipment=page.endsWith('/src/pages/EquipmentPage.tsx');
+    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
@@ -39,6 +40,7 @@ export default defineConfig({
       if(crm&&source==='../lib/crmAssistant')return path.join(root,'qa/mockCrmAssistant.ts');
       if(crm&&source==='../lib/supabase')return path.join(root,'qa/mockCrmSupabase.ts');
       if(crm&&(source==='../components/CrmKnowledgePanel'||source==='../components/CrmReplyPanel'))return path.join(root,'qa/mockCrmPanel.tsx');
+      if(equipment&&source==='../lib/equipment')return path.join(root,'qa/mockEquipment.ts');
     }
     return null;
    },
