@@ -1,3 +1,4 @@
+import { Button } from '@astryxdesign/core/Button'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, LockKeyhole, RefreshCw, Save, Search, Settings2, ShieldCheck, SlidersHorizontal, Users } from 'lucide-react'
 import { changeUserRole, loadAdminConsole, loadRolePermissionMatrix, saveAppSettings, saveRolePermissions, type AdminConsoleData, type AuditLogRow, type PermissionDefinition } from '../lib/adminConsole'
@@ -140,10 +141,10 @@ export default function SettingsPage() {
 
   function toggle(id:number) { setExpanded(old => old.includes(id) ? old.filter(x=>x!==id) : [...old,id]) }
 
-  return <div className="page settings-page">
+  return <div className="page settings-page astryx-page astryx-settings">
     <div className="page-head">
       <div><p className="eyebrow">ADMIN</p><h1>設定・監査</h1><p className="sub">警告基準、天気地点、ユーザー役割、機能別権限、操作履歴を管理します。</p></div>
-      <button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button>
+      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="設定・監査を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/>
     </div>
 
     {error&&<div className="notice error dashboard-notice">{error}</div>}
