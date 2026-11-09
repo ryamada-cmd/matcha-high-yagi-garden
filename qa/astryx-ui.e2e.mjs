@@ -56,6 +56,19 @@ try {
  // Use the visible table row, not any offscreen measurement clone.
  await q.locator('table.price-list-table tbody tr').first().waitFor({state:'visible',timeout:12000})
  const match=await q.locator('table.price-list-table tbody tr').first().getByText('架空抹茶 30g').isVisible()
+ if(!match){
+  const info=await q.locator('table.price-list-table tbody tr').first().getByText('架空抹茶 30g').evaluate(el=>{
+   const chain=[];let node=el
+   while(node&&chain.length<12){
+    const s=getComputedStyle(node),r=node.getBoundingClientRect()
+    chain.push({tag:node.tagName,cls:node.className,display:s.display,visibility:s.visibility,opacity:s.opacity,width:r.width,height:r.height,hidden:node.hidden})
+    node=node.parentElement
+   }
+   return chain
+  })
+  console.log('QA PRICE VISIBILITY DIAGNOSTICS',JSON.stringify(info))
+  await q.screenshot({path:'qa/screenshots/astryx-price-hidden-diagnostic-1280.png',fullPage:true})
+ }
  assert.equal(match,true,'Price-list row must be visible at desktop width')
  assert.equal(await q.locator('table.price-list-table tbody tr').count(),2)
  await q.getByRole('searchbox',{name:'商品価格を検索'}).fill('QA-MATCHA')
