@@ -1,0 +1,603 @@
+/*
+ * Astryx / Matcha theme integration — Stage 1.
+ * Page-specific presentation only: storage, RPCs, auth, validation and
+ * product calculations remain in the original components and libs.
+ * Keep this last in main.tsx while legacy CSS migration is in progress.
+ */
+:root {
+  --astryx-yagi-deep: #133a29;
+  --astryx-yagi-soft: #eff4ee;
+  --astryx-yagi-ink: #1c2b20;
+  --astryx-yagi-border: #d9e4d9;
+  --app-bg: #f5f7f3;
+  --app-green: #173f2b;
+  --ui-bg: #f5f7f3;
+  --v3-bg: #f5f7f3;
+  --v3-green: #173f2b;
+  --v3-border: #dce5dc;
+  --v3-page: 1480px;
+}
+html, body { background: #f5f7f3; }
+.app-shell { background: #f5f7f3; }
+.app-shell main { background: #f5f7f3 !important; }
+.desktop-sidebar {
+  background: linear-gradient(175deg,#102e22 0%,#17422d 57%,#102e22 100%) !important;
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+.desktop-sidebar .nav-section-label { color: #b5cbb9 !important; }
+.desktop-sidebar nav a.active {
+  background: rgba(225,244,224,.16) !important;
+  box-shadow: inset 3px 0 0 #b1dfaf !important;
+}
+.desktop-sidebar nav a.active::before { display: none; }
+.astryx-page .page-head { border-bottom: none; padding-bottom: 4px; margin-bottom: 22px !important; }
+.astryx-page .page-head h1 { font-size: clamp(24px,2.3vw,32px) !important; color: var(--astryx-yagi-ink); letter-spacing:-.035em; }
+.astryx-page .eyebrow { letter-spacing:.18em !important; color:#4c7760 !important; }
+.astryx-page .sub { line-height:1.7 !important; color:#69796e !important; }
+.astryx-page .metrics, .astryx-page .home-overview-metrics { gap:14px !important; }
+.astryx-page .metric,
+.astryx-page .home-overview-card {
+  min-height:122px;
+  background:#fff !important;
+  border:1px solid var(--astryx-yagi-border) !important;
+  border-radius:18px !important;
+  box-shadow:0 3px 15px rgba(25,58,38,.045) !important;
+  padding:19px !important;
+}
+.astryx-page .metric span,
+.astryx-page .home-overview-card>span { color:#708275 !important; font-size:12px !important; font-weight:650; }
+.astryx-page .metric strong,
+.astryx-page .home-overview-card>strong { color:#183c28 !important; font-size:clamp(22px,2vw,29px) !important; letter-spacing:-.035em; }
+.astryx-page .metric:hover,
+.astryx-page .home-overview-card:hover { border-color:#b7ceb9 !important; }
+.astryx-page .panel {
+  border-radius:18px !important;
+  border-color:var(--astryx-yagi-border) !important;
+  box-shadow:0 3px 17px rgba(21,52,34,.045) !important;
+}
+.astryx-page .panel-title h2 { color:#1e3a29; font-weight:800; }
+.astryx-page .ui-astryx-action {
+  min-height:40px;
+  border-radius:11px !important;
+  font-weight:750 !important;
+  font-size:12px !important;
+  cursor:pointer;
+}
+.astryx-page .ui-astryx-refresh { min-width:40px; }
+.astryx-fields .field-master-group { padding:20px !important; }
+.astryx-fields .field-master-card {
+  border:1px solid #dce6db !important;
+  background:linear-gradient(180deg,#fff 0%,#fbfdfb 100%) !important;
+  border-radius:15px !important;
+  transition:border-color .14s ease, box-shadow .14s ease;
+}
+.astryx-fields .field-master-card:hover { border-color:#95b59b !important; box-shadow:0 8px 24px rgba(21,56,34,.09) !important; }
+.astryx-harvest .harvest-multi-field-row.selected { background:#eef5ed !important; border-color:#9fc5a4 !important; }
+.astryx-harvest .harvest-tabs button.active { background:#173f2b !important; color:#fff !important; border-color:#173f2b !important; }
+.astryx-harvest .harvest-history-list article,
+.astryx-harvest .processing-history-list article { border-radius:13px; }
+.astryx-page input:focus-visible, .astryx-page select:focus-visible,
+.astryx-page textarea:focus-visible { outline:2px solid #80ac84; outline-offset:1px; }
+@media(max-width:800px) {
+  .astryx-page .page-head { gap:12px !important; }
+  .astryx-page .metrics, .astryx-page .home-overview-metrics { gap:10px !important; }
+  .astryx-page .metric, .astryx-page .home-overview-card { min-height:108px; padding:13px !important; border-radius:14px !important; }
+  .astryx-page .metric strong, .astryx-page .home-overview-card>strong { font-size:22px !important; }
+  .astryx-page .panel { border-radius:14px !important; }
+  .astryx-page .ui-astryx-action { min-height:44px; }
+  .astryx-fields .field-master-group { padding:12px !important; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .astryx-page .metric,.astryx-page .field-master-card { transition:none !important; }
+}
+
+/* Stage 2: pesticide spray, fertilizer application, and both stock ledgers. */
+.astryx-spray .spray-layout { align-items:start; gap:18px; }
+.astryx-spray .form-panel,
+.astryx-spray .sticky-summary,
+.astryx-inventory .inventory-panel,
+.astryx-fertilizer-inventory .astryx-section {
+  border-radius:18px !important;
+  border:1px solid var(--astryx-yagi-border) !important;
+  background:#fff !important;
+  box-shadow:0 4px 18px rgba(23,61,37,.04) !important;
+}
+.astryx-spray .form-panel h2,
+.astryx-fertilization .fertilizer-application-form h2,
+.astryx-inventory .section-head h2 {
+  color:#20412b; font-weight:800; letter-spacing:-.015em;
+}
+.astryx-spray .chemical-block { border-color:#d6e6d8; border-radius:13px; }
+.astryx-spray .field-check.selected,
+.astryx-fertilization .fertilizer-field-group button.selected {
+  background:#ebf5ed !important;
+  border-color:#7fab84 !important;
+}
+.astryx-spray .sticky-summary { top:20px; }
+.astryx-spray .save-spray,
+.astryx-fertilization .fertilizer-submit { width:100%; min-height:46px; }
+.astryx-fertilization .fertilizer-application-summary { gap:9px; }
+.astryx-fertilization .fertilizer-application-summary .astryx-summary-tile {
+  min-width:0;
+  border-radius:12px !important;
+  background:#f7faf7 !important;
+  border-color:#deebdf !important;
+  box-shadow:none !important;
+}
+.astryx-inventory .inventory-tabs { gap:8px; }
+.astryx-inventory .inventory-tabs button {
+  font-weight:750 !important; border-radius:10px !important;
+  border:1px solid #d8e4d8 !important;
+}
+.astryx-inventory .inventory-tabs button.active {
+  background:#18432e !important;
+  color:#fff !important;
+  border-color:#18432e !important;
+}
+.astryx-inventory .inventory-panel .toolbar,
+.astryx-fertilizer-inventory .toolbar { margin-bottom:16px; }
+.astryx-inventory .data-table tbody tr:hover td { background:#f5f9f5 !important; }
+.astryx-fertilizer-inventory .fertilizer-stock-card {
+  border-radius:14px !important; border-color:#d9e5da !important;
+  background:#fcfdfb !important;
+}
+.astryx-page .ui-astryx-action:focus-visible {
+  outline:2px solid #6a9c73 !important; outline-offset:3px;
+}
+@media(max-width:800px) {
+  .astryx-spray .spray-layout { display:block; }
+  .astryx-spray .form-panel, .astryx-inventory .inventory-panel { padding:13px !important; }
+  .astryx-spray .sticky-summary { position:static; }
+  .astryx-inventory .inventory-tabs { overflow:auto; }
+  .astryx-inventory .inventory-tabs button { flex-shrink:0; }
+  .astryx-fertilization .fertilizer-application-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+/* Stage 3: histories, tea inventory and production overview */
+.astryx-spray-history .history-filter-panel,
+.astryx-spray-history .history-table-panel,
+.astryx-fertilizer-history .fertilizer-history-filter,
+.astryx-fertilizer-history .fertilizer-history-formal,
+.astryx-fertilizer-history .fertilizer-npk-panel,
+.astryx-tea-inventory .astryx-section {
+  border:1px solid var(--astryx-yagi-border) !important;
+  border-radius:18px !important;
+  background:#fff !important;
+  box-shadow:0 4px 20px rgba(23,61,37,.035) !important;
+}
+.astryx-spray-history .history-filter-panel,
+.astryx-fertilizer-history .fertilizer-history-filter,
+.astryx-tea-inventory .astryx-section { padding:20px !important; }
+.astryx-spray-history .history-chip-list span,
+.astryx-fertilizer-history .fertilizer-history-npk span { border-radius:8px; }
+.astryx-fertilizer-history .fertilizer-history-summary .astryx-summary-tile {
+  min-width:0; border:1px solid #dce7dc !important;
+  background:#f7faf7 !important; border-radius:11px !important; box-shadow:none !important;
+}
+.astryx-production .production-tabs { display:flex; gap:8px; }
+.astryx-production .production-tabs button { min-width:90px; border-radius:10px !important; font-weight:750; }
+.astryx-production .production-tabs button.active { color:#fff !important; border-color:#173f2b !important; background:#173f2b !important; }
+.astryx-tea-inventory .metrics.harvest-metrics { margin-bottom:12px; }
+@media (max-width:800px) {
+  .astryx-spray-history .history-filter-panel,
+  .astryx-fertilizer-history .fertilizer-history-filter,
+  .astryx-tea-inventory .astryx-section { padding:12px !important; border-radius:14px !important; }
+  .astryx-production .production-tabs { overflow:auto; }
+  .astryx-production .production-tabs button { flex-shrink:0; }
+  .astryx-tea-inventory .metrics.harvest-metrics { gap:9px !important; }
+}
+
+/* Stage 4: commerce, purchasing, costing, product and SKU controls */
+.astryx-tea-procurement .tea-procurement-tabs,
+.astryx-production .production-tabs { display:flex; gap:8px; }
+.astryx-tea-procurement .tea-procurement-tabs button {
+  min-height:42px; border-radius:10px !important; font-weight:750 !important;
+  border:1px solid #d7e5da !important;
+}
+.astryx-tea-procurement .tea-procurement-tabs button.active {
+  color:#fff !important; background:#173f2b !important; border-color:#173f2b !important;
+}
+.astryx-products .product-master-metrics,
+.astryx-packaging .product-packaging-metrics { gap:12px; }
+.astryx-products .product-master-metrics>.astryx-kpi,
+.astryx-packaging .product-packaging-metrics>.astryx-kpi {
+  min-width:0; min-height:102px;
+  background:white !important; border:1px solid #d9e4d9 !important;
+  border-radius:15px !important; padding:18px !important;
+  box-shadow:0 3px 16px rgba(20,57,36,.05) !important;
+  display:flex; flex-direction:column; justify-content:center; gap:8px;
+}
+.astryx-products .product-master-metrics>.astryx-kpi span,
+.astryx-packaging .product-packaging-metrics>.astryx-kpi span { font-size:12px; color:#6a7f6d; }
+.astryx-products .product-master-metrics>.astryx-kpi strong,
+.astryx-packaging .product-packaging-metrics>.astryx-kpi strong {
+  font-size:clamp(20px,2.1vw,27px); line-height:1.1; color:#19402a;
+  font-variant-numeric:tabular-nums;
+}
+.astryx-costing .costing-layout>.panel,
+.astryx-sales .sales-entry,
+.astryx-tea-procurement .panel,
+.astryx-packaging .panel,
+.astryx-products .panel,
+.astryx-price-list .panel {
+  border-color:#d9e4d9 !important; border-radius:18px !important;
+  box-shadow:0 3px 18px rgba(20,57,36,.04) !important;
+}
+.astryx-sales .sales-save,
+.astryx-packaging .packaging-save { width:100%; min-height:46px; }
+.astryx-page .ui-astryx-action { flex-shrink:0; }
+@media(max-width:800px){
+  .astryx-tea-procurement .tea-procurement-tabs { overflow-x:auto; }
+  .astryx-tea-procurement .tea-procurement-tabs button { flex-shrink:0; }
+  .astryx-products .product-master-metrics>.astryx-kpi,
+  .astryx-packaging .product-packaging-metrics>.astryx-kpi { padding:12px !important; min-height:93px; }
+}
+
+/* Stage 5: documents, CRM, calendar, daily reports and finance screens */
+.astryx-documents .document-tabs,
+.astryx-crm .crm-tabs { display:flex; gap:8px; flex-wrap:wrap; }
+.astryx-documents .document-tabs button,
+.astryx-crm .crm-tabs button {
+  min-height:42px; border:1px solid #d7e5da !important;
+  background:#fff !important; border-radius:10px !important;
+  color:#477053 !important; font-weight:750 !important;
+}
+.astryx-documents .document-tabs button.active,
+.astryx-crm .crm-tabs button.active {
+  color:#fff !important; border-color:#17442b !important;
+  background:#17442b !important;
+}
+.astryx-calendar .calendar-metrics { gap:12px; }
+.astryx-calendar .calendar-metrics>.astryx-card,
+.astryx-calendar .calendar-metrics>[data-astryx-component],
+.astryx-calendar .calendar-metrics>div {
+  background:#fff !important; border:1px solid #d9e4d9 !important;
+  border-radius:15px !important; box-shadow:0 3px 18px rgba(20,57,36,.04) !important;
+}
+.astryx-documents .panel,
+.astryx-crm .panel,
+.astryx-calendar .panel,
+.astryx-daily-reports .panel,
+.astryx-expenses .panel,
+.astryx-vendor-invoices .panel { border-color:#d9e4d9 !important; border-radius:16px !important; }
+.astryx-documents .head-actions,
+.astryx-calendar .head-actions,
+.astryx-expenses .head-actions { gap:8px; }
+@media (max-width:800px){
+  .astryx-documents .document-tabs,
+  .astryx-crm .crm-tabs { flex-wrap:nowrap; max-width:100%; overflow-x:auto; }
+  .astryx-documents .document-tabs button,
+  .astryx-crm .crm-tabs button { flex:0 0 auto; }
+  .astryx-calendar .calendar-metrics>div { padding:12px !important; }
+}
+@media print {
+  .astryx-documents .no-print { display:none !important; }
+}
+
+/* Stage 6: field, compliance, equipment and administration routes */
+.astryx-fertilizers-master .fertilizer-source-tabs,
+.astryx-fertilizer-plans .plan-year-tabs,
+.astryx-equipment .equipment-tabs { display:flex; gap:8px; }
+.astryx-fertilizers-master .fertilizer-source-tabs button,
+.astryx-fertilizer-plans .plan-year-tabs button,
+.astryx-equipment .equipment-tabs button {
+  min-height:42px; border:1px solid #d9e5d9 !important;
+  border-radius:10px !important; font-weight:750 !important;
+}
+.astryx-fertilizers-master .fertilizer-source-tabs button.active,
+.astryx-fertilizer-plans .plan-year-tabs button.active,
+.astryx-equipment .equipment-tabs button.active {
+  background:#173f2b !important; border-color:#173f2b !important; color:#fff !important;
+}
+.astryx-pesticides .panel,
+.astryx-spray-plans .panel,
+.astryx-fertilizers-master .panel,
+.astryx-fertilizer-plans .panel,
+.astryx-dossier .panel,
+.astryx-equipment .panel,
+.astryx-library .panel,
+.astryx-storage .panel,
+.astryx-gallery .panel,
+.astryx-manual .panel,
+.astryx-settings .panel {
+  border:1px solid #d9e5d9 !important; border-radius:17px !important;
+  box-shadow:0 4px 18px rgba(20,57,36,.04) !important;
+}
+.astryx-pesticides .metric,
+.astryx-equipment .metric,
+.astryx-library .metric {
+  border-radius:15px !important; background:#fff !important; border-color:#d7e4d9 !important;
+}
+.astryx-dossier .ui-astryx-action { white-space:nowrap; }
+@media(max-width:800px) {
+  .astryx-fertilizers-master .fertilizer-source-tabs,
+  .astryx-fertilizer-plans .plan-year-tabs,
+  .astryx-equipment .equipment-tabs { overflow-x:auto; max-width:100%; }
+  .astryx-fertilizers-master .fertilizer-source-tabs button,
+  .astryx-fertilizer-plans .plan-year-tabs button,
+  .astryx-equipment .equipment-tabs button { flex-shrink:0; }
+}
+
+/* Migration release gate: unmistakable read-only status across all routes. */
+.astryx-preview-banner {
+  width:100%; box-sizing:border-box; display:flex; align-items:center; gap:10px;
+  background:#fff5e5; border:1px solid #efcf9b; border-radius:12px;
+  padding:12px 15px; margin:0 0 16px;
+  color:#724613; font-size:13px; line-height:1.55;
+  box-shadow:0 2px 6px rgba(87,55,17,.05);
+}
+.astryx-preview-banner strong { color:#5f3a10; }
+.astryx-preview-banner svg { flex-shrink:0; }
+@media (max-width:800px) {
+ .astryx-preview-banner { font-size:12px; padding:10px 12px; border-radius:10px; }
+}
+
+/* Stage 8: real Astryx Table and TextInput components in operational screens */
+.astryx-page .astryx-search-field { width:100%; min-width:0; flex:1; }
+.astryx-page .astryx-form-control { width:100%; min-width:0; }
+.astryx-page .form-grid > .astryx-form-control { min-width:0; align-self:stretch; }
+.astryx-page .astryx-form-control .astryx-field-label,
+.astryx-page .astryx-search-field .astryx-field-label { font-size:12px; font-weight:700; }
+.astryx-page .astryx-table { width:100%; min-width:680px; }
+.astryx-price-list .astryx-table { min-width:680px; }
+.astryx-spray-history .astryx-table { min-width:880px; }
+.astryx-inventory .astryx-table { min-width:860px; }
+.astryx-page .astryx-table th { white-space:nowrap; font-size:12px; font-weight:750; }
+.astryx-page .astryx-table td { vertical-align:middle; }
+.astryx-page .astryx-table td code { font-size:11px; }
+.astryx-page .astryx-table tr:focus-within { background:#f3f8f3; }
+@media(max-width:800px) {
+ .astryx-page .astryx-table { font-size:12px; }
+ .astryx-page .astryx-search-field { min-width:0; }
+}
+
+/* Stage 9: Astryx native-dialog based stocktaking / item edit workflows */
+.astryx-inventory-dialog {
+  max-width:calc(100vw - 24px); box-sizing:border-box;
+  background:#fff !important; border:1px solid #cee0d0 !important;
+  border-radius:18px !important; box-shadow:0 26px 90px rgba(12,36,25,.24) !important;
+}
+.astryx-inventory-dialog::backdrop { background:rgba(12,34,24,.52); }
+.astryx-inventory-dialog-body { padding:8px 0 4px; min-width:0; }
+.astryx-inventory-dialog-body .inventory-action-form { width:100%; max-width:100%; }
+.astryx-inventory-dialog-body .price-edit-grid { margin:12px 0 20px; }
+.astryx-inventory-dialog-body .form-grid { gap:12px; }
+.astryx-inventory-dialog-body :where(input,select,textarea) { max-width:100%; }
+@media(max-width:600px) {
+  .astryx-inventory-dialog { border-radius:14px !important; }
+  .astryx-inventory-dialog-body { padding:4px 0; }
+  .astryx-inventory-dialog-body .form-grid { display:grid; grid-template-columns:1fr; }
+}
+
+/* Stage 10: login & account gateway */
+.astryx-auth-page { background:linear-gradient(150deg,#edf4eb 0%,#f9faf7 58%,#e8f2e7 100%); }
+.astryx-auth-page .astryx-auth-card {
+  width:min(440px,calc(100% - 32px)); max-width:440px;
+  background:white !important; border:1px solid #d8e4da !important;
+  border-radius:22px !important; box-shadow:0 20px 60px rgba(15,48,30,.11) !important;
+  padding:28px !important;
+}
+.astryx-auth-page .auth-brand { color:#19452f; }
+.astryx-auth-page .auth-form { display:flex; flex-direction:column; gap:16px; }
+.astryx-auth-page .astryx-auth-field { min-width:0; width:100%; }
+.astryx-auth-page .astryx-auth-field input {
+  display:block; width:100%; min-height:44px; border-radius:10px;
+  box-sizing:border-box; font-size:16px; padding:10px 13px;
+  border:1px solid #d3e1d3; background:#fff;
+}
+.astryx-auth-page .astryx-auth-field input:focus-visible {
+  outline:2px solid #75a581; outline-offset:2px;
+}
+.astryx-auth-page .astryx-auth-submit { width:100%; min-height:46px; }
+.astryx-auth-preview-note {
+  display:flex; align-items:center; gap:8px; margin:0 0 14px;
+  padding:10px 12px; background:#fff5e5; color:#714513;
+  border:1px solid #e8c993; border-radius:10px; font-size:12px;
+}
+.astryx-auth-preview-note svg { flex-shrink:0; }
+@media(max-width:600px) {
+ .astryx-auth-page .astryx-auth-card { padding:19px !important; border-radius:16px !important; }
+}
+
+/* Stage 10: accessible search fields and master edit dialogs */
+.astryx-master-dialog .astryx-inventory-dialog-body { padding:10px 0; }
+.astryx-master-dialog .inventory-action-form { display:flex; flex-direction:column; gap:12px; }
+.astryx-master-dialog label { min-width:0; }
+.astryx-master-dialog .official-import-notice { border-radius:12px; }
+.astryx-fertilizer-history .astryx-search-field,
+.astryx-sales .astryx-search-field,
+.astryx-fertilizers-master .astryx-search-field,
+.astryx-products .astryx-search-field,
+.astryx-vendor-invoices .astryx-search-field,
+.astryx-documents .astryx-search-field { min-width:0; width:100%; }
+@media(max-width:800px) {
+  .astryx-master-dialog .form-grid { grid-template-columns:1fr; }
+  .astryx-master-dialog .astryx-inventory-dialog-body { padding:5px 0; }
+}
+
+/* Astryx Table must retain semantic table-cell layout.
+ * The former price-list CSS set the first <td> to display:flex, reducing the
+ * content width to zero under Astryx's responsive column sizing. */
+.astryx-price-list .astryx-table.price-list-table td:first-child {
+  display:table-cell !important;
+  min-width:160px;
+}
+.astryx-price-list .astryx-table.price-list-table td:first-child > b,
+.astryx-price-list .astryx-table.price-list-table td:first-child > small {
+  display:block;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.astryx-price-list .astryx-table.price-list-table { min-width:800px; }
+
+/* Astryx Table cells must keep native table layout.
+   The legacy pricing CSS sets the first <td> to display:flex, which collapses
+   its contents to 0px width under the Astryx responsive Table grid. */
+.astryx-price-list .price-list-table td:first-child {
+  display:table-cell !important;
+  vertical-align:middle;
+}
+.astryx-price-list .price-list-table td:first-child > b,
+.astryx-price-list .price-list-table td:first-child > small {
+  display:block;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+
+/* Stage 14: native Astryx Card shells for product & fertilizer masters */
+.astryx-products .product-master-grid>.product-master-card,
+.astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card,
+.astryx-fertilizers-master .official-fertilizer-list>.official-fertilizer-card {
+  background:#fff !important;
+  border:1px solid #dce7dd !important;
+  border-radius:16px !important;
+  box-shadow:0 3px 16px rgba(20,56,34,.045) !important;
+  min-width:0;
+  transition:box-shadow .15s ease,border-color .15s ease;
+}
+.astryx-products .product-master-grid>.product-master-card:hover,
+.astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card:hover,
+.astryx-fertilizers-master .official-fertilizer-list>.official-fertilizer-card:hover {
+  border-color:#a6c6ac !important;
+  box-shadow:0 8px 22px rgba(20,56,34,.07) !important;
+}
+.astryx-products .product-master-grid>.product-master-card.inactive,
+.astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card.inactive { opacity:.72; }
+@media(max-width:600px){
+  .astryx-products .product-master-grid>.product-master-card,
+  .astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card { padding:12px !important; }
+  .astryx-products .product-master-toolbar,
+  .astryx-fertilizers-master .toolbar { min-width:0; }
+  .astryx-products .product-master-toolbar .astryx-search-field { min-width:0; width:100%; }
+}
+
+/* Stage 15: Astryx Field shell with native required input semantics */
+.astryx-master-dialog .astryx-master-field { width:100%; min-width:0; }
+.astryx-master-dialog .astryx-master-field input {
+  display:block; box-sizing:border-box;
+  width:100%; max-width:100%; min-width:0;
+  min-height:44px; border:1px solid #d2e1d5;
+  background:#fff; border-radius:10px;
+  padding:10px 13px; font-size:16px;
+}
+.astryx-master-dialog .astryx-master-field input:focus-visible {
+  outline:2px solid #82ae8b; outline-offset:1px;
+}
+.astryx-master-dialog .form-grid .astryx-master-field { min-width:0; }
+
+/* Stage 16: Calendar, Documents and CRM master-edit surfaces */
+.astryx-calendar-dialog,
+.astryx-document-customer-dialog {
+  box-sizing:border-box; max-width:calc(100vw - 24px);
+  background:#fff !important; border:1px solid #d4e4d6 !important;
+  border-radius:18px !important; box-shadow:0 24px 85px rgba(15,48,29,.19) !important;
+}
+.astryx-calendar-dialog::backdrop,
+.astryx-document-customer-dialog::backdrop { background:rgba(11,30,20,.5); }
+.astryx-calendar-dialog-body, .astryx-customer-dialog-body { padding:9px 0 6px; min-width:0; }
+.astryx-calendar-dialog-body .calendar-task-form { display:grid; gap:12px; min-width:0; }
+.astryx-calendar-dialog-body .calendar-category-picks { min-width:0; }
+.astryx-calendar-dialog-body .calendar-task-form>label { min-width:0; }
+.astryx-calendar-dialog-body .calendar-modal-actions { z-index:1; }
+.astryx-calendar-dialog .astryx-calendar-field { display:grid; gap:6px; min-width:0; width:100%; }
+.astryx-calendar-dialog .astryx-calendar-field input {
+  display:block; width:100%; min-width:0; max-width:100%;
+  box-sizing:border-box; font-size:16px; min-height:44px;
+  padding:10px 13px; border:1px solid #d2e0d4; border-radius:10px; background:#fff;
+}
+.astryx-calendar-dialog .astryx-calendar-field input:focus-visible { outline:2px solid #79a983; outline-offset:2px; }
+.astryx-document-customer-dialog .astryx-customer-dialog-body { display:grid; gap:12px; }
+.astryx-document-customer-dialog .form-grid { min-width:0; gap:12px; }
+.astryx-document-customer-dialog input { min-width:0; max-width:100%; }
+.astryx-crm .crm-filter .astryx-crm-search { min-width:0; width:100%; }
+.astryx-crm .crm-form>.astryx-crm-required { display:grid; gap:6px; min-width:0; }
+.astryx-crm .crm-form>.astryx-crm-required input {
+  box-sizing:border-box; width:100%; min-width:0; min-height:44px;
+  border:1px solid #d3e1d4; border-radius:10px; padding:9px 12px; font-size:16px;
+}
+@media(max-width:800px){
+  .astryx-calendar-dialog, .astryx-document-customer-dialog { border-radius:14px !important; }
+  .astryx-calendar-dialog-body, .astryx-customer-dialog-body { padding:3px 0 7px; }
+  .astryx-calendar-dialog-body .calendar-task-form .form-grid { min-width:0; }
+  .astryx-document-customer-dialog .form-grid.two { grid-template-columns:1fr; }
+}
+
+/* Stage 17: documents/CRM master edit input consistency */
+.astryx-documents .astryx-document-field,
+.astryx-document-customer-dialog .astryx-document-field,
+.astryx-crm .astryx-crm-master-field { min-width:0; width:100%; }
+.astryx-documents .astryx-document-field input,
+.astryx-document-customer-dialog .astryx-document-field input {
+  display:block; box-sizing:border-box; width:100%; max-width:100%;
+  min-width:0; min-height:44px; border:1px solid #d3e2d5;
+  border-radius:10px; padding:9px 12px; background:#fff; font-size:16px;
+}
+.astryx-documents .astryx-document-field input:focus-visible,
+.astryx-document-customer-dialog .astryx-document-field input:focus-visible {
+  outline:2px solid #84af8b; outline-offset:2px;
+}
+.astryx-document-customer-dialog .astryx-customer-dialog-body { display:grid; gap:12px; }
+.astryx-crm .crm-form>.astryx-crm-master-field { min-width:0; }
+@media (max-width:800px) {
+  .astryx-document-customer-dialog .astryx-customer-dialog-body { gap:10px; }
+  .astryx-documents .document-editor-head-controls { min-width:0; }
+}
+
+/* Stage 19: equipment asset and service-record dialogs */
+.astryx-equipment-dialog {
+  box-sizing:border-box;
+  background:#fff !important;
+  max-width:calc(100vw - 24px);
+  border:1px solid #d1e1d2 !important;
+  border-radius:18px !important;
+  box-shadow:0 24px 88px rgba(17,46,28,.20) !important;
+}
+.astryx-equipment-dialog::backdrop { background:rgba(13,37,23,.54); }
+.astryx-equipment-dialog-body { min-width:0; padding:8px 0 5px; }
+.astryx-equipment-dialog .equipment-form { display:grid; gap:12px; min-width:0; }
+.astryx-equipment-dialog .astryx-equipment-field { display:grid; gap:6px; min-width:0; width:100%; }
+.astryx-equipment-dialog .astryx-equipment-field input {
+  display:block; box-sizing:border-box; width:100%; max-width:100%;
+  min-width:0; min-height:44px; border:1px solid #d0dfd3;
+  border-radius:10px; background:#fff; padding:9px 12px; font-size:16px;
+}
+.astryx-equipment-dialog .astryx-equipment-field input:focus-visible { outline:2px solid #82b18b; outline-offset:2px; }
+.astryx-equipment-dialog .equipment-form-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.astryx-equipment .astryx-search-field,
+.astryx-daily-reports .astryx-search-field,
+.astryx-expenses .astryx-search-field { min-width:0; width:100%; }
+@media(max-width:800px){
+ .astryx-equipment-dialog { border-radius:14px !important; }
+ .astryx-equipment-dialog-body { padding:3px 0; }
+ .astryx-equipment-dialog .form-grid { grid-template-columns:1fr; min-width:0; }
+ .astryx-equipment-dialog .equipment-form-actions button { flex:1; min-height:44px; }
+}
+
+/* Stage 20: financial payment dialog and daily/expense required fields */
+.astryx-vendor-payment-dialog {
+  box-sizing:border-box;
+  max-width:calc(100vw - 24px);
+  background:#fff !important; border:1px solid #d1e2d4 !important;
+  border-radius:18px !important;
+  box-shadow:0 24px 88px rgba(16,44,27,.22) !important;
+}
+.astryx-vendor-payment-dialog::backdrop { background:rgba(12,37,22,.54); }
+.astryx-vendor-payment-body { padding:9px 0 5px; min-width:0; }
+.astryx-vendor-payment-dialog .invoice-payment-form { min-width:0; }
+.astryx-vendor-payment-dialog .payment-form-grid { min-width:0; }
+.astryx-finance-field, .astryx-operations-field { min-width:0; width:100%; }
+.astryx-finance-field input, .astryx-operations-field input, .astryx-operations-field textarea {
+  display:block; box-sizing:border-box; width:100%; min-width:0; max-width:100%;
+  background:#fff; border:1px solid #d1dfd3; border-radius:10px;
+  min-height:44px; padding:9px 12px; font-size:16px;
+}
+.astryx-finance-field input:focus-visible,
+.astryx-operations-field :is(input,textarea):focus-visible { outline:2px solid #82b18b; outline-offset:2px; }
+.astryx-daily-reports .daily-report-form .full-label.astryx-operations-field { display:grid; gap:8px; }
+@media(max-width:800px) {
+ .astryx-vendor-payment-dialog { border-radius:14px !important; }
+ .astryx-vendor-payment-body { padding:4px 0; }
+ .astryx-vendor-payment-dialog .payment-form-grid { grid-template-columns:1fr; }
+ .astryx-vendor-payment-dialog .invoice-modal-actions { display:flex; gap:8px; }
+ .astryx-vendor-payment-dialog .invoice-modal-actions button { flex:1; min-height:44px; }
+}
