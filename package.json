@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run test:preview-safety && tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "check:manual": "node scripts/check-manual-coverage.mjs",
-    "test:harvest": "node --experimental-strip-types --test scripts/harvest-provenance.test.mjs"
+    "test:harvest": "node --experimental-strip-types --test scripts/harvest-provenance.test.mjs",
+    "test:preview-safety": "node --experimental-strip-types --test scripts/preview-readonly.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -20,13 +21,17 @@
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.1"
+    "react-router-dom": "^7.9.1",
+    "@astryxdesign/core": "^0.7.0",
+    "@astryxdesign/theme-matcha": "^0.7.0",
+    "@stylexjs/stylex": "^0.19.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "@astryxdesign/cli": "^0.7.0"
   }
 }

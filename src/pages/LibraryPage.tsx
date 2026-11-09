@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Archive,
@@ -304,13 +306,13 @@ export default function LibraryPage() {
     URL.revokeObjectURL(url)
   }
 
-  return <div className="page document-library-page">
+  return <div className="page document-library-page astryx-page astryx-library">
     <div className="page-head">
       <div><p className="eyebrow">DOCUMENT LIBRARY</p><h1>資料ライブラリ</h1><p className="sub">茶事業の請求書・納品書・見積書・契約書・生産資料などをOneDriveへ保管し、アプリから横断検索・閲覧・エクスポートします。</p></div>
       <div className="head-actions">
-        <button className="secondary-button" type="button" onClick={exportCsv} disabled={!visible.length}><Download size={17}/>CSVエクスポート</button>
-        {canUpload&&<button className="primary-button" type="button" onClick={()=>setUploadOpen(v=>!v)}><Upload size={17}/>{uploadOpen?'登録を閉じる':'資料を追加'}</button>}
-        <button className="icon-button" type="button" onClick={()=>void refresh()} disabled={loading||!!busy}><RefreshCw size={18} className={loading?'spin':''}/></button>
+        <Button className="ui-astryx-action" variant="secondary" label="CSVエクスポート" icon={<Download size={17}/>} onClick={exportCsv} isDisabled={!visible.length}/>
+        {canUpload&&<Button className="ui-astryx-action" variant="primary" label={uploadOpen?'登録を閉じる':'資料を追加'} icon={<Upload size={17}/>} onClick={()=>setUploadOpen(v=>!v)}/>}
+        <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="資料ライブラリを更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly isDisabled={loading||!!busy} onClick={()=>void refresh()}/>
       </div>
     </div>
 
@@ -319,10 +321,10 @@ export default function LibraryPage() {
     {!storageStatus?.enabled&&<div className="notice dashboard-notice">OneDriveが未接続です。既存資料の台帳は閲覧できますが、新規アップロードには「ファイル・OneDrive」画面から接続設定が必要です。</div>}
 
     <section className="metrics library-metrics">
-      <div className="metric"><span>登録資料</span><strong>{items.length}件</strong><small>OneDrive台帳と統合</small></div>
-      <div className="metric"><span>今月追加</span><strong>{stats.thisMonth}件</strong><small>{new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'long'}).format(new Date())}</small></div>
-      <div className="metric"><span>分類</span><strong>{stats.categoriesCount}</strong><small>横断検索可能</small></div>
-      <div className="metric"><span>保存容量</span><strong>{fmtBytes(stats.totalBytes)}</strong><small>登録ファイル合計</small></div>
+      <Card className="metric astryx-kpi"><span>登録資料</span><strong>{items.length}件</strong><small>OneDrive台帳と統合</small></Card>
+      <Card className="metric astryx-kpi"><span>今月追加</span><strong>{stats.thisMonth}件</strong><small>{new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'long'}).format(new Date())}</small></Card>
+      <Card className="metric astryx-kpi"><span>分類</span><strong>{stats.categoriesCount}</strong><small>横断検索可能</small></Card>
+      <Card className="metric astryx-kpi"><span>保存容量</span><strong>{fmtBytes(stats.totalBytes)}</strong><small>登録ファイル合計</small></Card>
     </section>
 
     {uploadOpen&&canUpload&&<section className="panel library-upload-panel">

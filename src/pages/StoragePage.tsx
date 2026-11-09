@@ -1,3 +1,4 @@
+import { Button } from '@astryxdesign/core/Button'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { CheckCircle2, Cloud, Copy, ExternalLink, FileUp, FolderOpen, HardDrive, Link2, RefreshCw, Save, Search, ShieldCheck } from 'lucide-react'
@@ -186,7 +187,7 @@ export default function StoragePage() {
   }
 
   if (photoMode) {
-    return <div className="page photo-library-page">
+    return <div className="page photo-library-page astryx-page astryx-gallery">
       <div className="page-head">
         <div><p className="eyebrow">PHOTO LIBRARY</p><h1>写真ギャラリー</h1><p className="sub">茶摘み・イベント・圃場・機械設備などの写真をOneDriveへ整理して保存し、アプリからいつでも閲覧できます。</p></div>
       </div>
@@ -194,10 +195,10 @@ export default function StoragePage() {
     </div>
   }
 
-  return <div className="page storage-page">
+  return <div className="page storage-page astryx-page astryx-storage">
     <div className="page-head">
       <div><p className="eyebrow">EXTERNAL STORAGE</p><h1>ファイル・OneDrive</h1><p className="sub">PDF・Office・帳票・添付ファイルをOneDriveへ保存し、業務データと検索用台帳をSupabaseで管理します。</p></div>
-      <button className="icon-button" onClick={()=>void refresh()} disabled={loading||!!busy}><RefreshCw size={18} className={loading?'spin':''}/></button>
+      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="OneDrive管理情報を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading||!!busy}/>
     </div>
 
     {error&&<div className="notice error dashboard-notice">{error}</div>}

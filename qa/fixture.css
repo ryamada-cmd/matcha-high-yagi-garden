@@ -1,0 +1,18 @@
+/* Synthetic-only screenshot fixture. In production, AppShell provides the
+ * desktop sidebar grid column. The fixture does not render that sidebar,
+ * so prevent the page from collapsing to the empty secondary grid track. */
+@media (min-width:801px) {
+  .app-shell[data-qa="astryx-synthetic-only"] {
+    display:block !important;
+    width:100%;
+    max-width:100%;
+    min-height:100vh;
+  }
+  .app-shell[data-qa="astryx-synthetic-only"] > main {
+    width:100%;
+    max-width:none;
+    min-width:0;
+    margin:0;
+    box-sizing:border-box;
+  }
+}
