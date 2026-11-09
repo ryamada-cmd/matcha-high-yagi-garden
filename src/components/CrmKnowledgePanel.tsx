@@ -32,10 +32,13 @@ export default function CrmKnowledgePanel({
   const [form,setForm] = useState<Draft>({...initial})
   const [busy,setBusy] = useState(false)
   const current = records.find(item => item.id === currentId)
+  const unsaved = Boolean(current && Object.keys(initial).some(key =>
+    form[key].trim() !== text((current as unknown as Record<string,unknown>)[key]).trim()))
   const set = (key: string,value: string) => setForm(state=>({...state,[key]:value}))
   async function reload() {
     const [knowledge,senderRules]=await Promise.all([loadCrmReplyKnowledge(),loadCrmSenderRules()])
     setRecords(knowledge);setRules(senderRules)
+    return knowledge
   }
   useEffect(()=>{void reload().catch(e=>onError(e instanceof Error?e.message:'マスターを読み込めません'))},[])
   async function submit(e:FormEvent) {
@@ -57,7 +60,10 @@ export default function CrmKnowledgePanel({
       if (!payload.title) throw new Error('マスター名が必要です')
       if (payload.kind==='product' && !payload.product_name) throw new Error('商品名が必要です')
       const id=await saveCrmReplyKnowledge(currentId||null,payload)
-      setCurrentId(id);await reload()
+      setCurrentId(id)
+      const fresh = await reload()
+      const updated = fresh.find(item => item.id === id)
+      if(updated)setForm(asDraft(updated))
       onNotice('取引条件を保存しました。承認するまで返信案の根拠には使われません。')
     }catch(e){onError(e instanceof Error?e.message:'保存できませんでした')}
     finally{setBusy(false)}
@@ -105,6 +111,7 @@ export default function CrmKnowledgePanel({
       </section>
       <section className="panel">
         <h3>{currentId?'条件を編集':'新しい条件を登録'}</h3>
+        {unsaved && <p className="crm-hint" role="status">未保存の変更があります。承認前に必ず保存してください。</p>}
         {current && <p className="crm-hint"><ShieldCheck size={15}/>{current.approved?(expired(current)?'期限切れ（返信案に使用不可）':'承認済み・返信案に使用できます'):'未承認・返信案に使用されません'}</p>}
         <form className="crm-form" onSubmit={submit}>
           <label>種別<select value={form.kind} onChange={e=>set('kind',e.target.value)}><option value="product">商品別</option><option value="general">共通方針</option></select></label>
@@ -126,7 +133,7 @@ export default function CrmKnowledgePanel({
           <label className="crm-wide">支払条件<textarea rows={2} value={form.payment_terms} onChange={e=>set('payment_terms',e.target.value)}/></label>
           <label className="crm-wide">返信時の共通注意・補足<textarea rows={3} value={form.notes} onChange={e=>set('notes',e.target.value)}/></label>
           <div className="crm-actions"><button disabled={busy} className="primary-button"><Save size={16}/>条件を保存</button>
-            {current && !current.approved && <button type="button" disabled={busy||expired(current)} className="secondary-button" onClick={()=>void approval(true)}><CheckCircle2 size={16}/>内容を確認して承認</button>}
+            {current && !current.approved && <button type="button" disabled={busy||unsaved||expired(current)} className="secondary-button" onClick={()=>void approval(true)}><CheckCircle2 size={16}/>内容を確認して承認</button>}
             {current?.approved && <button type="button" disabled={busy} className="secondary-button" onClick={()=>void approval(false)}><Undo2 size={16}/>承認を解除</button>}
           </div>
         </form>

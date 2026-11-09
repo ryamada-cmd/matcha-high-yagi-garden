@@ -36,7 +36,9 @@ export default function CrmReplyPanel({inquiryId,onError,onNotice,onSummarySaved
       setAiAvailable(result.ai_available);await reload()
       onNotice(result.draft.method==='ai'
         ? 'AIが要約と返信案を作成しました。必ず根拠・数量・価格を確認してから利用してください。'
-        : '登録済み条件をもとに確認用テンプレートを作成しました。生成AIを使用するにはサーバー側のAPIキー設定が必要です。')
+        : result.ai_available
+          ? 'AI生成に失敗したため、根拠のない条件を避ける確認用テンプレートに切り替えました。'
+          : '登録済み条件をもとに確認用テンプレートを作成しました。生成AIを使用するにはサーバー側のAPIキー設定が必要です。')
     }catch(e){onError(e instanceof Error?e.message:'返信案を作成できませんでした')}
     finally{setBusy(false)}
   }
