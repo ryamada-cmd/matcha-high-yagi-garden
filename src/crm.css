@@ -57,3 +57,39 @@
 .crm-error{color:#b3382e!important}
 @media(max-width:900px){.crm-layout{grid-template-columns:1fr}.crm-list-rows{max-height:390px}.crm-contacts-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.crm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.crm-form{grid-template-columns:1fr}.crm-item-top{flex-direction:column}.crm-item-top small{white-space:normal}.crm-event-head{flex-direction:column}}
+
+/* Reversible inquiry triage */
+.crm-triage-switch{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.crm-triage-switch>button{border:1px solid var(--crm-border);border-radius:9px;padding:8px 12px;background:var(--surface,#fff);color:inherit;cursor:pointer}
+.crm-triage-switch>button.active{background:#174e3b;color:white}
+.crm-list-entry{display:flex;align-items:stretch;gap:7px;min-width:0}
+.crm-list-entry>.crm-item{flex:1;min-width:0}
+.crm-select-item{display:flex;align-items:flex-start;padding:14px 0 0 3px;cursor:pointer}
+.crm-select-item input{width:17px;height:17px;accent-color:#174e3b}
+.crm-exclusion-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--crm-border);padding:11px;border-radius:10px;margin-top:13px}
+.crm-exclusion-actions .crm-hint{width:100%;margin:0}
+/* Approved facts, reply draft and human-review workflow */
+.crm-knowledge-page{display:grid;gap:17px}
+.crm-knowledge-intro h2,.crm-reply-panel h3{display:flex;align-items:center;gap:8px}
+.crm-knowledge-layout{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(0,1.4fr);gap:16px;align-items:start}
+.crm-knowledge-page .crm-records{margin-top:12px}
+.crm-rule-list{display:grid;gap:8px}
+.crm-rule-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--crm-border);overflow-wrap:anywhere}
+.crm-rule-row small{opacity:.7}
+.crm-reply-panel{display:grid;gap:11px;border:1px solid var(--crm-border);padding:15px;border-radius:13px;background:rgba(95,145,114,.045);margin:22px 0}
+.crm-reply-panel h3{margin:0}
+.crm-reply-panel h4{margin:15px 0 0}
+.crm-reply-controls{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(110px,.6fr);gap:9px}
+.crm-reply-controls>button{grid-column:1/-1;justify-self:start}
+.crm-reply-controls label,.crm-reply-result label{display:grid;gap:5px;font-size:.83rem;font-weight:700;min-width:0}
+.crm-reply-controls select,.crm-reply-result input,.crm-reply-result textarea{width:100%;min-width:0;padding:10px;border-radius:9px;background:var(--surface,#fff);color:inherit;border:1px solid var(--crm-border);font:inherit}
+.crm-reply-result{display:grid;gap:9px;min-width:0}
+.crm-reply-result .crm-hint{margin:0}
+.crm-reply-summary{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;padding:12px;border-radius:10px;background:var(--surface,#fff);border:1px solid var(--crm-border)}
+.crm-reply-result ul{margin:5px 0;padding-left:25px}
+.crm-reply-facts{max-height:240px;overflow:auto;background:var(--surface,#fff);border:1px solid var(--crm-border);border-radius:10px;padding:10px}
+.crm-reply-facts pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem;margin:0}
+.crm-reply-panel details{display:flex;flex-wrap:wrap;gap:8px}
+.crm-reply-panel details button{margin:5px}
+@media(max-width:900px){.crm-knowledge-layout{grid-template-columns:1fr}}
+@media(max-width:560px){.crm-reply-controls{grid-template-columns:1fr}.crm-list-entry>.crm-item{padding:10px}}
