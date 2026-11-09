@@ -364,6 +364,39 @@ try {
  expense.verify();await expense.context.close();passes++
  console.log('PASS [390px expenses] Astryx Field, two-line arithmetic, required receipt, in-memory submit and storage, no external network')
 
+
+ const sprayHistory=await fixture('spray-history',{width:390,height:844})
+ const sh=sprayHistory.page
+ await sh.getByText('QA-SPRAY-001').waitFor({state:'visible'})
+ assert.equal(await sh.locator('table.full-history-table tbody tr').count(),2)
+ assert.equal(await sh.locator('table.full-history-table.astryx-table').count(),1,'spray history uses actual Astryx Table')
+ await sh.getByRole('searchbox',{name:'キーワード'}).fill('QA-SPRAY-001')
+ assert.equal(await sh.locator('table.full-history-table tbody tr').count(),1)
+ await sh.getByRole('button',{name:'CSV出力'}).click()
+ assert.deepEqual(await sh.evaluate(()=>window.__qa_spray_export),['QA-SPRAY-001'])
+ await sh.getByTitle('明細を展開').first().click()
+ await sh.getByText('架空茶園A').first().waitFor({state:'visible'})
+ const shSize=await sh.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth}))
+ assert.ok(shSize.scrollWidth<=shSize.width+2,'Spray history viewport overflow '+JSON.stringify(shSize))
+ await sh.screenshot({path:'qa/screenshots/astryx-spray-history-mobile-390.png',fullPage:true})
+ sprayHistory.verify();await sprayHistory.context.close();passes++
+ console.log('PASS [390px spray history] Astryx Table, filters, CSV selection, expanded detail, no network')
+
+ const fertHistory=await fixture('fertilizer-history',{width:390,height:844})
+ const fh=fertHistory.page
+ await fh.getByText('QA-FAPP-001').first().waitFor()
+ await fh.getByText('20kg').first().waitFor()
+ await fh.getByRole('searchbox',{name:'施肥履歴を検索'}).fill('missing-test-value')
+ await fh.getByText('該当する施肥履歴はありません。').waitFor()
+ await fh.getByRole('searchbox',{name:'施肥履歴を検索'}).fill('QA-FAPP-001')
+ await fh.getByRole('button',{name:/QA-FAPP-001/}).click()
+ await fh.getByText('架空施肥のみ').first().waitFor()
+ const fertSize=await fh.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth}))
+ assert.ok(fertSize.scrollWidth<=fertSize.width+2,'Fertilizer history viewport overflow '+JSON.stringify(fertSize))
+ await fh.screenshot({path:'qa/screenshots/astryx-fertilizer-history-mobile-390.png',fullPage:true})
+ fertHistory.verify();await fertHistory.context.close();passes++
+ console.log('PASS [390px fertilizer history] Card/search/NPK summary, expanded detail, no network')
+
  const compact=await fixture('inventory',{width:320,height:720})
  const k=compact.page
  await k.getByText('架空農薬A').first().waitFor()

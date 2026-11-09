@@ -13,6 +13,8 @@ import EquipmentPage from '../src/pages/EquipmentPage';
 import VendorInvoicesPage from '../src/pages/VendorInvoicesPage';
 import DailyReportsPage from '../src/pages/DailyReportsPage';
 import ExpenseClaimsPage from '../src/pages/ExpenseClaimsPage';
+import SprayHistoryPage from '../src/pages/SprayHistoryPage';
+import FertilizerHistoryPage from '../src/pages/FertilizerHistoryPage';
 import { Theme } from '@astryxdesign/core/theme';
 import { matchaTheme } from '@astryxdesign/theme-matcha/built';
 import '@astryxdesign/core/reset.css';
@@ -65,7 +67,7 @@ import '../src/astryx-ui.css';
 import './fixture.css';
 
 const screen=new URLSearchParams(window.location.search).get('screen')||'harvest';
-const Screen=screen==='inventory'?InventoryPage:screen==='prices'?PriceListPage:screen==='products'?ProductMasterPage:screen==='fertilizers'?FertilizerMasterPage:screen==='calendar'?CalendarPage:screen==='documents'?DocumentsPage:screen==='crm'?CrmPage:screen==='equipment'?EquipmentPage:screen==='vendor-invoices'?VendorInvoicesPage:screen==='daily-reports'?DailyReportsPage:screen==='expenses'?ExpenseClaimsPage:HarvestProcessingPage;
+const Screen=screen==='inventory'?InventoryPage:screen==='prices'?PriceListPage:screen==='products'?ProductMasterPage:screen==='fertilizers'?FertilizerMasterPage:screen==='calendar'?CalendarPage:screen==='documents'?DocumentsPage:screen==='crm'?CrmPage:screen==='equipment'?EquipmentPage:screen==='vendor-invoices'?VendorInvoicesPage:screen==='daily-reports'?DailyReportsPage:screen==='expenses'?ExpenseClaimsPage:screen==='spray-history'?SprayHistoryPage:screen==='fertilizer-history'?FertilizerHistoryPage:HarvestProcessingPage;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
  <BrowserRouter>

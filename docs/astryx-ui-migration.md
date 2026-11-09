@@ -401,3 +401,12 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   also uses an Astryx Field shell.
 - No persistence, arithmetic, upload, OCR or authorization logic changed.
 - Mobile synthetic QA validates in-memory create/edit and receipt math.
+
+## Stage 24: history screens synthetic regression
+- Added SprayHistoryPage and FertilizerHistoryPage to QA with isolated local
+  record providers and fail-closed mutation stubs.
+- Spray history tests the real Astryx Table, search, expanded details, CSV
+  selection and 390px root overflow.
+- Fertilizer history tests the real search, NPK summary, expanded details
+  and 390px root overflow.
+- External network calls are blocked by the Playwright fixture.

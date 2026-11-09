@@ -29,7 +29,9 @@ export default defineConfig({
     const vendor=page.endsWith('/src/pages/VendorInvoicesPage.tsx');
     const daily=page.endsWith('/src/pages/DailyReportsPage.tsx');
     const expense=page.endsWith('/src/pages/ExpenseClaimsPage.tsx');
-    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense){
+    const sprayHistory=page.endsWith('/src/pages/SprayHistoryPage.tsx');
+    const fertilizerHistory=page.endsWith('/src/pages/FertilizerHistoryPage.tsx');
+    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense||sprayHistory||fertilizerHistory){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
@@ -52,6 +54,9 @@ export default defineConfig({
       if(expense&&source==='../lib/expenseClaims')return path.join(root,'qa/mockExpenseClaims.ts');
       if(expense&&source==='../lib/expenseReceipts')return path.join(root,'qa/mockExpenseReceipts.ts');
       if(expense&&source==='../lib/documentOcr')return path.join(root,'qa/mockVendorDocumentOcr.ts');
+      if(sprayHistory&&source==='../lib/sprayHistory')return path.join(root,'qa/mockSprayHistory.ts');
+      if(sprayHistory&&source==='../lib/sprays')return path.join(root,'qa/mockSprayHistory.ts');
+      if(fertilizerHistory&&source==='../lib/fertilizers')return path.join(root,'qa/mockFertilizerHistory.ts');
     }
     return null;
    },
