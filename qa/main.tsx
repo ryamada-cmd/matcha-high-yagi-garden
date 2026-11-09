@@ -2,6 +2,24 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import {BrowserRouter} from 'react-router-dom';
 import HarvestProcessingPage from '../src/pages/HarvestProcessingPage';
+import InventoryPage from '../src/pages/InventoryPage';
+import PriceListPage from '../src/pages/PriceListPage';
+import ProductMasterPage from '../src/pages/ProductMasterPage';
+import FertilizerMasterPage from '../src/pages/FertilizerMasterPage';
+import CalendarPage from '../src/pages/CalendarPage';
+import DocumentsPage from '../src/pages/DocumentsPage';
+import CrmPage from '../src/pages/CrmPage';
+import EquipmentPage from '../src/pages/EquipmentPage';
+import VendorInvoicesPage from '../src/pages/VendorInvoicesPage';
+import DailyReportsPage from '../src/pages/DailyReportsPage';
+import ExpenseClaimsPage from '../src/pages/ExpenseClaimsPage';
+import SprayHistoryPage from '../src/pages/SprayHistoryPage';
+import FertilizerHistoryPage from '../src/pages/FertilizerHistoryPage';
+import { Theme } from '@astryxdesign/core/theme';
+import { matchaTheme } from '@astryxdesign/theme-matcha/built';
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
+import '@astryxdesign/theme-matcha/theme.css';
 import '../src/styles.css'
 import '../src/features.css'
 import '../src/layout-fixes.css'
@@ -45,11 +63,19 @@ import '../src/unified-ui.css'
 import '../src/ui-refresh.css'
 import '../src/ui-refresh-safety.css'
 import '../src/ui-cohesion.css';
+import '../src/astryx-ui.css';
+import './fixture.css';
+
+const screen=new URLSearchParams(window.location.search).get('screen')||'harvest';
+const Screen=screen==='inventory'?InventoryPage:screen==='prices'?PriceListPage:screen==='products'?ProductMasterPage:screen==='fertilizers'?FertilizerMasterPage:screen==='calendar'?CalendarPage:screen==='documents'?DocumentsPage:screen==='crm'?CrmPage:screen==='equipment'?EquipmentPage:screen==='vendor-invoices'?VendorInvoicesPage:screen==='daily-reports'?DailyReportsPage:screen==='expenses'?ExpenseClaimsPage:screen==='spray-history'?SprayHistoryPage:screen==='fertilizer-history'?FertilizerHistoryPage:HarvestProcessingPage;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
  <BrowserRouter>
-  <div className="app-shell" data-qa="synthetic-harvest-only">
-   <main><HarvestProcessingPage/></main>
-  </div>
+  <Theme theme={matchaTheme} mode="light">
+   <div className="app-shell" data-qa="astryx-synthetic-only">
+    <aside className="sidebar desktop-sidebar" aria-hidden="true"><span className="qa-sidebar-brand">五代目八木一兵衛　QA</span></aside>
+    <main><Screen/></main>
+   </div>
+  </Theme>
  </BrowserRouter>
 );

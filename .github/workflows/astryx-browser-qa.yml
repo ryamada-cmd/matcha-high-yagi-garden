@@ -1,0 +1,79 @@
+name: AstryX browser regression (synthetic-only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'qa/**'
+      - 'src/pages/**'
+      - 'src/astryx-ui.css'
+      - 'src/harvest-processing.css'
+      - 'src/spray-history.css'
+      - 'src/fertilizer-history.css'
+      - 'src/documents.css'
+      - 'src/calendar.css'
+      - 'src/expense-claims.css'
+      - 'src/vendor-invoices.css'
+      - '.github/workflows/astryx-browser-qa.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'qa/**'
+      - 'src/pages/**'
+      - 'src/astryx-ui.css'
+      - '.github/workflows/astryx-browser-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: astryx-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout tested source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install application dependencies (no production credentials)
+        run: npm install --no-audit --no-fund
+      - name: Install isolated Chromium test runtime
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start QA-only synthetic fixture
+        run: |
+          npx vite --config qa/vite.config.ts --host 127.0.0.1 --port 5178 > /tmp/yagi-astryx-qa.log 2>&1 &
+          echo $! > /tmp/yagi-astryx-qa.pid
+          for i in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5178/qa/index.html >/dev/null; then
+              echo "QA-only fixture ready on 127.0.0.1:5178"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/yagi-astryx-qa.log
+          exit 1
+      - name: Test harvesting UI with fake fields and lots
+        run: node qa/harvest-ui.e2e.mjs
+      - name: Test AstryX forms, dialogs, tables, and mobile overflow with fake data
+        run: node qa/astryx-ui.e2e.mjs
+      - name: Upload diagnostic screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: astryx-synthetic-browser-screenshots
+          path: qa/screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Show fixture logs on failure
+        if: failure()
+        run: cat /tmp/yagi-astryx-qa.log || true
