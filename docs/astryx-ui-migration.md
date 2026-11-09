@@ -410,3 +410,12 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - Fertilizer history tests the real search, NPK summary, expanded details
   and 390px root overflow.
 - External network calls are blocked by the Playwright fixture.
+
+## Stage 25: phone action-column accessibility hotfix
+- Synthetic mobile QA exposed an action-column button outside the viewport
+  in the horizontal spray-history table.
+- Under 800px, the rightmost actions column is sticky and the table wrapper
+  retains horizontal scrolling.
+- The browser test must click the expansion action without manually
+  scrolling the table, so any inaccessible action-column regression fails.
+- Roll out this CSS-only change to the main branch after validation.

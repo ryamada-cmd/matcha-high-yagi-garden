@@ -615,3 +615,29 @@ html, body { background: #f5f7f3; }
   min-height:44px; padding:10px 12px; font-size:16px;
 }
 .astryx-expenses .expense-item-row>.expense-desc.astryx-operations-field { grid-column:auto; }
+
+/* Stage 25: spray history last-column actions remain reachable at phone widths.
+   The table can scroll horizontally, but expand/edit/delete stay visible. */
+@media(max-width:800px){
+ .astryx-spray-history .history-table-panel { min-width:0; }
+ .astryx-spray-history .history-table-panel .table-wrap {
+   width:100%; max-width:100%; min-width:0;
+   overflow-x:auto; -webkit-overflow-scrolling:touch;
+ }
+ .astryx-spray-history .full-history-table {
+   min-width:100%; width:max-content;
+ }
+ .astryx-spray-history .full-history-table th:last-child,
+ .astryx-spray-history .full-history-table td:last-child:not([colspan]) {
+   position:sticky;
+   right:0;
+   z-index:2;
+   background:#fff;
+   box-shadow:-4px 0 11px rgba(35,64,43,.10);
+   min-width:100px;
+ }
+ .astryx-spray-history .full-history-table th:last-child {
+   z-index:3; background:#f3f8f3;
+ }
+ .astryx-spray-history .history-page-actions { justify-content:flex-end; }
+}
