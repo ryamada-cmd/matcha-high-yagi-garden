@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Camera, Check, Download, Edit3, ExternalLink, FileImage, Paperclip, Plus, RefreshCw, RotateCcw, Search, Trash2, Upload, X } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
@@ -139,8 +141,8 @@ export default function ExpenseClaimsPage(){
     const csv='\ufeff'+[header,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`経費精算_${month||'全期間'}.csv`;a.click();URL.revokeObjectURL(url)
   }
 
-  return <div className="page expense-claims-page">
-    <div className="page-head"><div><p className="eyebrow">EXPENSE REIMBURSEMENT</p><h1>経費精算</h1><p className="sub">領収書をOneDriveへ保存して経費を申請し、管理者が領収書と明細を確認して承認・差戻しできます。</p></div><div className="head-actions">{canExport&&<button className="secondary-button" onClick={exportCsv}><Download size={17}/>CSVエクスポート</button>}<button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div></div>
+  return <div className="page expense-claims-page astryx-page astryx-expenses">
+    <div className="page-head"><div><p className="eyebrow">EXPENSE REIMBURSEMENT</p><h1>経費精算</h1><p className="sub">領収書をOneDriveへ保存して経費を申請し、管理者が領収書と明細を確認して承認・差戻しできます。</p></div><div className="head-actions">{canExport&&<Button className="ui-astryx-action" variant="secondary" label="CSVエクスポート" icon={<Download size={17}/>} onClick={exportCsv}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="経費精算を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
 
     {canOwnManage&&<form className="panel expense-claim-form" onSubmit={submit}>
@@ -165,7 +167,7 @@ export default function ExpenseClaimsPage(){
     </form>}
 
     <section className="expense-review-section">
-      <div className="metrics expense-metrics"><article className="metric"><span>申請中</span><strong>{pending}件</strong></article><article className="metric"><span>表示中</span><strong>{filtered.length}件</strong></article><article className="metric"><span>表示中合計</span><strong>{yen.format(filteredTotal)}</strong></article><article className="metric"><span>承認済合計</span><strong>{yen.format(approvedTotal)}</strong></article></div>
+      <div className="metrics expense-metrics"><Card className="metric astryx-kpi"><span>申請中</span><strong>{pending}件</strong></Card><Card className="metric astryx-kpi"><span>表示中</span><strong>{filtered.length}件</strong></Card><Card className="metric astryx-kpi"><span>表示中合計</span><strong>{yen.format(filteredTotal)}</strong></Card><Card className="metric astryx-kpi"><span>承認済合計</span><strong>{yen.format(approvedTotal)}</strong></Card></div>
       <section className="panel expense-history-panel"><div className="panel-title"><div><h2>{canReview?'申請一覧・承認':'申請履歴'}</h2><p>{canReview?'領収書をOneDriveで確認してから承認または差戻しします。':'自分の申請状況と保存した領収書を確認できます。差戻し分は修正して再申請できます。'}</p></div></div>
         <div className="toolbar expense-toolbar"><div className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="購入先・内容・申請番号を検索"/></div><input type="month" value={month} onChange={e=>setMonth(e.target.value)}/><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">全ステータス</option><option value="SUBMITTED">申請中</option><option value="APPROVED">承認済</option><option value="REJECTED">差戻し</option></select>{canReview&&<select value={applicant} onChange={e=>setApplicant(e.target.value)}><option value="">全申請者</option>{applicants.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select>}</div>
         <div className="expense-claim-list">{filtered.map(c=>{const receipts=receiptMap[c.id]||[];const canAppend=canOwnManage&&c.applicantId===me?.id&&c.status!=='APPROVED';return <article className={`expense-claim-card status-${c.status.toLowerCase()}`} key={c.id}><div className="expense-card-head"><div><span className={`expense-status ${c.status.toLowerCase()}`}>{statusLabel(c.status)}</span><h3>{c.vendor}</h3><small>{c.claimNo}</small></div><div className="expense-card-total"><span>{new Date(c.purchaseAt).toLocaleString('ja-JP')}</span><strong>{yen.format(c.totalAmountYen)}</strong><small>{c.applicantName}</small></div></div><div className="expense-card-items">{c.items.map(i=><div key={i.id}><span>{i.lineNo}</span><b>{i.description}</b><small>{num.format(i.quantity)} × {yen.format(i.unitPriceYen)} / 税率 {num.format(i.taxRate)}%</small><strong>{yen.format(i.lineTotalYen)}</strong></div>)}</div>{c.note&&<p className="expense-note">{c.note}</p>}

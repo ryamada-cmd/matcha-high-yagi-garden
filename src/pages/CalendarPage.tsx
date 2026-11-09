@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Edit3, ListChecks, Plus, RefreshCw, Sprout, Trash2, Users, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -161,15 +163,15 @@ export default function CalendarPage(){
 
   const linkedTasks=planDetail?data.tasks.filter(t=>t.linkType===planDetail.kind&&t.linkId===planDetail.plan.id):[]
 
-  return <div className="page calendar-page">
-    <div className="page-head"><div><p className="eyebrow">WORK CALENDAR</p><h1>作業カレンダー</h1><p className="sub">日々のやること・担当者・期限と、年間防除／施肥／収穫計画をひとつのカレンダーで確認します。</p></div><div className="head-actions">{canManage&&<><button className="secondary-button" onClick={()=>openHarvestNew()}><Sprout size={17}/>収穫計画</button><button className="primary-button" onClick={()=>openNewTask()}><Plus size={17}/>やること追加</button></>}<button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div></div>
+  return <div className="page calendar-page astryx-page astryx-calendar">
+    <div className="page-head"><div><p className="eyebrow">WORK CALENDAR</p><h1>作業カレンダー</h1><p className="sub">日々のやること・担当者・期限と、年間防除／施肥／収穫計画をひとつのカレンダーで確認します。</p></div><div className="head-actions">{canManage&&<><Button className="ui-astryx-action" variant="secondary" label="収穫計画" icon={<Sprout size={17}/>} onClick={()=>openHarvestNew()}/><Button className="ui-astryx-action" variant="primary" label="やること追加" icon={<Plus size={17}/>} onClick={()=>openNewTask()}/></>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="カレンダーを更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
 
     <div className="calendar-metrics">
-      <article className={overdue?'danger':''}><CircleAlert size={18}/><div><span>期限超過</span><strong>{overdue}</strong></div></article>
-      <article><CalendarDays size={18}/><div><span>今日まで</span><strong>{todayCount}</strong></div></article>
-      <article><ClipboardCheck size={18}/><div><span>7日以内</span><strong>{nextWeek}</strong></div></article>
-      <article className={unassigned?'warn':''}><Users size={18}/><div><span>担当未設定</span><strong>{unassigned}</strong></div></article>
+      <Card className={overdue?'danger':''}><CircleAlert size={18}/><div><span>期限超過</span><strong>{overdue}</strong></div></Card>
+      <Card className="astryx-kpi"><CalendarDays size={18}/><div><span>今日まで</span><strong>{todayCount}</strong></div></Card>
+      <Card className="astryx-kpi"><ClipboardCheck size={18}/><div><span>7日以内</span><strong>{nextWeek}</strong></div></Card>
+      <Card className={unassigned?'warn':''}><Users size={18}/><div><span>担当未設定</span><strong>{unassigned}</strong></div></Card>
     </div>
 
     <section className="panel calendar-shell">

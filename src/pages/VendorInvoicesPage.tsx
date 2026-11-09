@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Banknote, CalendarClock, Download, Edit3, ExternalLink, FileImage, FileText, Paperclip, Plus, RefreshCw, Search, Trash2, TriangleAlert, X } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
@@ -140,15 +142,15 @@ export default function VendorInvoicesPage(){
     const csv='\ufeff'+[header,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`請求書支払管理_${month||'全期間'}.csv`;a.click();URL.revokeObjectURL(url)
   }
 
-  return <div className="page vendor-invoices-page">
-    <div className="page-head"><div><p className="eyebrow">ACCOUNTS PAYABLE</p><h1>請求書・支払管理</h1><p className="sub">外部から届く請求書を明細単位で登録し、支払予定・支払実績・未払残高を管理します。</p></div><div className="head-actions">{canExport&&<button className="secondary-button" type="button" onClick={exportCsv} disabled={!filtered.length}><Download size={17}/>CSVエクスポート</button>}<button className="icon-button" type="button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div></div>
+  return <div className="page vendor-invoices-page astryx-page astryx-vendor-invoices">
+    <div className="page-head"><div><p className="eyebrow">ACCOUNTS PAYABLE</p><h1>請求書・支払管理</h1><p className="sub">外部から届く請求書を明細単位で登録し、支払予定・支払実績・未払残高を管理します。</p></div><div className="head-actions">{canExport&&<Button className="ui-astryx-action" variant="secondary" label="CSVエクスポート" icon={<Download size={17}/>} onClick={exportCsv} isDisabled={!filtered.length}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="支払管理を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
 
     <section className="metrics invoice-metrics">
-      <div className="metric"><span>未払残高</span><strong>{yen.format(outstanding)}</strong><small>{invoices.filter(i=>i.paymentStatus==='UNPAID'||i.paymentStatus==='PARTIAL'||i.paymentStatus==='HOLD').length}件</small></div>
-      <div className="metric warning"><span>支払期限超過</span><strong>{overdue.length}件</strong><small>{yen.format(overdue.reduce((sum,i)=>sum+Math.max(0,i.totalAmountYen-i.paidAmountYen),0))}</small></div>
-      <div className="metric"><span>今月の支払予定</span><strong>{yen.format(scheduled)}</strong><small>{currentMonth.replace('-','年')}月</small></div>
-      <div className="metric"><span>今月の支払実績</span><strong>{yen.format(paidThisMonth)}</strong><small>支払履歴から集計</small></div>
+      <Card className="metric astryx-kpi"><span>未払残高</span><strong>{yen.format(outstanding)}</strong><small>{invoices.filter(i=>i.paymentStatus==='UNPAID'||i.paymentStatus==='PARTIAL'||i.paymentStatus==='HOLD').length}件</small></Card>
+      <Card className="metric astryx-kpi"><span>支払期限超過</span><strong>{overdue.length}件</strong><small>{yen.format(overdue.reduce((sum,i)=>sum+Math.max(0,i.totalAmountYen-i.paidAmountYen),0))}</small></Card>
+      <Card className="metric astryx-kpi"><span>今月の支払予定</span><strong>{yen.format(scheduled)}</strong><small>{currentMonth.replace('-','年')}月</small></Card>
+      <Card className="metric astryx-kpi"><span>今月の支払実績</span><strong>{yen.format(paidThisMonth)}</strong><small>支払履歴から集計</small></Card>
     </section>
 
     {canManage&&<form className="panel vendor-invoice-form" onSubmit={submitInvoice}>

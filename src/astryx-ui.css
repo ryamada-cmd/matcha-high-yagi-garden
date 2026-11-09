@@ -232,3 +232,44 @@ html, body { background: #f5f7f3; }
   .astryx-products .product-master-metrics>.astryx-kpi,
   .astryx-packaging .product-packaging-metrics>.astryx-kpi { padding:12px !important; min-height:93px; }
 }
+
+/* Stage 5: documents, CRM, calendar, daily reports and finance screens */
+.astryx-documents .document-tabs,
+.astryx-crm .crm-tabs { display:flex; gap:8px; flex-wrap:wrap; }
+.astryx-documents .document-tabs button,
+.astryx-crm .crm-tabs button {
+  min-height:42px; border:1px solid #d7e5da !important;
+  background:#fff !important; border-radius:10px !important;
+  color:#477053 !important; font-weight:750 !important;
+}
+.astryx-documents .document-tabs button.active,
+.astryx-crm .crm-tabs button.active {
+  color:#fff !important; border-color:#17442b !important;
+  background:#17442b !important;
+}
+.astryx-calendar .calendar-metrics { gap:12px; }
+.astryx-calendar .calendar-metrics>.astryx-card,
+.astryx-calendar .calendar-metrics>[data-astryx-component],
+.astryx-calendar .calendar-metrics>div {
+  background:#fff !important; border:1px solid #d9e4d9 !important;
+  border-radius:15px !important; box-shadow:0 3px 18px rgba(20,57,36,.04) !important;
+}
+.astryx-documents .panel,
+.astryx-crm .panel,
+.astryx-calendar .panel,
+.astryx-daily-reports .panel,
+.astryx-expenses .panel,
+.astryx-vendor-invoices .panel { border-color:#d9e4d9 !important; border-radius:16px !important; }
+.astryx-documents .head-actions,
+.astryx-calendar .head-actions,
+.astryx-expenses .head-actions { gap:8px; }
+@media (max-width:800px){
+  .astryx-documents .document-tabs,
+  .astryx-crm .crm-tabs { flex-wrap:nowrap; max-width:100%; overflow-x:auto; }
+  .astryx-documents .document-tabs button,
+  .astryx-crm .crm-tabs button { flex:0 0 auto; }
+  .astryx-calendar .calendar-metrics>div { padding:12px !important; }
+}
+@media print {
+  .astryx-documents .no-print { display:none !important; }
+}

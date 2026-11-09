@@ -1,3 +1,4 @@
+import { Button } from '@astryxdesign/core/Button'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, CalendarClock, CircleCheck, Inbox, Mail, MessageSquareText, Plus, RefreshCw, Save, Search, Send, Settings2, Users } from 'lucide-react'
@@ -235,16 +236,16 @@ export default function CrmPage() {
       }
     } catch (error) { setError(errText(error)) } finally { setBusy(false) }
   }
-  return <div className="page crm-page">
+  return <div className="page crm-page astryx-page astryx-crm">
     <header className="page-head"><div><p className="eyebrow">YAGI ICHIBEI / SALES CRM</p><h1>営業・問い合わせ管理</h1><p className="sub">国内外のお問い合わせを案件単位で集約し、商談から受注まで管理します。</p></div>
-      <button className="icon-button" type="button" title="最新データに更新" onClick={() => void refresh()} disabled={loading}><RefreshCw size={19}/></button></header>
+      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="問い合わせ情報を更新" icon={<RefreshCw size={19}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/></header>
     {error && <div role="alert" className="notice error">{error}</div>}
     {notice && <div role="status" className="notice success">{notice}</div>}
     <div className="crm-tabs" role="tablist">
-      <button className={tab === 'inquiries' ? 'active' : ''} onClick={() => setTab('inquiries')}><Inbox size={17}/>問い合わせ・商談</button>
-      <button className={tab === 'contacts' ? 'active' : ''} onClick={() => setTab('contacts')}><Users size={17}/>取引先・担当者</button>
-      {canMail && <button className={tab === 'mail' ? 'active' : ''} onClick={() => setTab('mail')}><Settings2 size={17}/>メール連携</button>}
-      {canManage && <button className={tab === 'knowledge' ? 'active' : ''} onClick={() => setTab('knowledge')}><Save size={17}/>商品・返信条件</button>}
+      <Button className={tab === 'inquiries' ? 'active' : ''} variant="secondary" label="問い合わせ・商談" icon={<Inbox size={17}/>} aria-pressed={tab==='inquiries'} onClick={() => setTab('inquiries')}/>
+      <Button className={tab === 'contacts' ? 'active' : ''} variant="secondary" label="取引先・担当者" icon={<Users size={17}/>} aria-pressed={tab==='contacts'} onClick={() => setTab('contacts')}/>
+      {canMail && <Button className={tab === 'mail' ? 'active' : ''} variant="secondary" label="メール連携" icon={<Settings2 size={17}/>} aria-pressed={tab==='mail'} onClick={() => setTab('mail')}/>}
+      {canManage && <Button className={tab === 'knowledge' ? 'active' : ''} variant="secondary" label="商品・返信条件" icon={<Save size={17}/>} aria-pressed={tab==='knowledge'} onClick={() => setTab('knowledge')}/>}
     </div>
     {tab === 'inquiries' && <>
       <div className="crm-metrics">
@@ -255,7 +256,7 @@ export default function CrmPage() {
       </div>
       <div className="crm-layout">
         <section className="panel crm-list">
-          <div className="crm-list-head"><h2>問い合わせ一覧</h2>{canManage && <button className="primary-button" type="button" onClick={() => setSelectedId('new')}><Plus size={17}/>新規案件</button>}</div>
+          <div className="crm-list-head"><h2>問い合わせ一覧</h2>{canManage && <Button className="ui-astryx-action" variant="primary" label="新規案件" icon={<Plus size={17}/>} onClick={() => setSelectedId('new')}/>}</div>
           <div className="crm-triage-switch">
             <button className={!excludedOnly?'active':''} onClick={()=>{setExcludedOnly(false);setSelectedBatch([])}}>対応対象（{activeInquiries.length}）</button>
             <button className={excludedOnly?'active':''} onClick={()=>{setExcludedOnly(true);setSelectedBatch([])}}>除外済み（{excludedCount}）</button>

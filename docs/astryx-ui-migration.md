@@ -95,3 +95,19 @@ Supabase instance. Do not execute write tests without an isolated test database.
 Only page-level presentation was changed; pricing calculations, traceability,
 inventory mutations and role checks are unchanged.
 Visual and authenticated write-path regression tests remain outstanding.
+
+## Stage 5 (CRM, documents, scheduling, daily reports and administration)
+- `/documents`: Astryx Buttons for estimate / delivery note / invoice
+  creation, refresh and the three document-view tabs. Print logic untouched.
+- `/crm`: Astryx Buttons for refresh, tabs and new inquiry. Mail sync, reply
+  proposal and sending are not modified.
+- `/calendar`: Astryx Buttons for refresh/task/harvest plan and Card-based
+  task summary metrics.
+- `/daily-reports`: Astryx Buttons for refresh/new/submit and Cards for metrics.
+- `/expenses`: Astryx Buttons for refresh / CSV export and Cards for metrics.
+- `/vendor-invoices`: Astryx Buttons for refresh / CSV export and Cards for
+  outstanding / overdue / scheduled / paid metrics.
+
+All sensitive business logic (mail sending, document creation, expense approvals,
+payments and OCR) stays as-is. Production DB access from preview must be treated
+as **view-only** until an isolated staging database is configured.
