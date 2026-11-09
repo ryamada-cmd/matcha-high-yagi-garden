@@ -74,7 +74,7 @@ export default function CrmReplyPanel({inquiryId,onError,onNotice,onSummarySaved
         {knowledge.filter(item=>item.kind==='product'&&valid(item)).map(item=>
           <option key={item.id} value={item.id}>{item.title}{item.unit_price!==null?' · '+item.unit_price.toLocaleString()+' '+item.currency:''}</option>)}
       </select></label>
-      <label>返信言語<select value={language} onChange={e=>setLanguage(e.target.value)}><option value="ja">日本語</option><option value="en">英語</option></select></label>
+      <label>返信言語<select value={language} onChange={e=>setLanguage(e.target.value==='en'?'en':'ja')}><option value="ja">日本語</option><option value="en">英語</option></select></label>
       <button type="button" className="primary-button" disabled={busy} onClick={()=>void generate()}>
         <RefreshCw size={16}/>{busy?'作成中…':'要約・返信案を作成'}
       </button>
