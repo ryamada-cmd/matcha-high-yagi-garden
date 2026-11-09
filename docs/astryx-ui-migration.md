@@ -186,3 +186,13 @@ substitute for RLS or a complete security review.
   clicks do not accidentally discard entered values; pending operations block
   close callbacks. Dialog handles native modal focus behavior.
 - Confirm on phone that modal content scrolls and keyboard dismissal works.
+
+## Stage 10: auth gateway & tabs
+- Sign-in / signup layout uses Astryx `Card` and `Button`; required
+  email/password native inputs now use Astryx `Field` shell with stable
+  input IDs to preserve native validation and minLength=8.
+- Preview mode hides the signup tab and prominently announces read-only.
+  Password login, auth session refresh and logout still work.
+- Equipment and fertilizer tabs now use Astryx Button labels as intended,
+  avoiding duplicate children and count-label rendering.
+- Auth and workflow checks need testing with dedicated accounts before release.

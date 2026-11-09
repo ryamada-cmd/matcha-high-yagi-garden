@@ -1,3 +1,6 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
+import { Field } from '@astryxdesign/core/Field'
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
@@ -93,19 +96,20 @@ function AuthScreen() {
     } finally { setBusy(false) }
   }
 
-  return <div className="auth-page"><div className="auth-card">
+  return <div className="auth-page astryx-auth-page"><Card className="auth-card astryx-auth-card">
     <div className="auth-brand"><ShieldCheck size={34}/><div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理</h1></div></div>
+    {previewReadOnly && <div className="astryx-auth-preview-note" role="status"><ShieldCheck size={16}/>AstryX開発プレビュー：ログイン・閲覧のみ可能です。</div>}
     <p className="auth-lead">防除・施肥・摘採・製茶・製造・製品在庫・販売・帳票・圃場・機械設備・写真・ファイルを一元管理します。</p>
-    <div className="auth-tabs"><button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')} type="button">ログイン</button><button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')} type="button">新規登録</button></div>
+    <div className="auth-tabs"><Button className={mode === 'signin' ? 'active' : ''} variant="secondary" label="ログイン" aria-pressed={mode==='signin'} onClick={() => setMode('signin')}/>{!previewReadOnly && <Button className={mode === 'signup' ? 'active' : ''} variant="secondary" label="新規登録" aria-pressed={mode==='signup'} onClick={() => setMode('signup')}/>}</div>
     <form onSubmit={submit} className="auth-form">
-      {mode === 'signup' && <label>表示名<input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="例：山田"/></label>}
-      <label>メールアドレス<input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}/></label>
-      <label>パスワード<input type="password" required minLength={8} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)}/></label>
+      {mode === 'signup' && <Field className="astryx-auth-field" label="表示名" inputID="yagi-auth-name"><input id="yagi-auth-name" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="例：山田"/></Field>}
+      <Field className="astryx-auth-field" label="メールアドレス" inputID="yagi-auth-email" isRequired><input id="yagi-auth-email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}/></Field>
+      <Field className="astryx-auth-field" label="パスワード" inputID="yagi-auth-password" isRequired><input id="yagi-auth-password" type="password" required minLength={8} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)}/></Field>
       {error && <div className="notice error">{error}</div>}{message && <div className="notice success">{message}</div>}
-      <button className="primary-button" disabled={busy}>{busy ? '処理中…' : mode === 'signin' ? 'ログイン' : 'アカウントを作成'}</button>
+      <Button className="astryx-auth-submit" type="submit" variant="primary" label={busy ? '処理中…' : mode === 'signin' ? 'ログイン' : 'アカウントを作成'} isDisabled={busy}/>
     </form>
     <p className="auth-foot">新規登録後は「承認待ち」となり、管理者の承認後に利用できます。</p>
-  </div></div>
+  </Card></div>
 }
 
 function AppShell({ session }: { session: Session }) {

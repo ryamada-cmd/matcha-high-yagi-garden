@@ -368,3 +368,33 @@ html, body { background: #f5f7f3; }
   .astryx-inventory-dialog-body { padding:4px 0; }
   .astryx-inventory-dialog-body .form-grid { display:grid; grid-template-columns:1fr; }
 }
+
+/* Stage 10: login & account gateway */
+.astryx-auth-page { background:linear-gradient(150deg,#edf4eb 0%,#f9faf7 58%,#e8f2e7 100%); }
+.astryx-auth-page .astryx-auth-card {
+  width:min(440px,calc(100% - 32px)); max-width:440px;
+  background:white !important; border:1px solid #d8e4da !important;
+  border-radius:22px !important; box-shadow:0 20px 60px rgba(15,48,30,.11) !important;
+  padding:28px !important;
+}
+.astryx-auth-page .auth-brand { color:#19452f; }
+.astryx-auth-page .auth-form { display:flex; flex-direction:column; gap:16px; }
+.astryx-auth-page .astryx-auth-field { min-width:0; width:100%; }
+.astryx-auth-page .astryx-auth-field input {
+  display:block; width:100%; min-height:44px; border-radius:10px;
+  box-sizing:border-box; font-size:16px; padding:10px 13px;
+  border:1px solid #d3e1d3; background:#fff;
+}
+.astryx-auth-page .astryx-auth-field input:focus-visible {
+  outline:2px solid #75a581; outline-offset:2px;
+}
+.astryx-auth-page .astryx-auth-submit { width:100%; min-height:46px; }
+.astryx-auth-preview-note {
+  display:flex; align-items:center; gap:8px; margin:0 0 14px;
+  padding:10px 12px; background:#fff5e5; color:#714513;
+  border:1px solid #e8c993; border-radius:10px; font-size:12px;
+}
+.astryx-auth-preview-note svg { flex-shrink:0; }
+@media(max-width:600px) {
+ .astryx-auth-page .astryx-auth-card { padding:19px !important; border-radius:16px !important; }
+}
