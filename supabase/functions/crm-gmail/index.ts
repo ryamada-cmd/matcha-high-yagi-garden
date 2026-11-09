@@ -233,9 +233,18 @@ async function ingestMessage(mailbox: any, raw: any) {
   const subject = head(raw.payload, 'Subject') || '(件名なし)'
   const snippet = String(raw.snippet || '').slice(0, 2000)
   const receivedAddress = direction === 'inbound' ? detectedInquiryRecipient(raw.payload) : null
+  // Exact sender-specific rules never delete messages. They only hide related
+  // inquiries from the active list, retaining a way to review and restore.
+  const sender = direction === 'inbound' ? address(from) : ''
+  const blocked = sender
+    ? await admin.from('crm_sender_rules').select('id').eq('mailbox_id',mailbox.id)
+      .eq('sender_email',sender).eq('active',true).maybeSingle()
+    : {data:null,error:null}
+  if(blocked.error)throw blocked.error
+  const autoExcluded = Boolean(blocked.data)
   const allParts = flattenParts(raw.payload)
   const attachmentParts = allParts.filter((p: any) => p?.filename && p?.body?.attachmentId)
-  let inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage,received_address')
+  let inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage,received_address,excluded_at')
     .eq('mailbox_id', mailbox.id).eq('gmail_thread_id', threadId).maybeSingle()
   if (inquiry.error) throw inquiry.error
   let contactId: string | null = null
@@ -246,10 +255,12 @@ async function ingestMessage(mailbox: any, raw: any) {
       waiting_on: direction === 'inbound' ? 'our_team' : 'customer',
       priority: 'normal',source: 'gmail',contact_id: contactId,
       mailbox_id: mailbox.id,gmail_thread_id: threadId,
-      summary: snippet, received_address: receivedAddress, first_received_at: sent,last_message_at: sent
-    }).select('id,last_message_at,contact_id,stage,received_address').single()
+      summary: snippet, received_address: receivedAddress, first_received_at: sent,last_message_at: sent,
+      excluded_at:autoExcluded?new Date().toISOString():null,
+      excluded_reason:autoExcluded?'送信元除外ルール':null
+    }).select('id,last_message_at,contact_id,stage,received_address,excluded_at').single()
     if (created.error) {
-      inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage,received_address')
+      inquiry = await admin.from('crm_inquiries').select('id,last_message_at,contact_id,stage,received_address,excluded_at')
         .eq('mailbox_id', mailbox.id).eq('gmail_thread_id', threadId).maybeSingle()
       if (!inquiry.data) throw created.error
     } else inquiry = created
@@ -280,6 +291,10 @@ async function ingestMessage(mailbox: any, raw: any) {
     }
     if (!inquiry.data?.contact_id && contactId) update.contact_id = contactId
     if (!inquiry.data?.received_address && receivedAddress) update.received_address = receivedAddress
+    if (autoExcluded && !inquiry.data?.excluded_at) {
+      update.excluded_at = new Date().toISOString()
+      update.excluded_reason = '送信元除外ルール'
+    }
     if (['won','lost'].includes(String(inquiry.data?.stage))) delete update.waiting_on
     const saved = await admin.from('crm_inquiries').update(update).eq('id', inquiry.data!.id)
     if (saved.error) throw saved.error
