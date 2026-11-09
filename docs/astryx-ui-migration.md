@@ -310,3 +310,15 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   printing/PDF actions and underlying document side effects remain unchanged.
 - CRM inquiry, company and contact submit controls use Astryx Button.
 - All permission checks and disable-while-busy flags remain in place.
+
+## Stage 17: documents and CRM master input migration
+- Document number and customer name use Astryx Field wrappers, with existing
+  state updates and explicit save validation unchanged.
+- The customer-master Astryx Dialog now contains a native form with submit
+  semantics, a required customer-name field, TextInput email and phone inputs.
+  This prevents empty customer-name submissions before reaching the save
+  handler, while preserving the business-level validation.
+- CRM contact name and contact email now use Astryx TextInput; the email input
+  keeps its native email input type and validation.
+- Restricted to presentation/form semantics; no Supabase, pricing or mail
+  integration changes.

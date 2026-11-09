@@ -357,8 +357,8 @@ export default function CrmPage() {
       <section className="panel"><h2><Users size={19}/>担当者（{contacts.length}件）</h2>
         <div className="crm-records">{contacts.map(c => <button key={c.id} onClick={() => { setContactEdit(c.id); setContactDraft({ name:c.name, email:c.email || '',company_id:c.company_id || '',country:c.country || '',phone:c.phone || '',language:c.language || '',position:c.position || '',notes:c.notes || '' }) }}><b>{c.name || c.email}</b><small>{companyName(c.company_id)} · {c.email}</small></button>)}</div>
         {canManage && <form onSubmit={saveContactForm} className="crm-form"><h3 className="crm-wide">{contactEdit ? '担当者を編集' : '担当者を追加'}</h3>
-          <label>担当者名<input value={contactDraft.name} onChange={e => setContactDraft(x => ({ ...x, name: e.target.value }))}/></label>
-          <label>メールアドレス<input type="email" value={contactDraft.email} onChange={e => setContactDraft(x => ({ ...x, email: e.target.value }))}/></label>
+          <TextInput containerClassName="astryx-crm-master-field" label="担当者名" value={contactDraft.name} onChange={value=>setContactDraft(x=>({...x,name:value}))} width="100%"/>
+          <TextInput containerClassName="astryx-crm-master-field" label="メールアドレス" type="email" value={contactDraft.email} onChange={value=>setContactDraft(x=>({...x,email:value}))} width="100%"/>
           <label>所属企業<select value={contactDraft.company_id} onChange={e => setContactDraft(x => ({ ...x, company_id: e.target.value }))}><option value="">未登録</option>{companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
           {(['country','phone','language','position'] as const).map(key => <label key={key}>{({ country:'国',phone:'電話',language:'言語',position:'部署・役職' })[key]}<input value={contactDraft[key]} onChange={e => setContactDraft(x => ({ ...x, [key]: e.target.value }))}/></label>)}
           <label className="crm-wide">メモ<textarea rows={2} value={contactDraft.notes} onChange={e => setContactDraft(x => ({ ...x, notes: e.target.value }))}/></label>
