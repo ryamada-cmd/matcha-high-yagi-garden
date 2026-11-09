@@ -253,3 +253,15 @@ The fixture also omitted the desktop sidebar while relying on the app shell's
 two-column grid; a noninteractive placeholder sidebar now accurately reserves
 the left track in desktop QA. Browser regression checks assert real visible
 price-row text and main content width over 650px on desktop.
+
+## Stage 13: desktop price list visibility regression
+GitHub Actions' synthetic Playwright run detected a real layout collision:
+`src/documents.css` sets `.price-list-table td:first-child {display:flex}`.
+AstryX Table expects semantic table-cell layout; the first product-name text
+collapsed to a computed width of 0px. The Astryx-scoped CSS now explicitly
+restores table-cell display and lays out product text as block children.
+
+A separate QA fixture issue caused its desktop app-shell to reserve a sidebar
+column without rendering a sidebar. `qa/fixture.css` now overrides the test
+shell at desktop widths only and is imported only by `qa/main.tsx`, never the
+production bundle. Keep screenshot checks against both 1280px and 320/390px.

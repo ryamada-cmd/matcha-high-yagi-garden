@@ -53,6 +53,7 @@ import '../src/ui-refresh.css'
 import '../src/ui-refresh-safety.css'
 import '../src/ui-cohesion.css';
 import '../src/astryx-ui.css';
+import './fixture.css';
 
 const screen=new URLSearchParams(window.location.search).get('screen')||'harvest';
 const Screen=screen==='inventory'?InventoryPage:screen==='prices'?PriceListPage:HarvestProcessingPage;
