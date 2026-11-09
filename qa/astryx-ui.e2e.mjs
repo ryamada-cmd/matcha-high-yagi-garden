@@ -327,7 +327,7 @@ try {
  assert.equal(dailySaved.fields[0].legacyId,'QA-A')
  await dailyPage.locator('.daily-report-card-actions').getByRole('button',{name:'編集'}).first().click()
  await dailyPage.getByLabel('今日の作業内容').fill('架空茶園Aの整備と点検を更新')
- await dailyPage.getByRole('button',{name:'日報を更新'}).click()
+ await dailyPage.locator('.daily-report-form').getByRole('button',{name:'日報を更新'}).click()
  await dailyPage.getByText('架空茶園Aの整備と点検を更新').first().waitFor({state:'visible'})
  const dailyDims=await dailyPage.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}))
  assert.ok(dailyDims.scroll<=dailyDims.w+2,'Daily report horizontal overflow '+JSON.stringify(dailyDims))
