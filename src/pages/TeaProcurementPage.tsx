@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ArrowRight, Boxes, Factory, PackagePlus, RefreshCw, Search, Shuffle, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -137,10 +139,10 @@ export default function TeaProcurementPage(){
     finally{setBusy(false)}
   }
 
-  return <div className="page tea-procurement-page">
+  return <div className="page tea-procurement-page astryx-page astryx-tea-procurement">
     <div className="page-head">
       <div><p className="eyebrow">TEA PROCUREMENT & BLENDING</p><h1>茶の調達・ブレンド</h1><p className="sub">外部から仕入れた抹茶・ほうじ茶・京番茶などをロット管理し、ブレンド有無を選んで小分け商品化・販売へつなげます。</p></div>
-      <div className="head-actions"><Link className="secondary-button" to="/product-packaging">商品化・小分け<ArrowRight size={15}/></Link><button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div>
+      <div className="head-actions"><Link className="secondary-button" to="/product-packaging">商品化・小分け<ArrowRight size={15}/></Link><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="調達・ブレンドを更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div>
     </div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
 
@@ -150,16 +152,16 @@ export default function TeaProcurementPage(){
     </section>
 
     <div className="metrics tea-procurement-metrics">
-      <article className="metric"><span>調達ロット</span><strong>{procuredLots.length}件</strong></article>
-      <article className="metric"><span>調達・ブレンド在庫</span><strong>{num.format(managedKg)}kg</strong></article>
-      <article className="metric"><span>調達茶在庫原価</span><strong>{yen.format(procurementValue)}</strong></article>
-      <article className="metric"><span>ブレンド実績</span><strong>{blendBatches.length}件</strong></article>
+      <Card className="metric astryx-kpi"><span>調達ロット</span><strong>{procuredLots.length}件</strong></Card>
+      <Card className="metric astryx-kpi"><span>調達・ブレンド在庫</span><strong>{num.format(managedKg)}kg</strong></Card>
+      <Card className="metric astryx-kpi"><span>調達茶在庫原価</span><strong>{yen.format(procurementValue)}</strong></Card>
+      <Card className="metric astryx-kpi"><span>ブレンド実績</span><strong>{blendBatches.length}件</strong></Card>
     </div>
 
     <div className="tea-procurement-tabs">
-      <button className={tab==='procure'?'active':''} onClick={()=>setTab('procure')}><PackagePlus size={16}/>外部調達を登録</button>
-      <button className={tab==='blend'?'active':''} onClick={()=>setTab('blend')}><Shuffle size={16}/>ブレンド</button>
-      <button className={tab==='stock'?'active':''} onClick={()=>setTab('stock')}><Boxes size={16}/>調達・ブレンド在庫</button>
+      <Button className={tab==='procure'?'active':''} variant="secondary" label="外部調達を登録" icon={<PackagePlus size={16}/>} aria-pressed={tab==='procure'} onClick={()=>setTab('procure')}/>
+      <Button className={tab==='blend'?'active':''} variant="secondary" label="ブレンド" icon={<Shuffle size={16}/>} aria-pressed={tab==='blend'} onClick={()=>setTab('blend')}/>
+      <Button className={tab==='stock'?'active':''} variant="secondary" label="調達・ブレンド在庫" icon={<Boxes size={16}/>} aria-pressed={tab==='stock'} onClick={()=>setTab('stock')}/>
     </div>
 
     {tab==='procure'&&<section className="panel">
@@ -172,7 +174,7 @@ export default function TeaProcurementPage(){
         <div className="form-grid four"><label>仕入数量<input required type="number" inputMode="decimal" min="0.001" step="0.001" value={procure.quantity} onChange={e=>setProcure({...procure,quantity:e.target.value})}/></label><label>単位<select value={procure.unit} onChange={e=>setProcure({...procure,unit:e.target.value})}><option>kg</option><option>g</option></select></label><label>仕入総額（円）<input type="number" inputMode="numeric" min="0" step="1" value={procure.totalCostYen} onChange={e=>setProcure({...procure,totalCostYen:e.target.value})}/></label><label>保管場所<input value={procure.storageLocation} onChange={e=>setProcure({...procure,storageLocation:e.target.value})}/></label></div>
         <div className="tea-procure-cost-preview"><span>仕入単価</span><b>{procureUnitCost?yen.format(procureUnitCost)+' / '+procure.unit:'—'}</b></div>
         <label>備考<textarea rows={2} value={procure.note} onChange={e=>setProcure({...procure,note:e.target.value})}/></label>
-        <button className="primary-button" disabled={busy}>{busy?'登録中…':'調達茶を入庫'}</button>
+        <Button className="ui-astryx-action" type="submit" variant="primary" label={busy?'登録中…':'調達茶を入庫'} isDisabled={busy}/>
       </form>}
     </section>}
 
@@ -188,7 +190,7 @@ export default function TeaProcurementPage(){
         <div className="form-grid two"><label>作業場所<input value={blend.facility} onChange={e=>setBlend({...blend,facility:e.target.value})}/></label><label>担当者<input value={blend.operator} onChange={e=>setBlend({...blend,operator:e.target.value})}/></label></div>
         <div className="tea-blend-preview"><div><span>投入重量</span><b>{num.format(inputKg)}kg</b></div><div><span>出来高</span><b>{blend.outputQty?num.format(Number(blend.outputQty))+blend.outputUnit:'—'}</b></div><div><span>ロス率</span><b>{inputKg&&blend.outputQty?lossPct.toFixed(2)+'%':'—'}</b></div><div><span>原料＋直接費</span><b>{yen.format(blendTotalCost)}</b></div><div><span>予定単位原価</span><b>{blendUnitCost?yen.format(blendUnitCost)+' / '+blend.outputUnit:'—'}</b></div></div>
         <label>備考<textarea rows={2} value={blend.note} onChange={e=>setBlend({...blend,note:e.target.value})}/></label>
-        <button className="primary-button" disabled={busy||inputRows.length<2||!blend.outputMaterial||!blend.teaType||Number(blend.outputQty)<=0}>{busy?'保存中…':blend.id?'ブレンド変更を保存':'ブレンドして新ロットを作成'}</button>
+        <Button className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':blend.id?'ブレンド変更を保存':'ブレンドして新ロットを作成'} isDisabled={busy||inputRows.length<2||!blend.outputMaterial||!blend.teaType||Number(blend.outputQty)<=0}/>
       </form>}
       <div className="tea-blend-history"><div className="section-head"><div><h3>ブレンド履歴</h3><p>配合元ロットと使用量を保持します。</p></div><span>{blendBatches.length}件</span></div>{blendBatches.map(b=>{const output=lots.find(l=>l.id===b.outputLotId);return <article key={b.id}><div><span>{b.date} / {b.legacyId}</span><b>{b.outputMaterial}</b><small>{[output?.teaType,output?.origin,output?.grade].filter(Boolean).join(' / ')}</small></div><div className="tea-blend-lineage">{b.inputs.map(i=><span key={i.id}>{i.lotLegacyId} {i.materialName}：{num.format(i.inputQty)}{i.unit}</span>)}</div><strong>{num.format(b.outputQty)} {b.outputUnit}</strong><div className="tea-blend-actions"><Link to={'/product-packaging?source='+b.outputLotId}>商品化へ<ArrowRight size={13}/></Link>{canProcessManage&&<button onClick={()=>editBlend(b)}>編集</button>}{canProcessDelete&&<button className="danger-text-button" disabled={busy} onClick={()=>void removeBlend(b)}><Trash2 size={13}/>削除</button>}</div></article>})}{!blendBatches.length&&<p className="empty">ブレンド実績はまだありません。</p>}</div>
     </section>}
