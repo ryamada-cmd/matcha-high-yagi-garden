@@ -369,3 +369,11 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - Expense vendor is Astryx `Field`, and add-item / submit actions use Astryx
   `Button`. OCR, OneDrive, accounting and permission logic are not modified.
 - All changes remain in the feature branch. Staging Supabase not provisioned.
+
+### Stage 20: isolated vendor payment browser regression
+- Added real `VendorInvoicesPage` to QA-only browser route, with in-memory
+  `mockVendorInvoices.ts`, no-op storage and OCR modules.
+- The 390px test covers vendor search, payment Dialog opening, required
+  min=1 amount validation, a synthetic 5000-yen partial payment, readback
+  status update, Escape dismissal, horizontal overflow and zero external
+  network requests. No money is transferred and no real business data used.

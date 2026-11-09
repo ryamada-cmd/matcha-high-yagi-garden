@@ -274,6 +274,42 @@ try {
  equipment.verify();await equipment.context.close();passes++
  console.log('PASS [390px equipment] Astryx dialogs, native validation, in-memory asset + service save, Escape, no network')
 
+
+ const payable=await fixture('vendor-invoices',{width:390,height:844})
+ const bill=payable.page
+ await bill.getByText('架空資材商事').first().waitFor()
+ assert.equal(await bill.locator('.vendor-invoice-list .vendor-invoice-card').count(),1)
+ const newVendor=bill.getByLabel('請求元')
+ assert.equal(await newVendor.getAttribute('required'),'','Invoice vendor must remain required')
+ await bill.getByRole('searchbox',{name:'仕入請求書を検索'}).fill('QA-INV-001')
+ assert.equal(await bill.locator('.vendor-invoice-list .vendor-invoice-card').count(),1)
+ await bill.getByRole('searchbox',{name:'仕入請求書を検索'}).fill('')
+ await bill.locator('.vendor-invoice-list .record-payment').first().click()
+ const paymentDialog=bill.getByRole('dialog')
+ await paymentDialog.waitFor()
+ const amount=paymentDialog.getByLabel('支払金額')
+ assert.equal(await amount.getAttribute('required'),'','Payment amount must remain required')
+ assert.equal(await amount.getAttribute('min'),'1','Payment amount minimum must remain 1 yen')
+ await amount.fill('0')
+ await paymentDialog.getByRole('button',{name:'支払いを登録'}).click()
+ assert.equal(await paymentDialog.isVisible(),true,'A zero-yen payment must be rejected by native constraints')
+ await amount.fill('5000')
+ await paymentDialog.getByRole('button',{name:'支払いを登録'}).click()
+ await paymentDialog.waitFor({state:'hidden'})
+ const payment=await bill.evaluate(()=>window.__qa_vendor_payment)
+ assert.equal(payment.amountYen,5000)
+ assert.equal(payment.invoiceId,'qa-vendor-invoice-01')
+ await bill.getByText('一部支払').first().waitFor()
+ await bill.locator('.vendor-invoice-card .invoice-payment-actions button[aria-label="支払記録を編集"]').first().click()
+ await bill.getByRole('dialog').waitFor()
+ await bill.keyboard.press('Escape')
+ await bill.getByRole('dialog').waitFor({state:'hidden'})
+ const payableDims=await bill.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}))
+ assert.ok(payableDims.scroll<=payableDims.w+2,'Vendor invoices horizontal overflow '+JSON.stringify(payableDims))
+ await bill.screenshot({path:'qa/screenshots/astryx-vendor-payments-mobile-390.png',fullPage:true})
+ payable.verify();await payable.context.close();passes++
+ console.log('PASS [390px vendor payments] Astryx Dialog, native required/min validation, in-memory partial payment, Escape, no network')
+
  const compact=await fixture('inventory',{width:320,height:720})
  const k=compact.page
  await k.getByText('架空農薬A').first().waitFor()
