@@ -376,7 +376,7 @@ try {
  assert.deepEqual(await sh.evaluate(()=>window.__qa_spray_export),['QA-SPRAY-001'])
  // The sticky action column must work without manually swiping the table.
  await sh.getByTitle('明細を展開').first().click({timeout:5000})
- await sh.getByText('架空茶園A').first().waitFor({state:'visible'})
+ await sh.locator('.history-expanded').getByText('架空茶園A').first().waitFor({state:'visible'})
  const shSize=await sh.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth}))
  assert.ok(shSize.scrollWidth<=shSize.width+2,'Spray history viewport overflow '+JSON.stringify(shSize))
  await sh.screenshot({path:'qa/screenshots/astryx-spray-history-mobile-390.png',fullPage:true})
