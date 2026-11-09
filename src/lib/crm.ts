@@ -20,6 +20,7 @@ export type CrmInquiry = {
   next_action_at: string | null; requested_product: string | null; quantity_kg: number | null;
   monthly_quantity_kg: number | null; expected_amount: number | null; currency: string;
   country: string | null; received_address: string | null; customer_id: string | null; sales_document_id: string | null;
+  excluded_at: string | null; excluded_reason: string | null; excluded_by: string | null;
   first_received_at: string | null; last_message_at: string | null; created_at: string; updated_at: string
 }
 export type CrmMessage = {
