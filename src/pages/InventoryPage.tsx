@@ -1,6 +1,11 @@
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { Table, TableHeader, TableBody, TableRow, TableCell, TableHeaderCell } from '@astryxdesign/core/Table'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ArchiveRestore, ClipboardCheck, History, PackagePlus, RefreshCw, Search, Trash2, X } from 'lucide-react'
+import { ArchiveRestore, ClipboardCheck, History, PackagePlus, RefreshCw, Trash2 } from 'lucide-react'
 import {
   adjustInventoryStock,
   disposeInventoryStock,
@@ -151,7 +156,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page astryx-page astryx-inventory">
       <div className="page-head">
         <div>
           <p className="eyebrow">INVENTORY</p>
@@ -159,8 +164,8 @@ export default function InventoryPage() {
           <p className="sub">在庫は購入・散布・戻入・廃棄・棚卸調整の履歴から自動算出します。</p>
         </div>
         <div className="head-actions">
-          {canManage && <button className="primary-button inventory-add-button" onClick={()=>{setMode('receive');setError('');setSuccess('')}}><PackagePlus size={17}/>農薬を入庫</button>}
-          <button className="icon-button" onClick={() => void refresh()} disabled={loading} aria-label="更新"><RefreshCw size={18} className={loading ? 'spin' : ''}/></button>
+          {canManage && <Button className="ui-astryx-action inventory-add-button" variant="primary" label="農薬を入庫" icon={<PackagePlus size={17}/>} onClick={()=>{setMode('receive');setError('');setSuccess('')}}/>}
+          <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="農薬在庫を更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/>
         </div>
       </div>
 
@@ -168,48 +173,49 @@ export default function InventoryPage() {
       {success && <div className="notice success dashboard-notice">{success}</div>}
 
       <div className="metrics inventory-metrics">
-        <article className="metric"><span>現在庫金額</span><strong>{yen.format(total)}</strong></article>
-        <article className="metric"><span>在庫ありロット</span><strong>{active.length}件</strong></article>
-        <article className="metric"><span>90日以内期限</span><strong>{nearExpiry}件</strong></article>
-        <article className="metric"><span>入出庫履歴</span><strong>{transactions.length}件</strong></article>
+        <Card className="metric astryx-kpi"><span>現在庫金額</span><strong>{yen.format(total)}</strong></Card>
+        <Card className="metric astryx-kpi"><span>在庫ありロット</span><strong>{active.length}件</strong></Card>
+        <Card className="metric astryx-kpi"><span>90日以内期限</span><strong>{nearExpiry}件</strong></Card>
+        <Card className="metric astryx-kpi"><span>入出庫履歴</span><strong>{transactions.length}件</strong></Card>
       </div>
 
       <div className="inventory-tabs">
-        <button className={tab==='stock'?'active':''} onClick={()=>setTab('stock')}><ArchiveRestore size={16}/>在庫一覧</button>
-        <button className={tab==='history'?'active':''} onClick={()=>setTab('history')}><History size={16}/>入出庫履歴</button>
+        <Button className={tab==='stock'?'active':''} variant="secondary" label="在庫一覧" icon={<ArchiveRestore size={16}/>} aria-pressed={tab==='stock'} onClick={()=>setTab('stock')}/>
+        <Button className={tab==='history'?'active':''} variant="secondary" label="入出庫履歴" icon={<History size={16}/>} aria-pressed={tab==='history'} onClick={()=>setTab('history')}/>
       </div>
 
-      {tab === 'stock' ? <section className="panel inventory-panel">
+      {tab === 'stock' ? <Card className="panel inventory-panel astryx-section">
         <div className="toolbar">
-          <div className="search-box"><Search size={17}/><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="農薬名・ロット・購入先・保管場所を検索"/></div>
+          <TextInput containerClassName="astryx-search-field" label="農薬在庫の検索" isLabelHidden type="search" value={query} onChange={setQuery} placeholder="農薬名・ロット・購入先・保管場所を検索" hasClear width="100%"/>
           <span className="muted">{filtered.length}件</span>
         </div>
         <div className="table-wrap">
-          <table className="data-table inventory-table">
-            <thead><tr><th>農薬</th><th>残量</th><th>在庫金額</th><th>期限</th><th>購入先</th><th>保管場所</th><th>ロット</th>{canManage&&<th>操作</th>}</tr></thead>
-            <tbody>
+          <Table className="data-table inventory-table" aria-label="農薬在庫一覧" density="compact" dividers="rows" hasHover>
+            <TableHeader><TableRow isHeaderRow><TableHeaderCell>農薬</TableHeaderCell><TableHeaderCell>残量</TableHeaderCell><TableHeaderCell>在庫金額</TableHeaderCell><TableHeaderCell>期限</TableHeaderCell><TableHeaderCell>購入先</TableHeaderCell><TableHeaderCell>保管場所</TableHeaderCell><TableHeaderCell>ロット</TableHeaderCell>{canManage&&<TableHeaderCell>操作</TableHeaderCell>}</TableRow></TableHeader>
+            <TableBody>
               {filtered.map((r) => (
-                <tr key={r.lotId} className={r.balance <= 0 ? 'row-zero' : ''}>
-                  <td><b>{r.pesticideName}</b>{r.manufacturerLotNo&&<small className="cell-sub">メーカーLot: {r.manufacturerLotNo}</small>}</td>
-                  <td><span className={r.balance > 0 ? 'stock-pill' : 'stock-pill zero'}>{num.format(r.balance)} {r.unit}</span></td>
-                  <td>{yen.format(r.stockValue)}</td><td>{r.expiryDate || '—'}</td><td>{r.supplier || '—'}</td><td>{r.storage || '—'}</td><td><code>{r.legacyId || '—'}</code></td>
-                  {canManage&&<td><div className="inventory-row-actions"><button onClick={()=>openAdjust(r)}><ClipboardCheck size={14}/>棚卸</button><button className="danger-text-button" disabled={r.balance<=0} onClick={()=>openDispose(r)}><Trash2 size={14}/>廃棄</button></div></td>}
-                </tr>
+                <TableRow key={r.lotId} className={r.balance <= 0 ? 'row-zero' : ''}>
+                  <TableCell><b>{r.pesticideName}</b>{r.manufacturerLotNo&&<small className="cell-sub">メーカーLot: {r.manufacturerLotNo}</small>}</TableCell>
+                  <TableCell><span className={r.balance > 0 ? 'stock-pill' : 'stock-pill zero'}>{num.format(r.balance)} {r.unit}</span></TableCell>
+                  <TableCell>{yen.format(r.stockValue)}</TableCell><TableCell>{r.expiryDate || '—'}</TableCell><TableCell>{r.supplier || '—'}</TableCell><TableCell>{r.storage || '—'}</TableCell><TableCell><code>{r.legacyId || '—'}</code></TableCell>
+                  {canManage&&<TableCell><div className="inventory-row-actions"><button onClick={()=>openAdjust(r)}><ClipboardCheck size={14}/>棚卸</button><button className="danger-text-button" disabled={r.balance<=0} onClick={()=>openDispose(r)}><Trash2 size={14}/>廃棄</button></div></TableCell>}
+                </TableRow>
               ))}
-              {!loading && filtered.length === 0 && <tr><td colSpan={canManage?8:7} className="empty-cell">該当する在庫はありません。</td></tr>}
-            </tbody>
-          </table>
+              {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={canManage?8:7} className="empty-cell">該当する在庫はありません。</TableCell></TableRow>}
+            </TableBody>
+          </Table>
         </div>
-      </section> : <section className="panel inventory-panel">
+      </Card> : <Card className="panel inventory-panel astryx-section">
         <div className="section-head"><div><h2>入出庫履歴</h2><p className="muted">購入・散布・戻入・棚卸調整・廃棄を新しい順に表示</p></div><span className="history-count">直近{transactions.length}件</span></div>
-        <div className="table-wrap"><table className="data-table transaction-table"><thead><tr><th>日時</th><th>区分</th><th>農薬</th><th>ロット</th><th>増減</th><th>理由</th><th>担当</th></tr></thead><tbody>
-          {transactions.map(t=><tr key={t.id}><td>{t.createdAt ? new Date(t.createdAt).toLocaleString('ja-JP') : '—'}</td><td><span className={`tx-kind tx-${t.type.toLowerCase()}`}>{typeLabel[t.type]||t.type}</span></td><td><b>{t.pesticideName}</b></td><td><code>{t.legacyId||'—'}</code></td><td><strong className={t.signedQuantity>=0?'qty-plus':'qty-minus'}>{t.signedQuantity>=0?'+':''}{num.format(t.signedQuantity)} {t.unit}</strong></td><td>{t.reason||'—'}</td><td>{t.createdByName||'—'}</td></tr>)}
-          {!loading&&transactions.length===0&&<tr><td colSpan={7} className="empty-cell">入出庫履歴はありません。</td></tr>}
-        </tbody></table></div>
-      </section>}
+        <div className="table-wrap"><Table className="data-table transaction-table" aria-label="農薬入出庫履歴" density="compact" dividers="rows" hasHover><TableHeader><TableRow isHeaderRow><TableHeaderCell>日時</TableHeaderCell><TableHeaderCell>区分</TableHeaderCell><TableHeaderCell>農薬</TableHeaderCell><TableHeaderCell>ロット</TableHeaderCell><TableHeaderCell>増減</TableHeaderCell><TableHeaderCell>理由</TableHeaderCell><TableHeaderCell>担当</TableHeaderCell></TableRow></TableHeader><TableBody>
+          {transactions.map(t=><TableRow key={t.id}><TableCell>{t.createdAt ? new Date(t.createdAt).toLocaleString('ja-JP') : '—'}</TableCell><TableCell><span className={`tx-kind tx-${t.type.toLowerCase()}`}>{typeLabel[t.type]||t.type}</span></TableCell><TableCell><b>{t.pesticideName}</b></TableCell><TableCell><code>{t.legacyId||'—'}</code></TableCell><TableCell><strong className={t.signedQuantity>=0?'qty-plus':'qty-minus'}>{t.signedQuantity>=0?'+':''}{num.format(t.signedQuantity)} {t.unit}</strong></TableCell><TableCell>{t.reason||'—'}</TableCell><TableCell>{t.createdByName||'—'}</TableCell></TableRow>)}
+          {!loading&&transactions.length===0&&<TableRow><TableCell colSpan={7} className="empty-cell">入出庫履歴はありません。</TableCell></TableRow>}
+        </TableBody></Table></div>
+      </Card>}
 
-      {canManage&&mode && <div className="inventory-modal-backdrop" onMouseDown={(e)=>{if(e.target===e.currentTarget&&!busy)closeAction()}}><section className="panel inventory-modal">
-        <div className="section-head"><div><p className="eyebrow">{mode==='receive'?'RECEIVING':mode==='adjust'?'STOCKTAKE':'DISPOSAL'}</p><h2>{mode==='receive'?'農薬を入庫':mode==='adjust'?'棚卸調整':'農薬を廃棄'}</h2></div><button className="close-detail" disabled={busy} onClick={closeAction}><X size={17}/></button></div>
+      {canManage&&mode && <Dialog className="astryx-inventory-dialog" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" purpose="form" onOpenChange={(open)=>{if(!open&&!busy)closeAction()}}>
+        <DialogHeader title={mode==='receive'?'農薬を入庫':mode==='adjust'?'棚卸調整':'農薬を廃棄'} subtitle={mode==='receive'?'RECEIVING':mode==='adjust'?'STOCKTAKE':'DISPOSAL'} onOpenChange={(open)=>{if(!open&&!busy)closeAction()}}/>
+        <div className="astryx-inventory-dialog-body">
 
         {mode==='receive'&&<form className="inventory-action-form" onSubmit={submitReceive}>
           <label>農薬<select required value={receive.pesticideId} onChange={e=>setReceive({...receive,pesticideId:e.target.value})}><option value="">選択してください</option>{pesticides.map(p=><option key={p.id} value={p.id}>{p.name}{p.famicRegistrationNo?`（登録 ${p.famicRegistrationNo}）`:''}</option>)}</select></label>
@@ -237,7 +243,7 @@ export default function InventoryPage() {
           <div className="notice warning">廃棄を登録すると在庫から減算され、入出庫履歴と監査ログに残ります。</div>
           <button className="primary-button danger-submit" disabled={busy}>{busy?'反映中…':'廃棄を登録'}</button>
         </form>}
-      </section></div>}
+      </div></Dialog>}
     </div>
   )
 }
