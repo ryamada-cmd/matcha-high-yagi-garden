@@ -90,3 +90,65 @@ html, body { background: #f5f7f3; }
 @media(prefers-reduced-motion:reduce) {
  .astryx-page .metric,.astryx-page .field-master-card { transition:none !important; }
 }
+
+/* Stage 2: pesticide spray, fertilizer application, and both stock ledgers. */
+.astryx-spray .spray-layout { align-items:start; gap:18px; }
+.astryx-spray .form-panel,
+.astryx-spray .sticky-summary,
+.astryx-inventory .inventory-panel,
+.astryx-fertilizer-inventory .astryx-section {
+  border-radius:18px !important;
+  border:1px solid var(--astryx-yagi-border) !important;
+  background:#fff !important;
+  box-shadow:0 4px 18px rgba(23,61,37,.04) !important;
+}
+.astryx-spray .form-panel h2,
+.astryx-fertilization .fertilizer-application-form h2,
+.astryx-inventory .section-head h2 {
+  color:#20412b; font-weight:800; letter-spacing:-.015em;
+}
+.astryx-spray .chemical-block { border-color:#d6e6d8; border-radius:13px; }
+.astryx-spray .field-check.selected,
+.astryx-fertilization .fertilizer-field-group button.selected {
+  background:#ebf5ed !important;
+  border-color:#7fab84 !important;
+}
+.astryx-spray .sticky-summary { top:20px; }
+.astryx-spray .save-spray,
+.astryx-fertilization .fertilizer-submit { width:100%; min-height:46px; }
+.astryx-fertilization .fertilizer-application-summary { gap:9px; }
+.astryx-fertilization .fertilizer-application-summary .astryx-summary-tile {
+  min-width:0;
+  border-radius:12px !important;
+  background:#f7faf7 !important;
+  border-color:#deebdf !important;
+  box-shadow:none !important;
+}
+.astryx-inventory .inventory-tabs { gap:8px; }
+.astryx-inventory .inventory-tabs button {
+  font-weight:750 !important; border-radius:10px !important;
+  border:1px solid #d8e4d8 !important;
+}
+.astryx-inventory .inventory-tabs button.active {
+  background:#18432e !important;
+  color:#fff !important;
+  border-color:#18432e !important;
+}
+.astryx-inventory .inventory-panel .toolbar,
+.astryx-fertilizer-inventory .toolbar { margin-bottom:16px; }
+.astryx-inventory .data-table tbody tr:hover td { background:#f5f9f5 !important; }
+.astryx-fertilizer-inventory .fertilizer-stock-card {
+  border-radius:14px !important; border-color:#d9e5da !important;
+  background:#fcfdfb !important;
+}
+.astryx-page .ui-astryx-action:focus-visible {
+  outline:2px solid #6a9c73 !important; outline-offset:3px;
+}
+@media(max-width:800px) {
+  .astryx-spray .spray-layout { display:block; }
+  .astryx-spray .form-panel, .astryx-inventory .inventory-panel { padding:13px !important; }
+  .astryx-spray .sticky-summary { position:static; }
+  .astryx-inventory .inventory-tabs { overflow:auto; }
+  .astryx-inventory .inventory-tabs button { flex-shrink:0; }
+  .astryx-fertilization .fertilizer-application-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}

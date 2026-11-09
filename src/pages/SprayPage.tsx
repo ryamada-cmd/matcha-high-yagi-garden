@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Eye, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
@@ -243,10 +245,10 @@ export default function SprayPage() {
   }
 
   return (
-    <div className="page spray-page">
+    <div className="page spray-page astryx-page astryx-spray">
       <div className="page-head">
         <div><p className="eyebrow">SPRAY</p><h1>薬液調製・散布</h1><p className="sub">複数農薬の混用、希釈計算、圃場への面積比例全量配分を一括登録します。</p></div>
-        <button className="icon-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={18} className={loading ? 'spin' : ''}/></button>
+        <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="散布データを更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/>
       </div>
 
       {editingId && <div className="edit-banner"><div><b>{editingLegacy} を編集中</b><span>元の使用量を仮想的に在庫へ戻した状態で再計算し、保存時は差分だけ入出庫へ反映します。</span></div><button onClick={() => void cancelEdit()}><X size={16}/>編集をやめる</button></div>}
@@ -256,7 +258,7 @@ export default function SprayPage() {
       <div className="spray-layout">
         <div className="spray-main">
           {!canCreate&&!editingId?<section className="panel"><p className="empty">散布記録は閲覧のみ許可されています。新規登録は管理者の権限設定が必要です。</p></section>:<>
-          <section className="panel form-panel">
+          <Card className="panel form-panel astryx-section">
             <h2>1. 基本情報</h2>
             <div className="form-grid three">
               <label>散布日<input type="date" value={sprayDate} onChange={(e) => setSprayDate(e.target.value)}/></label>
@@ -269,10 +271,10 @@ export default function SprayPage() {
               <label>天候<input value={weather} onChange={(e) => setWeather(e.target.value)} placeholder="例：晴"/></label>
               <label>気温（℃）<input type="number" inputMode="decimal" step="0.1" value={temperature} onChange={(e) => setTemperature(e.target.value)}/></label>
             </div>
-          </section>
+          </Card>
 
-          <section className="panel form-panel">
-            <div className="section-head"><h2>2. 使用農薬</h2><button type="button" className="secondary-button" onClick={() => setChemicals((r) => [...r, { key: uid(), lotId: '', dilution: '' }])}><Plus size={16}/>農薬追加</button></div>
+          <Card className="panel form-panel astryx-section">
+            <div className="section-head"><h2>2. 使用農薬</h2><Button className="ui-astryx-action" variant="secondary" label="農薬追加" icon={<Plus size={16}/>} onClick={() => setChemicals((r) => [...r, { key: uid(), lotId: '', dilution: '' }])}/></div>
             <div className="chemical-list">
               {chemicals.map((c, index) => {
                 const lot = lots.find((l) => l.lotId === c.lotId)
@@ -298,16 +300,16 @@ export default function SprayPage() {
                 </div>
               })}
             </div>
-          </section>
+          </Card>
 
-          <section className="panel form-panel">
+          <Card className="panel form-panel astryx-section">
             <h2>3. 散布圃場</h2>
             <div className="field-groups">
               {groups.map(([location, fs]) => { const ids=fs.map(f=>f.id); const allSelected=ids.every(id=>selectedFields.includes(id)); return <div key={location} className="field-group"><div className="field-group-head"><h3>{location}</h3><div><button type="button" disabled={allSelected} onClick={()=>selectFieldGroup(ids)}>全選択</button><button type="button" disabled={!ids.some(id=>selectedFields.includes(id))} onClick={()=>clearFieldGroup(ids)}>解除</button></div></div><div className="field-check-grid">{fs.map((f) => <label className={`field-check ${selectedFields.includes(f.id) ? 'selected' : ''}`} key={f.id}><input type="checkbox" checked={selectedFields.includes(f.id)} onChange={(e) => setSelectedFields((old) => e.target.checked ? [...new Set([...old, f.id])] : old.filter((id) => id !== f.id))}/><b>{f.legacyId}｜{f.name}</b><span>{f.areaM2.toLocaleString()}㎡ / 標準 {f.standardL.toLocaleString()}L{f.harvestDate ? ` / 摘採予定 ${f.harvestDate}` : ''}</span></label>)}</div></div>})}
             </div>
-          </section>
+          </Card>
 
-          <section className="panel form-panel">
+          <Card className="panel form-panel astryx-section">
             <h2>4. 確認・{editingId ? '更新' : '登録'}</h2>
             <div className="check-list">
               <label><input type="checkbox" checked={preCheck} onChange={(e) => setPreCheck(e.target.checked)}/>現物ラベル・最新登録情報で収穫前日数を確認した</label>
@@ -315,19 +317,19 @@ export default function SprayPage() {
               {chemicals.length > 1 && <label><input type="checkbox" checked={mixCheck} onChange={(e) => setMixCheck(e.target.checked)}/>混用可否を現物ラベル・メーカー・公式登録情報で確認した</label>}
             </div>
             <label className="full-label">備考<textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3}/></label>
-            <button className="primary-button save-spray" onClick={() => void save()} disabled={saving}><Save size={18}/>{saving ? '在庫・履歴へ反映中…' : editingId ? '散布記録を更新' : '散布を登録'}</button>
-          </section></>}
+            <Button className="ui-astryx-action save-spray" variant="primary" label={saving ? '在庫・履歴へ反映中…' : editingId ? '散布記録を更新' : '散布を登録'} icon={<Save size={18}/>} onClick={() => void save()} isDisabled={saving}/>
+          </Card></>}
         </div>
 
         <aside className="spray-summary">
-          {(canCreate||editingId)&&<section className="panel sticky-summary">
+          {(canCreate||editingId)&&<Card className="panel sticky-summary astryx-section">
             <h2>全量散布プレビュー</h2>
             <div className="summary-numbers"><div><span>調製量</span><b>{prepared.toLocaleString()}L</b></div><div><span>標準必要量</span><b>{Math.round(totalStandard * 10) / 10}L</b></div><div><span>選択圃場</span><b>{chosen.length}圃場</b></div><div><span>残液</span><b>0L</b></div></div>
             {totalStandard > 0 && <p className="ratio-note">標準量に対して {(prepared / totalStandard * 100).toFixed(1)}% の密度で各圃場へ面積比例配分します。</p>}
             <div className="allocation-list">{allocations.map((a) => <div key={a.id}><span>{a.legacyId} {a.name}</span><b>{a.actual.toLocaleString()}L</b></div>)}</div>
-          </section>}
+          </Card>}
 
-          <section className="panel history-mini">
+          <Card className="panel history-mini astryx-section">
             <div className="section-head"><h2>散布履歴</h2><span className="history-count">{history.length}件</span></div>
             {history.map((h) => <div className="history-row history-actions-row" key={h.id}>
               <div><b>{h.legacyId}</b><span>{h.date} / {h.operator || '担当未入力'}</span><small>{h.target || '目的未入力'}</small></div>
@@ -338,7 +340,7 @@ export default function SprayPage() {
                 {canDelete&&<button className="delete-action" title="削除" disabled={deletingId === h.id} onClick={() => void remove(h.id, h.legacyId)}><Trash2 size={15}/></button>}
               </div>
             </div>)}
-          </section>
+          </Card>
 
           {(detailLoading || detail) && <section className="panel spray-detail-card">
             <div className="section-head"><h2>散布詳細</h2>{detail && <button className="close-detail" onClick={() => setDetail(null)}><X size={16}/></button>}</div>

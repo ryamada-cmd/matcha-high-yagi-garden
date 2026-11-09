@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArchiveRestore, ClipboardCheck, History, PackagePlus, RefreshCw, Search, Trash2, X } from 'lucide-react'
@@ -151,7 +153,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page astryx-page astryx-inventory">
       <div className="page-head">
         <div>
           <p className="eyebrow">INVENTORY</p>
@@ -159,8 +161,8 @@ export default function InventoryPage() {
           <p className="sub">在庫は購入・散布・戻入・廃棄・棚卸調整の履歴から自動算出します。</p>
         </div>
         <div className="head-actions">
-          {canManage && <button className="primary-button inventory-add-button" onClick={()=>{setMode('receive');setError('');setSuccess('')}}><PackagePlus size={17}/>農薬を入庫</button>}
-          <button className="icon-button" onClick={() => void refresh()} disabled={loading} aria-label="更新"><RefreshCw size={18} className={loading ? 'spin' : ''}/></button>
+          {canManage && <Button className="ui-astryx-action inventory-add-button" variant="primary" label="農薬を入庫" icon={<PackagePlus size={17}/>} onClick={()=>{setMode('receive');setError('');setSuccess('')}}/>}
+          <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="農薬在庫を更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/>
         </div>
       </div>
 
@@ -168,18 +170,18 @@ export default function InventoryPage() {
       {success && <div className="notice success dashboard-notice">{success}</div>}
 
       <div className="metrics inventory-metrics">
-        <article className="metric"><span>現在庫金額</span><strong>{yen.format(total)}</strong></article>
-        <article className="metric"><span>在庫ありロット</span><strong>{active.length}件</strong></article>
-        <article className="metric"><span>90日以内期限</span><strong>{nearExpiry}件</strong></article>
-        <article className="metric"><span>入出庫履歴</span><strong>{transactions.length}件</strong></article>
+        <Card className="metric astryx-kpi"><span>現在庫金額</span><strong>{yen.format(total)}</strong></Card>
+        <Card className="metric astryx-kpi"><span>在庫ありロット</span><strong>{active.length}件</strong></Card>
+        <Card className="metric astryx-kpi"><span>90日以内期限</span><strong>{nearExpiry}件</strong></Card>
+        <Card className="metric astryx-kpi"><span>入出庫履歴</span><strong>{transactions.length}件</strong></Card>
       </div>
 
       <div className="inventory-tabs">
-        <button className={tab==='stock'?'active':''} onClick={()=>setTab('stock')}><ArchiveRestore size={16}/>在庫一覧</button>
-        <button className={tab==='history'?'active':''} onClick={()=>setTab('history')}><History size={16}/>入出庫履歴</button>
+        <Button className={tab==='stock'?'active':''} variant="secondary" label="在庫一覧" icon={<ArchiveRestore size={16}/>} aria-pressed={tab==='stock'} onClick={()=>setTab('stock')}/>
+        <Button className={tab==='history'?'active':''} variant="secondary" label="入出庫履歴" icon={<History size={16}/>} aria-pressed={tab==='history'} onClick={()=>setTab('history')}/>
       </div>
 
-      {tab === 'stock' ? <section className="panel inventory-panel">
+      {tab === 'stock' ? <Card className="panel inventory-panel astryx-section">
         <div className="toolbar">
           <div className="search-box"><Search size={17}/><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="農薬名・ロット・購入先・保管場所を検索"/></div>
           <span className="muted">{filtered.length}件</span>
@@ -200,13 +202,13 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
-      </section> : <section className="panel inventory-panel">
+      </Card> : <Card className="panel inventory-panel astryx-section">
         <div className="section-head"><div><h2>入出庫履歴</h2><p className="muted">購入・散布・戻入・棚卸調整・廃棄を新しい順に表示</p></div><span className="history-count">直近{transactions.length}件</span></div>
         <div className="table-wrap"><table className="data-table transaction-table"><thead><tr><th>日時</th><th>区分</th><th>農薬</th><th>ロット</th><th>増減</th><th>理由</th><th>担当</th></tr></thead><tbody>
           {transactions.map(t=><tr key={t.id}><td>{t.createdAt ? new Date(t.createdAt).toLocaleString('ja-JP') : '—'}</td><td><span className={`tx-kind tx-${t.type.toLowerCase()}`}>{typeLabel[t.type]||t.type}</span></td><td><b>{t.pesticideName}</b></td><td><code>{t.legacyId||'—'}</code></td><td><strong className={t.signedQuantity>=0?'qty-plus':'qty-minus'}>{t.signedQuantity>=0?'+':''}{num.format(t.signedQuantity)} {t.unit}</strong></td><td>{t.reason||'—'}</td><td>{t.createdByName||'—'}</td></tr>)}
           {!loading&&transactions.length===0&&<tr><td colSpan={7} className="empty-cell">入出庫履歴はありません。</td></tr>}
         </tbody></table></div>
-      </section>}
+      </Card>}
 
       {canManage&&mode && <div className="inventory-modal-backdrop" onMouseDown={(e)=>{if(e.target===e.currentTarget&&!busy)closeAction()}}><section className="panel inventory-modal">
         <div className="section-head"><div><p className="eyebrow">{mode==='receive'?'RECEIVING':mode==='adjust'?'STOCKTAKE':'DISPOSAL'}</p><h2>{mode==='receive'?'農薬を入庫':mode==='adjust'?'棚卸調整':'農薬を廃棄'}</h2></div><button className="close-detail" disabled={busy} onClick={closeAction}><X size={17}/></button></div>

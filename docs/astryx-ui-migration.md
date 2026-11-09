@@ -41,3 +41,28 @@ guard, but other modules may still allow edits.
 4. Run full visual regression / accessibility review, then open release PR when ready.
 
 Reference: https://github.com/meta/astryx
+
+## Stage 2 (AstryX components, no business logic changes)
+- `/sprays`: migrated refresh, chemical-add and save actions to Astryx Button;
+  basic-info/chemical/field/confirmation cards plus history and summary to Card.
+- `/fertilizer-applications`: refresh and submit actions to Astryx Button;
+  N/P/K and total previews to Card.
+- `/inventory`: stock metrics and list/history containers to Astryx Card;
+  receive, refresh, and tabs to Astryx Button.
+- `/fertilizer-inventory`: receive and refresh actions to Astryx Button;
+  stock metrics and listing panel to Astryx Card.
+- Added responsive styles in the existing `src/astryx-ui.css` layer.
+
+All original state machines, data loaders, save/update/delete functions, field
+selection, dilution/allocation, N/P/K calculations and validations remain in place.
+
+### Stage 2 QA checklist
+- [ ] Spray dilution/stock warnings, 1000 L/300 L/1200 L quick options, field selection
+- [ ] Spray history, read detail, role-gated edit and delete actions
+- [ ] Fertilizer N/P/K / inventory shortage, editing delta and history
+- [ ] Inventory tabs, search, received lot, stocktake and disposal dialogs
+- [ ] Fertilizer lot lookup, stock search, receive/stocktake/disposal
+- [ ] Smartphone bottom navigation, keyboard focus and safe-area handling
+
+**Warning:** Non-production Vercel previews may still point at the production
+Supabase instance. Do not execute write tests without an isolated test database.
