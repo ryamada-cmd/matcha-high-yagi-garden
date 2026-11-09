@@ -14,7 +14,12 @@ const products:QAProduct[]=[
 export async function loadProducts(){return products.map(x=>({...x}))}
 export async function saveProduct(input:QAProduct){
  const at=products.findIndex(x=>x.id===input.id);
- if(at<0)throw Error('架空商品が見つかりません');
+ if(at<0){
+   const id='qa-product-'+(products.length+1);
+   products.push({...input,id,createdAt:'',updatedAt:''} as QAProduct);
+   (window as any).__qa_product_create={...input,id};
+   return id;
+ }
  products[at]={...input};
  (window as any).__qa_price_save={...input};
  return input.id;

@@ -1,5 +1,5 @@
 /**
- * Real Astryx InventoryPage / PriceListPage, isolated with in-memory mock
+ * Real Astryx InventoryPage / PriceListPage / ProductMaster / FertilizerMaster, isolated with in-memory mock
  * stores. All external requests are denied by Playwright's routing layer.
  */
 import assert from 'node:assert/strict'
@@ -85,6 +85,52 @@ try {
  assert.ok(dims2.scroll<=dims2.w+2,JSON.stringify(dims2))
  prices.verify();await prices.context.close();passes++
  console.log('PASS [1280px prices] real Table + TextInput, filter, Dialog focus and Escape, no network')
+
+
+ const products=await fixture('products',{width:390,height:844})
+ const a=products.page
+ await a.getByText('架空抹茶 30g').first().waitFor()
+ assert.equal(await a.locator('.product-master-grid .product-master-card').count(),3)
+ assert.ok(await a.locator('.product-master-grid .product-master-card').first().evaluate(el=>el.className.includes('astryx-card')),'Product master must use actual Astryx Card')
+ await a.getByRole('searchbox',{name:'商品マスタを検索'}).fill('QA-MATCHA')
+ assert.equal(await a.locator('.product-master-grid .product-master-card').count(),1)
+ await a.getByRole('searchbox',{name:'商品マスタを検索'}).fill('')
+ await a.getByRole('button',{name:'商品を追加'}).click()
+ const addDialog=a.getByRole('dialog')
+ await addDialog.waitFor()
+ await addDialog.getByLabel('SKU').fill('QA-NEW-30')
+ await addDialog.getByLabel('商品名').fill('架空新商品 30g')
+ const modalDims=await a.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}))
+ assert.ok(modalDims.scroll<=modalDims.w+2,'Product add dialog viewport overflow '+JSON.stringify(modalDims))
+ await addDialog.getByRole('button',{name:'保存'}).click()
+ await a.getByText('架空新商品 30g').first().waitFor({state:'visible'})
+ const created=await a.evaluate(()=>window.__qa_product_create)
+ assert.equal(created.sku,'QA-NEW-30')
+ await a.screenshot({path:'qa/screenshots/astryx-product-master-mobile-390.png',fullPage:true})
+ products.verify();await products.context.close();passes++
+ console.log('PASS [390px products] Astryx Card, search, modal required fields, synthetic create, no viewport overflow or external network')
+
+ const fertilizer=await fixture('fertilizers',{width:320,height:720})
+ const f=fertilizer.page
+ await f.getByText('架空肥料A').first().waitFor()
+ assert.equal(await f.locator('.fertilizer-master-grid .fertilizer-master-card').count(),2)
+ await f.getByRole('searchbox',{name:'肥料マスタを検索'}).fill('QA-FERT-B')
+ assert.equal(await f.locator('.fertilizer-master-grid .fertilizer-master-card').count(),1)
+ await f.getByRole('searchbox',{name:'肥料マスタを検索'}).fill('')
+ await f.getByRole('button',{name:'肥料を追加'}).click()
+ const fertDialog=f.getByRole('dialog')
+ await fertDialog.waitFor()
+ await fertDialog.getByLabel('肥料名').fill('架空追加肥料D')
+ const fertDims=await f.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}))
+ assert.ok(fertDims.scroll<=fertDims.w+2,'Fertilizer dialog viewport overflow '+JSON.stringify(fertDims))
+ await f.keyboard.press('Escape')
+ await fertDialog.waitFor({state:'hidden'})
+ await f.getByRole('button',{name:/農水省 公式肥料DB/}).click()
+ await f.getByText('架空公式肥料C').first().waitFor()
+ assert.ok(await f.locator('.official-fertilizer-list .official-fertilizer-card').count()===1)
+ await f.screenshot({path:'qa/screenshots/astryx-fertilizer-master-mobile-320.png',fullPage:true})
+ fertilizer.verify();await fertilizer.context.close();passes++
+ console.log('PASS [320px fertilizers] Astryx Card, local official search, modal Escape, no viewport overflow or external network')
 
  const compact=await fixture('inventory',{width:320,height:720})
  const k=compact.page

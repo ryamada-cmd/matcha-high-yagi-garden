@@ -265,3 +265,12 @@ A separate QA fixture issue caused its desktop app-shell to reserve a sidebar
 column without rendering a sidebar. `qa/fixture.css` now overrides the test
 shell at desktop widths only and is imported only by `qa/main.tsx`, never the
 production bundle. Keep screenshot checks against both 1280px and 320/390px.
+
+## Stage 14: product and fertilizer Card migration + isolated browser QA
+- Product master SKU cards and fertilizer master/official cards use actual Astryx Card components.
+- Existing item search, permissions, save and import handlers are preserved.
+- The browser test fixture can now mount real ProductMasterPage and FertilizerMasterPage
+  with mock modules that have no Supabase imports or credentials.
+- QA covers product filter/create at 390px and fertilizer filtering, dialog Escape,
+  official data tab at 320px. All external network requests are blocked by Playwright.
+- Synthetic writes only modify in-memory QA arrays, never production.

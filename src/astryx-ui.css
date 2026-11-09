@@ -443,3 +443,30 @@ html, body { background: #f5f7f3; }
   min-width:0;
   overflow-wrap:anywhere;
 }
+
+/* Stage 14: native Astryx Card shells for product & fertilizer masters */
+.astryx-products .product-master-grid>.product-master-card,
+.astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card,
+.astryx-fertilizers-master .official-fertilizer-list>.official-fertilizer-card {
+  background:#fff !important;
+  border:1px solid #dce7dd !important;
+  border-radius:16px !important;
+  box-shadow:0 3px 16px rgba(20,56,34,.045) !important;
+  min-width:0;
+  transition:box-shadow .15s ease,border-color .15s ease;
+}
+.astryx-products .product-master-grid>.product-master-card:hover,
+.astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card:hover,
+.astryx-fertilizers-master .official-fertilizer-list>.official-fertilizer-card:hover {
+  border-color:#a6c6ac !important;
+  box-shadow:0 8px 22px rgba(20,56,34,.07) !important;
+}
+.astryx-products .product-master-grid>.product-master-card.inactive,
+.astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card.inactive { opacity:.72; }
+@media(max-width:600px){
+  .astryx-products .product-master-grid>.product-master-card,
+  .astryx-fertilizers-master .fertilizer-master-grid>.fertilizer-master-card { padding:12px !important; }
+  .astryx-products .product-master-toolbar,
+  .astryx-fertilizers-master .toolbar { min-width:0; }
+  .astryx-products .product-master-toolbar .astryx-search-field { min-width:0; width:100%; }
+}
