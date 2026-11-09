@@ -572,3 +572,32 @@ html, body { background: #f5f7f3; }
  .astryx-equipment-dialog .form-grid { grid-template-columns:1fr; min-width:0; }
  .astryx-equipment-dialog .equipment-form-actions button { flex:1; min-height:44px; }
 }
+
+/* Stage 20: financial payment dialog and daily/expense required fields */
+.astryx-vendor-payment-dialog {
+  box-sizing:border-box;
+  max-width:calc(100vw - 24px);
+  background:#fff !important; border:1px solid #d1e2d4 !important;
+  border-radius:18px !important;
+  box-shadow:0 24px 88px rgba(16,44,27,.22) !important;
+}
+.astryx-vendor-payment-dialog::backdrop { background:rgba(12,37,22,.54); }
+.astryx-vendor-payment-body { padding:9px 0 5px; min-width:0; }
+.astryx-vendor-payment-dialog .invoice-payment-form { min-width:0; }
+.astryx-vendor-payment-dialog .payment-form-grid { min-width:0; }
+.astryx-finance-field, .astryx-operations-field { min-width:0; width:100%; }
+.astryx-finance-field input, .astryx-operations-field input, .astryx-operations-field textarea {
+  display:block; box-sizing:border-box; width:100%; min-width:0; max-width:100%;
+  background:#fff; border:1px solid #d1dfd3; border-radius:10px;
+  min-height:44px; padding:9px 12px; font-size:16px;
+}
+.astryx-finance-field input:focus-visible,
+.astryx-operations-field :is(input,textarea):focus-visible { outline:2px solid #82b18b; outline-offset:2px; }
+.astryx-daily-reports .daily-report-form .full-label.astryx-operations-field { display:grid; gap:8px; }
+@media(max-width:800px) {
+ .astryx-vendor-payment-dialog { border-radius:14px !important; }
+ .astryx-vendor-payment-body { padding:4px 0; }
+ .astryx-vendor-payment-dialog .payment-form-grid { grid-template-columns:1fr; }
+ .astryx-vendor-payment-dialog .invoice-modal-actions { display:flex; gap:8px; }
+ .astryx-vendor-payment-dialog .invoice-modal-actions button { flex:1; min-height:44px; }
+}

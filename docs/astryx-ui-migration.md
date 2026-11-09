@@ -357,3 +357,15 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   horizontal overflow, and zero external requests.
 - In-memory sample records are clearly fictitious, never copied from
   production. The real equipment service / Supabase connection is not used.
+
+## Stage 20: payment-record dialog and daily / expense form controls
+- Vendor invoice payment editor changed from custom `role=dialog` overlay to
+  real Astryx `Dialog` + `DialogHeader`, retaining busy-state dismissal
+  guard, native date and minimum-amount checks, and original RPC/save handler.
+- Payment amount and invoice source use Astryx `Field` with native required
+  validation; save actions use Astryx `Button` with submit semantics.
+- Daily report weather uses Astryx `TextInput`; work summary uses Astryx
+  `Field` retaining `textarea required`.
+- Expense vendor is Astryx `Field`, and add-item / submit actions use Astryx
+  `Button`. OCR, OneDrive, accounting and permission logic are not modified.
+- All changes remain in the feature branch. Staging Supabase not provisioned.
