@@ -170,6 +170,39 @@ try {
  cal.verify();await cal.context.close();passes++
  console.log('PASS [390px calendar] Astryx Task/Harvest Dialog, native required/date, synthetic save, Escape, no external network')
 
+
+ const documents=await fixture('documents',{width:390,height:844})
+ const doc=documents.page
+ await doc.getByRole('button',{name:'取引先・発行元'}).click()
+ await doc.locator('.customer-master-list').getByText('架空卸売店').waitFor()
+ await doc.getByRole('button',{name:'追加',exact:true}).click()
+ const customerDialog=doc.getByRole('dialog')
+ await customerDialog.waitFor()
+ assert.equal(await customerDialog.getByLabel('取引先名').getAttribute('required'),'','Customer name must retain required validation')
+ await customerDialog.getByRole('button',{name:'保存',exact:true}).click()
+ assert.equal(await customerDialog.isVisible(),true,'Empty name must block submit')
+ assert.equal(await customerDialog.getByLabel('取引先名').evaluate(el=>el.validity.valueMissing),true,'Native validation should reject empty customer name')
+ await customerDialog.getByLabel('取引先名').fill('架空抹茶問屋')
+ await customerDialog.getByLabel('メール').fill('example@qa.invalid')
+ await customerDialog.getByRole('button',{name:'保存',exact:true}).click()
+ await customerDialog.waitFor({state:'hidden'})
+ assert.equal((await doc.evaluate(()=>window.__qa_doc_customer)).name,'架空抹茶問屋')
+ await doc.getByRole('button',{name:'見積書を作成'}).click()
+ await doc.getByLabel('取引先名').fill('架空抹茶問屋')
+ await doc.locator('.item-name-input').first().fill('架空抹茶サンプル')
+ await doc.getByRole('button',{name:'下書き保存'}).click()
+ const savedDoc=await doc.evaluate(()=>window.__qa_document_saved)
+ assert.equal(savedDoc.documentType,'ESTIMATE')
+ assert.equal(savedDoc.status,'DRAFT')
+ assert.equal(savedDoc.customerName,'架空抹茶問屋')
+ await doc.getByRole('button',{name:'帳票一覧'}).click()
+ await doc.getByText('架空抹茶問屋').first().waitFor()
+ const docDims=await doc.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}))
+ assert.ok(docDims.scroll<=docDims.w+2,'Document master viewport overflow '+JSON.stringify(docDims))
+ await doc.screenshot({path:'qa/screenshots/astryx-documents-mobile-390.png',fullPage:true})
+ documents.verify();await documents.context.close();passes++
+ console.log('PASS [390px documents] actual Astryx customer Dialog, native required validation, in-memory customer + estimate draft, no network')
+
  const compact=await fixture('inventory',{width:320,height:720})
  const k=compact.page
  await k.getByText('架空農薬A').first().waitFor()

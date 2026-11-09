@@ -322,3 +322,11 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   keeps its native email input type and validation.
 - Restricted to presentation/form semantics; no Supabase, pricing or mail
   integration changes.
+
+### Stage 17 QA: isolated document customer and estimate draft
+- Added `DocumentsPage` to QA-only fixture, using in-memory
+  `qa/mockDocuments.ts` and a no-op PDF/OneDrive adapter.
+- The browser test verifies the empty customer-name native `required`
+  constraint, customer add / save, and estimate draft save without network.
+- Synthetic business data is used; no real customer, invoice, or OneDrive
+  content is touched.
