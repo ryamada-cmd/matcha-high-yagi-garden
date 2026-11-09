@@ -350,3 +350,21 @@ html, body { background: #f5f7f3; }
  .astryx-page .astryx-table { font-size:12px; }
  .astryx-page .astryx-search-field { min-width:0; }
 }
+
+/* Stage 9: Astryx native-dialog based stocktaking / item edit workflows */
+.astryx-inventory-dialog {
+  max-width:calc(100vw - 24px); box-sizing:border-box;
+  background:#fff !important; border:1px solid #cee0d0 !important;
+  border-radius:18px !important; box-shadow:0 26px 90px rgba(12,36,25,.24) !important;
+}
+.astryx-inventory-dialog::backdrop { background:rgba(12,34,24,.52); }
+.astryx-inventory-dialog-body { padding:8px 0 4px; min-width:0; }
+.astryx-inventory-dialog-body .inventory-action-form { width:100%; max-width:100%; }
+.astryx-inventory-dialog-body .price-edit-grid { margin:12px 0 20px; }
+.astryx-inventory-dialog-body .form-grid { gap:12px; }
+.astryx-inventory-dialog-body :where(input,select,textarea) { max-width:100%; }
+@media(max-width:600px) {
+  .astryx-inventory-dialog { border-radius:14px !important; }
+  .astryx-inventory-dialog-body { padding:4px 0; }
+  .astryx-inventory-dialog-body .form-grid { display:grid; grid-template-columns:1fr; }
+}

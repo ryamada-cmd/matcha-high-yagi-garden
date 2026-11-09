@@ -1,10 +1,11 @@
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHeaderCell } from '@astryxdesign/core/Table'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ArchiveRestore, ClipboardCheck, History, PackagePlus, RefreshCw, Trash2, X } from 'lucide-react'
+import { ArchiveRestore, ClipboardCheck, History, PackagePlus, RefreshCw, Trash2 } from 'lucide-react'
 import {
   adjustInventoryStock,
   disposeInventoryStock,
@@ -212,8 +213,9 @@ export default function InventoryPage() {
         </TableBody></Table></div>
       </Card>}
 
-      {canManage&&mode && <div className="inventory-modal-backdrop" onMouseDown={(e)=>{if(e.target===e.currentTarget&&!busy)closeAction()}}><section className="panel inventory-modal">
-        <div className="section-head"><div><p className="eyebrow">{mode==='receive'?'RECEIVING':mode==='adjust'?'STOCKTAKE':'DISPOSAL'}</p><h2>{mode==='receive'?'農薬を入庫':mode==='adjust'?'棚卸調整':'農薬を廃棄'}</h2></div><button className="close-detail" disabled={busy} onClick={closeAction}><X size={17}/></button></div>
+      {canManage&&mode && <Dialog className="astryx-inventory-dialog" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" purpose="form" onOpenChange={(open)=>{if(!open&&!busy)closeAction()}}>
+        <DialogHeader title={mode==='receive'?'農薬を入庫':mode==='adjust'?'棚卸調整':'農薬を廃棄'} subtitle={mode==='receive'?'RECEIVING':mode==='adjust'?'STOCKTAKE':'DISPOSAL'} onOpenChange={(open)=>{if(!open&&!busy)closeAction()}}/>
+        <div className="astryx-inventory-dialog-body">
 
         {mode==='receive'&&<form className="inventory-action-form" onSubmit={submitReceive}>
           <label>農薬<select required value={receive.pesticideId} onChange={e=>setReceive({...receive,pesticideId:e.target.value})}><option value="">選択してください</option>{pesticides.map(p=><option key={p.id} value={p.id}>{p.name}{p.famicRegistrationNo?`（登録 ${p.famicRegistrationNo}）`:''}</option>)}</select></label>
@@ -241,7 +243,7 @@ export default function InventoryPage() {
           <div className="notice warning">廃棄を登録すると在庫から減算され、入出庫履歴と監査ログに残ります。</div>
           <button className="primary-button danger-submit" disabled={busy}>{busy?'反映中…':'廃棄を登録'}</button>
         </form>}
-      </section></div>}
+      </div></Dialog>}
     </div>
   )
 }

@@ -174,3 +174,15 @@ substitute for RLS or a complete security review.
   serialization.
 - All complex business forms, tables and dialogs not explicitly migrated
   remain untouched; real device UI QA still required.
+
+## Stage 9: Astryx Dialog for stock and price workflows
+- Pesticide inventory receiving, stocktake, disposal:
+  native `Dialog` and `DialogHeader` replace the custom backdrop / modal
+  while retaining all existing form handlers and validation.
+- Fertilizer inventory receiving, stocktake, disposal: same.
+- Price-list edit modal: native `Dialog` and `DialogHeader`; price editing
+  logic, controlled values and save action unchanged.
+- `purpose="form"`: Escape can dismiss an idle dialog, while backdrop
+  clicks do not accidentally discard entered values; pending operations block
+  close callbacks. Dialog handles native modal focus behavior.
+- Confirm on phone that modal content scrolls and keyboard dismissal works.
