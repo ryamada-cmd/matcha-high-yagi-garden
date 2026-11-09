@@ -27,7 +27,9 @@ export default defineConfig({
     const crm=page.endsWith('/src/pages/CrmPage.tsx');
     const equipment=page.endsWith('/src/pages/EquipmentPage.tsx');
     const vendor=page.endsWith('/src/pages/VendorInvoicesPage.tsx');
-    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor){
+    const daily=page.endsWith('/src/pages/DailyReportsPage.tsx');
+    const expense=page.endsWith('/src/pages/ExpenseClaimsPage.tsx');
+    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
@@ -45,6 +47,11 @@ export default defineConfig({
       if(vendor&&source==='../lib/vendorInvoices')return path.join(root,'qa/mockVendorInvoices.ts');
       if(vendor&&source==='../lib/vendorDocuments')return path.join(root,'qa/mockVendorDocuments.ts');
       if(vendor&&source==='../lib/documentOcr')return path.join(root,'qa/mockVendorDocumentOcr.ts');
+      if(daily&&source==='../lib/dailyReports')return path.join(root,'qa/mockDailyReports.ts');
+      if(daily&&source==='../lib/photoGallery')return path.join(root,'qa/mockDailyPhotos.ts');
+      if(expense&&source==='../lib/expenseClaims')return path.join(root,'qa/mockExpenseClaims.ts');
+      if(expense&&source==='../lib/expenseReceipts')return path.join(root,'qa/mockExpenseReceipts.ts');
+      if(expense&&source==='../lib/documentOcr')return path.join(root,'qa/mockVendorDocumentOcr.ts');
     }
     return null;
    },

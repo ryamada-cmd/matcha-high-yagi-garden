@@ -377,3 +377,11 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   min=1 amount validation, a synthetic 5000-yen partial payment, readback
   status update, Escape dismissal, horizontal overflow and zero external
   network requests. No money is transferred and no real business data used.
+
+## Stage 21: synthetic daily report / expense workflows
+- Added DailyReportsPage and ExpenseClaimsPage to QA-only browser fixtures.
+- In-memory service stubs for daily reports, photo gallery, expense claims and
+  receipt storage; no Supabase, OneDrive, Gmail, OCR, or real business data.
+- QA validates daily report creation/edit with a field selection, and an
+  expense with 2 item lines, a fictional PDF receipt and a 7100-yen total.
+- All outward network requests are blocked by Playwright.
