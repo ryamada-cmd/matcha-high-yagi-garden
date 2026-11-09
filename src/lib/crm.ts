@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
-export const PRIMARY_INQUIRY_RECIPIENTS = ['info@matchahigh.com', 'info@godaimeyagiichibei.com'] as const
-export const DEFAULT_GMAIL_SEARCH = '{to:info@matchahigh.com to:info@godaimeyagiichibei.com}'
+export const PRIMARY_INQUIRY_RECIPIENTS = ['info@matchahigh.jp', 'info@godaimeyagiichibei.com'] as const
+export const DEFAULT_GMAIL_SEARCH = '{to:info@matchahigh.jp to:info@godaimeyagiichibei.com}'
 
 export type CrmAssignee = { id: string; display_name: string }
 export type CrmCompany = {
