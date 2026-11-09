@@ -136,3 +136,25 @@ complete component-by-component migration.
 - Staging DB needed before write-path testing, as Vercel previews may share
   Supabase production configuration. Keep preview interactions read-only.
 - Verify global CSS layers and Astryx reset for unaffected components.
+
+## Stage 7: enforced preview read-only gate
+A release-blocking safety guard was added to `src/lib/previewSafety.ts`
+and hooked through `src/lib/supabase.ts` and `src/main.tsx`:
+- All non-GET / non-HEAD Supabase table writes, storage uploads, auth sign-ups
+  and unknown RPCs fail closed in the migration branch.
+- Only a documented read-only RPC allowlist and auth token/logout POSTs pass.
+- Edge Functions are blocked in previews, including on GET, because they may
+  have side effects; mail sync, OCR via Edge Functions, external storage writes
+  and AI replies are unavailable in read-only review mode.
+- A persistent amber banner makes it clear the Preview must not be used for
+  registration, editing, deleting, invoicing, sending, syncing or approvals.
+- Also guards direct window.fetch to the configured Supabase origin, plus the
+  Supabase client's explicit global.fetch integration.
+- Pure tests: `npm run test:preview-safety`.
+
+### Important release requirement
+`VITE_ASTRYX_PREVIEW_READONLY` defaults to true on this feature branch.
+It **must remain enabled** on every preview tied to a production Supabase URL.
+An approved production release requires explicit env and DB review, removal or
+adjustment of the guard and an isolated staging plan. The gate is not a
+substitute for RLS or a complete security review.

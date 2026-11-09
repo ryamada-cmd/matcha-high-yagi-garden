@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } f
 import type { Session } from '@supabase/supabase-js'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Home, SprayCan, Boxes, MapPinned, CalendarDays, CalendarClock, ShieldCheck, LogOut, Database, History, Settings, Menu, X, ChevronRight, Leaf, Scissors, Factory, ShoppingCart, Package, PackageCheck, ClipboardList, ReceiptText, BookOpen, Tractor, FileCheck2, LockKeyhole, Tags, FileText, Cloud, Images, PackagePlus, Calculator, Archive, MessagesSquare } from 'lucide-react'
-import { supabase } from './lib/supabase'
+import { supabase, previewReadOnly } from './lib/supabase'
 import { AppPermissionProvider, useAppPermissions } from './lib/permissions'
 import HomeDashboardPage from './pages/HomeDashboardPage'
 
@@ -178,7 +178,9 @@ function AppShell({ session }: { session: Session }) {
 
     <header className="mobile-topbar"><div className="mobile-brand mobile-logo-block"><img className="app-brand-logo" src="/yagi-ichibei-logo.svg" alt="五代目八木一兵衛"/></div><button type="button" className="mobile-menu-trigger" aria-label="メニューを開く" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={22}/></button></header>
 
-    <main><Suspense fallback={<RouteFallback/>}><Routes>
+    <main>
+      {previewReadOnly && <div className="astryx-preview-banner" role="status"><ShieldCheck size={18}/><span><strong>AstryX開発プレビュー｜閲覧専用</strong> 登録・編集・削除・送信・同期は通信段階でブロックされます。</span></div>}
+      <Suspense fallback={<RouteFallback/>}><Routes>
       <Route path="/" element={<PermissionRoute permission="dashboard.view"><HomeDashboardPage/></PermissionRoute>}/>
       <Route path="/sprays" element={<PermissionRoute permission="sprays.view"><SprayPage/></PermissionRoute>}/><Route path="/spray-history" element={<PermissionRoute permission="sprays.view"><SprayHistoryPage/></PermissionRoute>}/><Route path="/inventory" element={<PermissionRoute permission="pesticide_inventory.view"><InventoryPage/></PermissionRoute>}/><Route path="/pesticides" element={<PermissionRoute permission="pesticides.view"><PesticideCatalogPage/></PermissionRoute>}/><Route path="/plans" element={<PermissionRoute permission="spray_plans.view"><PlansPage/></PermissionRoute>}/>
       <Route path="/fertilizer-applications" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerApplicationPage/></PermissionRoute>}/><Route path="/fertilizer-history" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerHistoryPage/></PermissionRoute>}/><Route path="/fertilizer-inventory" element={<PermissionRoute permission="fertilizer_inventory.view"><FertilizerInventoryPage/></PermissionRoute>}/><Route path="/fertilizers" element={<PermissionRoute permission="fertilizers.view"><FertilizerMasterPage/></PermissionRoute>}/><Route path="/fertilizer-plans" element={<PermissionRoute permission="fertilizer_plans.view"><FertilizerPlansPage/></PermissionRoute>}/>

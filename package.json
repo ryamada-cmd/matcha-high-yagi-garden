@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "check:manual": "node scripts/check-manual-coverage.mjs",
-    "test:harvest": "node --experimental-strip-types --test scripts/harvest-provenance.test.mjs"
+    "test:harvest": "node --experimental-strip-types --test scripts/harvest-provenance.test.mjs",
+    "test:preview-safety": "node --experimental-strip-types --test scripts/preview-readonly.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

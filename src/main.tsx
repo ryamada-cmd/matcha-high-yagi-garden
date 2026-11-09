@@ -2,6 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { previewReadOnly, supabaseBackendUrl } from './lib/supabase'
+import { installPreviewFetchGuard } from './lib/previewSafety'
 import { Theme } from '@astryxdesign/core/theme'
 import { matchaTheme } from '@astryxdesign/theme-matcha/built'
 import '@astryxdesign/core/reset.css'
@@ -52,6 +54,8 @@ import './ui-refresh.css'
 import './ui-refresh-safety.css'
 import './ui-cohesion.css'
 import './astryx-ui.css'
+
+if (previewReadOnly) installPreviewFetchGuard(supabaseBackendUrl)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
