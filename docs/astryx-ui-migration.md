@@ -283,3 +283,15 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - Playwright confirms native required attributes in the synthetic dialogs.
 - Do not replace numeric/date/checkbox inputs without preserving their
   native min/step/required logic and field validation in a dedicated test.
+
+## Stage 16: Calendar, Documents, CRM editing controls
+- Work calendar: task editor, annual-plan detail and harvest-plan editor
+  now use genuine Astryx Dialog/DialogHeader, preserving submit functions,
+  task deletion and date/time native inputs. Task title and harvest season use
+  Astryx Field, retaining native HTML required validation.
+- Sales documents: customer-master edit/add dialog now uses Astryx
+  Dialog/DialogHeader, preserving its existing save and authorization logic.
+- CRM: inquiry search uses Astryx TextInput; inquiry subject and company name
+  use Astryx Field with native required inputs.
+- Existing Supabase logic, data types, email sending and permissions are untouched.
+- Isolated browser QA and responsive regression checks are required before merge.

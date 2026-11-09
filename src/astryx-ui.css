@@ -484,3 +484,40 @@ html, body { background: #f5f7f3; }
   outline:2px solid #82ae8b; outline-offset:1px;
 }
 .astryx-master-dialog .form-grid .astryx-master-field { min-width:0; }
+
+/* Stage 16: Calendar, Documents and CRM master-edit surfaces */
+.astryx-calendar-dialog,
+.astryx-document-customer-dialog {
+  box-sizing:border-box; max-width:calc(100vw - 24px);
+  background:#fff !important; border:1px solid #d4e4d6 !important;
+  border-radius:18px !important; box-shadow:0 24px 85px rgba(15,48,29,.19) !important;
+}
+.astryx-calendar-dialog::backdrop,
+.astryx-document-customer-dialog::backdrop { background:rgba(11,30,20,.5); }
+.astryx-calendar-dialog-body, .astryx-customer-dialog-body { padding:9px 0 6px; min-width:0; }
+.astryx-calendar-dialog-body .calendar-task-form { display:grid; gap:12px; min-width:0; }
+.astryx-calendar-dialog-body .calendar-category-picks { min-width:0; }
+.astryx-calendar-dialog-body .calendar-task-form>label { min-width:0; }
+.astryx-calendar-dialog-body .calendar-modal-actions { z-index:1; }
+.astryx-calendar-dialog .astryx-calendar-field { display:grid; gap:6px; min-width:0; width:100%; }
+.astryx-calendar-dialog .astryx-calendar-field input {
+  display:block; width:100%; min-width:0; max-width:100%;
+  box-sizing:border-box; font-size:16px; min-height:44px;
+  padding:10px 13px; border:1px solid #d2e0d4; border-radius:10px; background:#fff;
+}
+.astryx-calendar-dialog .astryx-calendar-field input:focus-visible { outline:2px solid #79a983; outline-offset:2px; }
+.astryx-document-customer-dialog .astryx-customer-dialog-body { display:grid; gap:12px; }
+.astryx-document-customer-dialog .form-grid { min-width:0; gap:12px; }
+.astryx-document-customer-dialog input { min-width:0; max-width:100%; }
+.astryx-crm .crm-filter .astryx-crm-search { min-width:0; width:100%; }
+.astryx-crm .crm-form>.astryx-crm-required { display:grid; gap:6px; min-width:0; }
+.astryx-crm .crm-form>.astryx-crm-required input {
+  box-sizing:border-box; width:100%; min-width:0; min-height:44px;
+  border:1px solid #d3e1d4; border-radius:10px; padding:9px 12px; font-size:16px;
+}
+@media(max-width:800px){
+  .astryx-calendar-dialog, .astryx-document-customer-dialog { border-radius:14px !important; }
+  .astryx-calendar-dialog-body, .astryx-customer-dialog-body { padding:3px 0 7px; }
+  .astryx-calendar-dialog-body .calendar-task-form .form-grid { min-width:0; }
+  .astryx-document-customer-dialog .form-grid.two { grid-template-columns:1fr; }
+}

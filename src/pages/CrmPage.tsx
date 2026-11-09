@@ -1,3 +1,5 @@
+import { Field } from '@astryxdesign/core/Field'
+import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
@@ -264,7 +266,7 @@ export default function CrmPage() {
               {selectedBatch.length}件を{excludedOnly?'復元':'一括除外'}
             </button>}
           </div>
-          <div className="crm-filter"><label><Search size={16}/><input aria-label="案件検索" placeholder="企業名・メール・内容で検索" value={query} onChange={e => setQuery(e.target.value)}/></label>
+          <div className="crm-filter"><TextInput containerClassName="astryx-crm-search" label="案件検索" isLabelHidden type="search" startIcon={<Search size={16}/>} placeholder="企業名・メール・内容で検索" value={query} onChange={setQuery} hasClear width="100%"/>
             <select aria-label="進捗で絞り込み" value={stageFilter} onChange={e => setStageFilter(e.target.value)}><option value="all">すべての進捗</option>{selection(STAGES)}</select>
             <select aria-label="種別で絞り込み" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}><option value="all">すべての種別</option>{selection(CATEGORIES)}</select>
             <select aria-label="受付アドレスで絞り込み" value={receivedFilter} onChange={e => setReceivedFilter(e.target.value)}><option value="all">すべての受付アドレス</option>{PRIMARY_INQUIRY_RECIPIENTS.map(addr => <option key={addr} value={addr}>{addr}</option>)}</select>
@@ -290,7 +292,7 @@ export default function CrmPage() {
           {!selected && selectedId !== 'new' ? <div className="crm-placeholder"><MessageSquareText size={35}/><h3>案件を選択してください</h3><p>メールや商談履歴、進捗、次回対応をまとめて管理します。</p></div> : <>
             <h2>{selectedId === 'new' ? '新しい問い合わせ' : '案件の詳細'}</h2>
             <form onSubmit={saveCase} className="crm-form">
-              <label className="crm-wide">件名<input required disabled={!canManage} value={draft.subject} onChange={e => field('subject', e.target.value)}/></label>
+              <Field className="crm-wide astryx-crm-required" label="件名" inputID="astryx-crm-case-subject" isRequired><input id="astryx-crm-case-subject" required disabled={!canManage} value={draft.subject} onChange={e => field('subject', e.target.value)}/></Field>
               <label>問い合わせ種別<select disabled={!canManage} value={draft.category} onChange={e => field('category', e.target.value)}>{selection(CATEGORIES)}</select></label>
               <label>商談ステージ<select disabled={!canManage} value={draft.stage} onChange={e => field('stage', e.target.value)}>{selection(STAGES)}</select></label>
               <label>対応状況<select disabled={!canManage} value={draft.waiting_on} onChange={e => field('waiting_on', e.target.value)}>{selection(WAITING)}</select></label>
@@ -346,7 +348,7 @@ export default function CrmPage() {
       <section className="panel"><h2><Building2 size={19}/>取引先（{companies.length}件）</h2>
         <div className="crm-records">{companies.map(c => <button key={c.id} onClick={() => { setCompanyEdit(c.id); setCompanyDraft({ name: c.name, website: c.website || '', industry: c.industry || '', country: c.country || '', notes: c.notes || '', document_customer_id: c.document_customer_id || '' }) }}><b>{c.name}</b><small>{c.country || '国未登録'} · {c.industry || '業種未登録'}</small></button>)}</div>
         {canManage && <form onSubmit={saveCompanyForm} className="crm-form"><h3 className="crm-wide">{companyEdit ? '取引先を編集' : '取引先を追加'}</h3>
-          <label className="crm-wide">会社・店舗名<input required value={companyDraft.name} onChange={e => setCompanyDraft(x => ({ ...x, name: e.target.value }))}/></label>
+          <Field className="crm-wide astryx-crm-required" label="会社・店舗名" inputID="astryx-crm-company-name" isRequired><input id="astryx-crm-company-name" required value={companyDraft.name} onChange={e => setCompanyDraft(x => ({ ...x, name: e.target.value }))}/></Field>
           {(['country','industry','website'] as const).map(key => <label key={key}>{({country:'国・地域',industry:'業種',website:'Webサイト'})[key]}<input value={companyDraft[key]} onChange={e => setCompanyDraft(x => ({ ...x, [key]: e.target.value }))}/></label>)}
           {allowed('documents.view') && <label className="crm-wide">帳票の取引先マスタ<select value={companyDraft.document_customer_id} onChange={e => setCompanyDraft(x => ({ ...x, document_customer_id: e.target.value }))}><option value="">未連携</option>{docCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
           <label className="crm-wide">メモ<textarea rows={2} value={companyDraft.notes} onChange={e => setCompanyDraft(x => ({ ...x, notes: e.target.value }))}/></label>
