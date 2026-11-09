@@ -134,6 +134,42 @@ try {
  fertilizer.verify();await fertilizer.context.close();passes++
  console.log('PASS [320px fertilizers] Astryx Card, local official search, modal Escape, no viewport overflow or external network')
 
+
+ const cal=await fixture('calendar',{width:390,height:844})
+ const c=cal.page
+ await c.getByRole('button',{name:'やること追加'}).waitFor()
+ await c.getByRole('button',{name:'やること追加'}).click()
+ const taskDialog=c.getByRole('dialog')
+ await taskDialog.waitFor()
+ assert.equal(await taskDialog.getByLabel('やること').getAttribute('required'),'','Task title must stay required')
+ await taskDialog.getByLabel('やること').fill('架空茶園の水やり確認')
+ const days=taskDialog.locator('input[type="date"]')
+ assert.ok(await days.count()>0,'Original native date inputs must remain')
+ await taskDialog.getByRole('button',{name:'やることを追加'}).click()
+ await taskDialog.waitFor({state:'hidden'})
+ const stored=await c.evaluate(()=>window.__qa_calendar_task)
+ assert.equal(stored.title,'架空茶園の水やり確認')
+ await c.getByRole('button',{name:'収穫計画'}).click()
+ const harvestDialog=c.getByRole('dialog')
+ await harvestDialog.waitFor()
+ assert.equal(await harvestDialog.getByLabel('茶期・収穫名').getAttribute('required'),'','Season must stay required')
+ await harvestDialog.getByLabel('全圃場を対象').check()
+ await harvestDialog.getByLabel('茶期・収穫名').fill('架空一番茶')
+ await harvestDialog.getByRole('button',{name:'保存',exact:true}).click()
+ await harvestDialog.waitFor({state:'hidden'})
+ const savedHarvest=await c.evaluate(()=>window.__qa_calendar_harvest)
+ assert.equal(savedHarvest.season,'架空一番茶')
+ assert.equal(savedHarvest.allFields,true)
+ await c.getByRole('button',{name:'やること追加'}).click()
+ await c.getByRole('dialog').waitFor()
+ await c.keyboard.press('Escape')
+ await c.getByRole('dialog').waitFor({state:'hidden'})
+ const calendarDims=await c.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}))
+ assert.ok(calendarDims.scroll<=calendarDims.w+2,'calendar viewport overflow: '+JSON.stringify(calendarDims))
+ await c.screenshot({path:'qa/screenshots/astryx-calendar-mobile-390.png',fullPage:true})
+ cal.verify();await cal.context.close();passes++
+ console.log('PASS [390px calendar] Astryx Task/Harvest Dialog, native required/date, synthetic save, Escape, no external network')
+
  const compact=await fixture('inventory',{width:320,height:720})
  const k=compact.page
  await k.getByText('架空農薬A').first().waitFor()

@@ -22,12 +22,14 @@ export default defineConfig({
     const prices=page.endsWith('/src/pages/PriceListPage.tsx');
     const products=page.endsWith('/src/pages/ProductMasterPage.tsx');
     const fertilizer=page.endsWith('/src/pages/FertilizerMasterPage.tsx');
-    if(harvest||inventory||prices||products||fertilizer){
+    const calendar=page.endsWith('/src/pages/CalendarPage.tsx');
+    if(harvest||inventory||prices||products||fertilizer||calendar){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
       if((prices||products)&&source==='../lib/products')return path.join(root,'qa/mockPriceList.ts');
       if(fertilizer&&source==='../lib/fertilizers')return path.join(root,'qa/mockFertilizers.ts');
+      if(calendar&&source==='../lib/calendar')return path.join(root,'qa/mockCalendar.ts');
     }
     return null;
    },

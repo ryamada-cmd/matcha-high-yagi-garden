@@ -295,3 +295,10 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   use Astryx Field with native required inputs.
 - Existing Supabase logic, data types, email sending and permissions are untouched.
 - Isolated browser QA and responsive regression checks are required before merge.
+
+### Stage 16 QA extension
+- Added real CalendarPage to the synthetic-only Vite fixture using
+  `qa/mockCalendar.ts`; saves to local JS arrays only.
+- At 390px Playwright checks Astryx task and harvest Dialog open/save,
+  required fields, native date input preservation, Escape dismissal,
+  viewport overflow and zero external requests.
