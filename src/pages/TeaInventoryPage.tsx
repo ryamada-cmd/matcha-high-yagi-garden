@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState } from 'react'
 import { Boxes, Factory, RefreshCw } from 'lucide-react'
 import { loadTeaInventoryBatches, type TeaInventoryBatch } from '../lib/teaInventory'
@@ -33,37 +35,37 @@ export default function TeaInventoryPage(){
   const boneBags=filtered.flatMap(x=>x.outputs).filter(x=>x.grade==='骨').reduce((s,x)=>s+x.bagCount,0)
   const yieldPct=fresh>0?output/fresh*100:0
 
-  return <div className="page harvest-page">
+  return <div className="page harvest-page astryx-page astryx-tea-inventory">
     <div className="page-head">
       <div><p className="eyebrow">TEA INVENTORY</p><h1>茶在庫</h1><p className="sub">生葉投入から碾茶の葉・骨ロット、現在庫まで追跡します。</p></div>
-      <button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button>
+      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="茶在庫を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/>
     </div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}
 
-    <section className="panel">
+    <Card className="panel astryx-section">
       <div className="panel-title"><div><h2>表示条件</h2><p>年・茶期で在庫を絞り込みます。</p></div><Boxes size={19}/></div>
       <div className="form-grid four">
         <label>年度<select value={year} onChange={e=>setYear(e.target.value)}><option value="all">すべて</option>{years.map(y=><option key={y} value={y}>{y}年</option>)}</select></label>
         <label>茶期<select value={season} onChange={e=>setSeason(e.target.value)}><option value="all">すべて</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
       </div>
-    </section>
+    </Card>
 
     <div className="notice dashboard-notice">JA出荷日・冷蔵庫持込日は原票の物流日付です。摘採日・製茶日としては扱っていません。</div>
 
     <div className="metrics harvest-metrics">
-      <article className="metric"><span>生葉投入</span><strong>{num.format(fresh)}kg</strong></article>
-      <article className="metric"><span>碾茶出来高</span><strong>{num.format(output)}kg</strong></article>
-      <article className="metric"><span>現在庫</span><strong>{num.format(stock)}kg</strong></article>
-      <article className="metric"><span>歩留</span><strong>{fresh?yieldPct.toFixed(2)+'%':'—'}</strong></article>
+      <Card className="metric astryx-kpi"><span>生葉投入</span><strong>{num.format(fresh)}kg</strong></Card>
+      <Card className="metric astryx-kpi"><span>碾茶出来高</span><strong>{num.format(output)}kg</strong></Card>
+      <Card className="metric astryx-kpi"><span>現在庫</span><strong>{num.format(stock)}kg</strong></Card>
+      <Card className="metric astryx-kpi"><span>歩留</span><strong>{fresh?yieldPct.toFixed(2)+'%':'—'}</strong></Card>
     </div>
     <div className="metrics harvest-metrics">
-      <article className="metric"><span>葉</span><strong>{num.format(leaf)}kg</strong><small>{leafBags}本</small></article>
-      <article className="metric"><span>骨</span><strong>{num.format(bone)}kg</strong><small>{boneBags}本</small></article>
-      <article className="metric"><span>合計本数</span><strong>{bags}本</strong></article>
-      <article className="metric"><span>ロット数</span><strong>{filtered.length}件</strong></article>
+      <Card className="metric astryx-kpi"><span>葉</span><strong>{num.format(leaf)}kg</strong><small>{leafBags}本</small></Card>
+      <Card className="metric astryx-kpi"><span>骨</span><strong>{num.format(bone)}kg</strong><small>{boneBags}本</small></Card>
+      <Card className="metric astryx-kpi"><span>合計本数</span><strong>{bags}本</strong></Card>
+      <Card className="metric astryx-kpi"><span>ロット数</span><strong>{filtered.length}件</strong></Card>
     </div>
 
-    <section className="panel processing-history">
+    <Card className="panel processing-history astryx-section">
       <div className="panel-title"><div><h2>碾茶ロット</h2><p>生葉投入・葉/骨出来高・実在庫残をロット単位で表示</p></div><Factory size={19}/></div>
       <div className="processing-history-list">
         {filtered.map(b=><article key={b.id}>
@@ -78,6 +80,6 @@ export default function TeaInventoryPage(){
         </article>)}
         {!loading&&!filtered.length&&<p className="empty">茶在庫データはありません。</p>}
       </div>
-    </section>
+    </Card>
   </div>
 }

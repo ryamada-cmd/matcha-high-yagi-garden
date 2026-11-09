@@ -66,3 +66,15 @@ selection, dilution/allocation, N/P/K calculations and validations remain in pla
 
 **Warning:** Non-production Vercel previews may still point at the production
 Supabase instance. Do not execute write tests without an isolated test database.
+
+## Stage 3 (history and raw-material / production UI)
+- `/spray-history`: Astryx KPI cards, filter/history containers, CSV/refresh.
+- `/fertilizer-history`: Astryx summary tiles, filter/history/annual NPK containers,
+  CSV and refresh.
+- `/tea-inventory`: eight Astryx KPI cards, search filters and lot listing
+  containers, refresh.
+- `/production`: Astryx overview metrics, inventory receive/refresh actions
+  and inventory/manufacturing/cost tab controls.
+- Calculation, lot provenance and CRUD functions are unchanged.
+
+**Visual QA still pending** for responsive layouts and authenticated workflows.

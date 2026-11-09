@@ -152,3 +152,37 @@ html, body { background: #f5f7f3; }
   .astryx-inventory .inventory-tabs button { flex-shrink:0; }
   .astryx-fertilization .fertilizer-application-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* Stage 3: histories, tea inventory and production overview */
+.astryx-spray-history .history-filter-panel,
+.astryx-spray-history .history-table-panel,
+.astryx-fertilizer-history .fertilizer-history-filter,
+.astryx-fertilizer-history .fertilizer-history-formal,
+.astryx-fertilizer-history .fertilizer-npk-panel,
+.astryx-tea-inventory .astryx-section {
+  border:1px solid var(--astryx-yagi-border) !important;
+  border-radius:18px !important;
+  background:#fff !important;
+  box-shadow:0 4px 20px rgba(23,61,37,.035) !important;
+}
+.astryx-spray-history .history-filter-panel,
+.astryx-fertilizer-history .fertilizer-history-filter,
+.astryx-tea-inventory .astryx-section { padding:20px !important; }
+.astryx-spray-history .history-chip-list span,
+.astryx-fertilizer-history .fertilizer-history-npk span { border-radius:8px; }
+.astryx-fertilizer-history .fertilizer-history-summary .astryx-summary-tile {
+  min-width:0; border:1px solid #dce7dc !important;
+  background:#f7faf7 !important; border-radius:11px !important; box-shadow:none !important;
+}
+.astryx-production .production-tabs { display:flex; gap:8px; }
+.astryx-production .production-tabs button { min-width:90px; border-radius:10px !important; font-weight:750; }
+.astryx-production .production-tabs button.active { color:#fff !important; border-color:#173f2b !important; background:#173f2b !important; }
+.astryx-tea-inventory .metrics.harvest-metrics { margin-bottom:12px; }
+@media (max-width:800px) {
+  .astryx-spray-history .history-filter-panel,
+  .astryx-fertilizer-history .fertilizer-history-filter,
+  .astryx-tea-inventory .astryx-section { padding:12px !important; border-radius:14px !important; }
+  .astryx-production .production-tabs { overflow:auto; }
+  .astryx-production .production-tabs button { flex-shrink:0; }
+  .astryx-tea-inventory .metrics.harvest-metrics { gap:9px !important; }
+}
