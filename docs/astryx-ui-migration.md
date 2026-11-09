@@ -338,3 +338,14 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - Playwright covers new inquiry, company, contact and email inputs at 390px,
   preserving the originals' save actions while writing only to memory.
 - The browser fails closed for any unexpected external requests.
+
+## Stage 19: equipment dialogs, daily reports and expenses search
+- Equipment register/edit and service history forms now use real Astryx
+  Dialog/DialogHeader. Asset name and service description are Astryx Field
+  wrappers with unchanged native required constraints.
+- Original form submit handlers, asset/service record validation, dates,
+  units, vehicle-specific fields and existing permissions remain unchanged.
+- Daily reports and expense claims list searches now use genuine Astryx
+  TextInput controls while retaining the existing filter states.
+- Next: add isolated equipment browser fixture and verify mobile Escape,
+  required inputs, save/read-back and no external network.

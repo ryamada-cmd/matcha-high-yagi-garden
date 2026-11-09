@@ -542,3 +542,33 @@ html, body { background: #f5f7f3; }
   .astryx-document-customer-dialog .astryx-customer-dialog-body { gap:10px; }
   .astryx-documents .document-editor-head-controls { min-width:0; }
 }
+
+/* Stage 19: equipment asset and service-record dialogs */
+.astryx-equipment-dialog {
+  box-sizing:border-box;
+  background:#fff !important;
+  max-width:calc(100vw - 24px);
+  border:1px solid #d1e1d2 !important;
+  border-radius:18px !important;
+  box-shadow:0 24px 88px rgba(17,46,28,.20) !important;
+}
+.astryx-equipment-dialog::backdrop { background:rgba(13,37,23,.54); }
+.astryx-equipment-dialog-body { min-width:0; padding:8px 0 5px; }
+.astryx-equipment-dialog .equipment-form { display:grid; gap:12px; min-width:0; }
+.astryx-equipment-dialog .astryx-equipment-field { display:grid; gap:6px; min-width:0; width:100%; }
+.astryx-equipment-dialog .astryx-equipment-field input {
+  display:block; box-sizing:border-box; width:100%; max-width:100%;
+  min-width:0; min-height:44px; border:1px solid #d0dfd3;
+  border-radius:10px; background:#fff; padding:9px 12px; font-size:16px;
+}
+.astryx-equipment-dialog .astryx-equipment-field input:focus-visible { outline:2px solid #82b18b; outline-offset:2px; }
+.astryx-equipment-dialog .equipment-form-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.astryx-equipment .astryx-search-field,
+.astryx-daily-reports .astryx-search-field,
+.astryx-expenses .astryx-search-field { min-width:0; width:100%; }
+@media(max-width:800px){
+ .astryx-equipment-dialog { border-radius:14px !important; }
+ .astryx-equipment-dialog-body { padding:3px 0; }
+ .astryx-equipment-dialog .form-grid { grid-template-columns:1fr; min-width:0; }
+ .astryx-equipment-dialog .equipment-form-actions button { flex:1; min-height:44px; }
+}
