@@ -61,6 +61,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
  <BrowserRouter>
   <Theme theme={matchaTheme} mode="light">
    <div className="app-shell" data-qa="astryx-synthetic-only">
+    <aside className="sidebar desktop-sidebar" aria-hidden="true"><span className="qa-sidebar-brand">五代目八木一兵衛　QA</span></aside>
     <main><Screen/></main>
    </div>
   </Theme>

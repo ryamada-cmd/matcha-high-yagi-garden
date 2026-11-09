@@ -241,3 +241,15 @@ The QA Vite scanner now scopes entries to `qa/index.html` only; the
 Price List Playwright assertion targets the actual visible table row
 rather than relying on an unscoped text match.
 A fresh GitHub Actions run is required before claiming E2E pass.
+
+### Browser-diagnosed CSS conflict resolved
+The full-browser Astryx price-list test exposed a genuine style conflict:
+`src/documents.css` applied `display:flex` to the first table cell of
+`.price-list-table`; Astryx Table requires a semantic table-cell, and the
+product name collapsed to zero width. A narrowly scoped override in
+`src/astryx-ui.css` restores `display:table-cell` and vertically stacks
+the product/category labels.
+The fixture also omitted the desktop sidebar while relying on the app shell's
+two-column grid; a noninteractive placeholder sidebar now accurately reserves
+the left track in desktop QA. Browser regression checks assert real visible
+price-row text and main content width over 650px on desktop.

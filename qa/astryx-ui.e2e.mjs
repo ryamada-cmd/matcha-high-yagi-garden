@@ -55,6 +55,8 @@ try {
  const q=prices.page
  // Use the visible table row, not any offscreen measurement clone.
  await q.locator('table.price-list-table tbody tr').first().waitFor({state:'visible',timeout:12000})
+ const layout=await q.locator('main').evaluate(el=>({width:el.getBoundingClientRect().width}))
+ assert.ok(layout.width>650,'Desktop main content must fill the right grid column')
  const match=await q.locator('table.price-list-table tbody tr').first().getByText('架空抹茶 30g').isVisible()
  if(!match){
   const info=await q.locator('table.price-list-table tbody tr').first().getByText('架空抹茶 30g').evaluate(el=>{

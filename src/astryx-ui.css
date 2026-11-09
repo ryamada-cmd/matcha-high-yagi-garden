@@ -414,3 +414,18 @@ html, body { background: #f5f7f3; }
   .astryx-master-dialog .form-grid { grid-template-columns:1fr; }
   .astryx-master-dialog .astryx-inventory-dialog-body { padding:5px 0; }
 }
+
+/* Astryx Table must retain semantic table-cell layout.
+ * The former price-list CSS set the first <td> to display:flex, reducing the
+ * content width to zero under Astryx's responsive column sizing. */
+.astryx-price-list .astryx-table.price-list-table td:first-child {
+  display:table-cell !important;
+  min-width:160px;
+}
+.astryx-price-list .astryx-table.price-list-table td:first-child > b,
+.astryx-price-list .astryx-table.price-list-table td:first-child > small {
+  display:block;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.astryx-price-list .astryx-table.price-list-table { min-width:800px; }
