@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, CalendarClock, CircleCheck, Inbox, Mail, MessageSquareText, Plus, RefreshCw, Save, Search, Send, Settings2, Users } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
+import CrmKnowledgePanel from '../components/CrmKnowledgePanel'
+import CrmReplyPanel from '../components/CrmReplyPanel'
+import {blockCrmSender,crmSenderAddress,setCrmInquiryExcluded} from '../lib/crmAssistant'
 import { supabase } from '../lib/supabase'
 import {
   CATEGORIES, PRIMARY_INQUIRY_RECIPIENTS, PRIORITIES, STAGES, WAITING, addActivity, invokeCrmMail, loadCrm, loadCrmMailboxes,
@@ -9,7 +12,7 @@ import {
   type CrmActivity, type CrmAttachment, type CrmAssignee, type CrmCompany, type CrmContact, type CrmInquiry, type CrmMailbox, type CrmMessage
 } from '../lib/crm'
 
-type Tab = 'inquiries' | 'contacts' | 'mail'
+type Tab = 'inquiries' | 'contacts' | 'mail' | 'knowledge'
 type DocRef = { id: string; document_no: string; document_type: string; customer_name: string; issue_date: string }
 type DocCustomer = { id: string; name: string }
 type Draft = Record<string, string>
@@ -57,6 +60,8 @@ export default function CrmPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [receivedFilter, setReceivedFilter] = useState('all')
   const [query, setQuery] = useState('')
+  const [excludedOnly,setExcludedOnly] = useState(false)
+  const [selectedBatch,setSelectedBatch] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -111,6 +116,7 @@ export default function CrmPage() {
   }, [selectedId, selected?.last_message_at, selected?.updated_at])
 
   const filtered = useMemo(() => inquiries.filter(item => {
+    if (Boolean(item.excluded_at) !== excludedOnly) return false
     if (stageFilter !== 'all' && item.stage !== stageFilter) return false
     if (categoryFilter !== 'all' && item.category !== categoryFilter) return false
     if (receivedFilter !== 'all' && item.received_address !== receivedFilter) return false
@@ -119,10 +125,12 @@ export default function CrmPage() {
     const contact = contacts.find(x => x.id === item.contact_id)
     const company = companies.find(x => x.id === item.company_id)
     return (item.subject + ' ' + (item.summary || '') + ' ' + (contact?.email || '') + ' ' + (contact?.name || '') + ' ' + (company?.name || '')).toLowerCase().includes(query.toLowerCase())
-  }), [inquiries, stageFilter, categoryFilter, receivedFilter, filter, contacts, companies, query])
-  const pending = inquiries.filter(i => i.waiting_on === 'our_team' && !['won','lost'].includes(i.stage)).length
-  const overdue = inquiries.filter(i => i.next_action_at && new Date(i.next_action_at) < new Date() && !['won','lost'].includes(i.stage)).length
-  const won = inquiries.filter(i => i.stage === 'won').length
+  }), [inquiries, stageFilter, categoryFilter, receivedFilter, excludedOnly, filter, contacts, companies, query]
+  const activeInquiries = inquiries.filter(i => !i.excluded_at)
+  const excludedCount = inquiries.length - activeInquiries.length
+  const pending = activeInquiries.filter(i => i.waiting_on === 'our_team' && !['won','lost'].includes(i.stage)).length
+  const overdue = activeInquiries.filter(i => i.next_action_at && new Date(i.next_action_at) < new Date() && !['won','lost'].includes(i.stage)).length
+  const won = activeInquiries.filter(i => i.stage === 'won').length
   function field(key: string, value: string) { setDraft(d => ({ ...d, [key]: value })) }
 
   async function saveCase(event: FormEvent) {
@@ -181,6 +189,32 @@ export default function CrmPage() {
       setMessageList(history.messages); setActivityList(history.activities); setAttachments(history.attachments)
     } catch (error) { setError(errText(error)) } finally { setBusy(false) }
   }
+  async function excludeCase(ids:string[],excluded:boolean) {
+    if(!canManage||!ids.length)return
+    setBusy(true);setError('');setNotice('')
+    try{
+      for(const id of ids) await setCrmInquiryExcluded(id,excluded)
+      setSelectedBatch([])
+      setNotice(excluded?ids.length+'件を除外済みへ移動しました。削除せず保持しています。':ids.length+'件を対象案件に戻しました。')
+      await refresh()
+    }catch(error){setError(errText(error))}
+    finally{setBusy(false)}
+  }
+  async function excludeFutureSender() {
+    if(!selected||!selected.mailbox_id||!canManage)return
+    const inbound=messageList.find(m=>m.direction==='inbound')
+    const address=crmSenderAddress(inbound?.from_address||'')
+    if(!address){setError('送信元メールアドレスを特定できません');return}
+    setBusy(true);setError('')
+    try{
+      await blockCrmSender(selected.mailbox_id,address)
+      await setCrmInquiryExcluded(selected.id,true,'送信元を今後も除外：'+address)
+      setSelectedBatch([])
+      setNotice(address+' を自動除外ルールに登録しました。既存案件も除外済みへ移しました。')
+      await refresh()
+    }catch(error){setError(errText(error))}
+    finally{setBusy(false)}
+  }
   async function mailAction(action: string, args: Record<string, unknown> = {}) {
     setBusy(true); setError(''); setNotice('')
     try {
@@ -210,10 +244,11 @@ export default function CrmPage() {
       <button className={tab === 'inquiries' ? 'active' : ''} onClick={() => setTab('inquiries')}><Inbox size={17}/>問い合わせ・商談</button>
       <button className={tab === 'contacts' ? 'active' : ''} onClick={() => setTab('contacts')}><Users size={17}/>取引先・担当者</button>
       {canMail && <button className={tab === 'mail' ? 'active' : ''} onClick={() => setTab('mail')}><Settings2 size={17}/>メール連携</button>}
+      {canManage && <button className={tab === 'knowledge' ? 'active' : ''} onClick={() => setTab('knowledge')}><Save size={17}/>商品・返信条件</button>}
     </div>
     {tab === 'inquiries' && <>
       <div className="crm-metrics">
-        <button onClick={() => { setFilter(''); setStageFilter('all') }}><Inbox size={18}/><span>全案件</span><b>{inquiries.length}</b></button>
+        <button onClick={() => { setFilter(''); setStageFilter('all') }}><Inbox size={18}/><span>対象案件</span><b>{activeInquiries.length}</b></button>
         <button onClick={() => setFilter('pending')}><Mail size={18}/><span>自社対応待ち</span><b>{pending}</b></button>
         <button onClick={() => setFilter('overdue')}><CalendarClock size={18}/><span>期限超過</span><b>{overdue}</b></button>
         <button onClick={() => { setFilter(''); setStageFilter('won') }}><CircleCheck size={18}/><span>受注</span><b>{won}</b></button>
@@ -221,19 +256,33 @@ export default function CrmPage() {
       <div className="crm-layout">
         <section className="panel crm-list">
           <div className="crm-list-head"><h2>問い合わせ一覧</h2>{canManage && <button className="primary-button" type="button" onClick={() => setSelectedId('new')}><Plus size={17}/>新規案件</button>}</div>
+          <div className="crm-triage-switch">
+            <button className={!excludedOnly?'active':''} onClick={()=>{setExcludedOnly(false);setSelectedBatch([])}}>対応対象（{activeInquiries.length}）</button>
+            <button className={excludedOnly?'active':''} onClick={()=>{setExcludedOnly(true);setSelectedBatch([])}}>除外済み（{excludedCount}）</button>
+            {canManage && selectedBatch.length>0 && <button className="secondary-button" disabled={busy} onClick={()=>void excludeCase(selectedBatch,!excludedOnly)}>
+              {selectedBatch.length}件を{excludedOnly?'復元':'一括除外'}
+            </button>}
+          </div>
           <div className="crm-filter"><label><Search size={16}/><input aria-label="案件検索" placeholder="企業名・メール・内容で検索" value={query} onChange={e => setQuery(e.target.value)}/></label>
             <select aria-label="進捗で絞り込み" value={stageFilter} onChange={e => setStageFilter(e.target.value)}><option value="all">すべての進捗</option>{selection(STAGES)}</select>
             <select aria-label="種別で絞り込み" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}><option value="all">すべての種別</option>{selection(CATEGORIES)}</select>
             <select aria-label="受付アドレスで絞り込み" value={receivedFilter} onChange={e => setReceivedFilter(e.target.value)}><option value="all">すべての受付アドレス</option>{PRIMARY_INQUIRY_RECIPIENTS.map(addr => <option key={addr} value={addr}>{addr}</option>)}</select>
             {filter && <button className="secondary-button" onClick={() => setFilter('')}>絞り込み解除</button>}</div>
           <div className="crm-list-rows">{loading && <p>読み込み中…</p>}{!loading && filtered.length === 0 && <p className="crm-empty">該当する案件はありません。</p>}
-            {filtered.map(item => <button key={item.id} className={'crm-item ' + (selectedId === item.id ? 'selected' : '')} type="button" onClick={() => setSelectedId(item.id)}>
+            {filtered.map(item => <div key={item.id} className="crm-list-entry">
+              {canManage && <label className="crm-select-item" title="一括操作対象">
+                <input type="checkbox" aria-label={'案件選択：'+item.subject}
+                  checked={selectedBatch.includes(item.id)}
+                  onChange={e=>setSelectedBatch(ids=>e.target.checked?[...ids,item.id]:ids.filter(x=>x!==item.id))}/>
+              </label>}
+              <button className={'crm-item ' + (selectedId === item.id ? 'selected' : '')} type="button" onClick={() => setSelectedId(item.id)}>
               <div className="crm-item-top"><b>{item.subject}</b><small>{stamp(item.last_message_at || item.created_at)}</small></div>
               <div className="crm-item-sub">{companyName(item.company_id)} / {contactName(item.contact_id)}{item.country ? ' · ' + item.country : ''} · 担当：{assignees.find(a => a.id === item.assigned_to)?.display_name || '未設定'}</div>
               {item.received_address && <small className="crm-inquiry-recipient">受信先：{item.received_address}</small>}
               <div className="crm-chips"><span>{CATEGORIES[item.category] || item.category}</span><span>{STAGES[item.stage] || item.stage}</span><span className={item.waiting_on === 'our_team' ? 'attention' : ''}>{WAITING[item.waiting_on] || item.waiting_on}</span></div>
               {item.next_action_at && <small>次回対応：{stamp(item.next_action_at)}</small>}
-            </button>)}
+              </button>
+            </div>)}
           </div>
         </section>
         <section className="panel crm-detail">
@@ -261,7 +310,17 @@ export default function CrmPage() {
               <label className="crm-wide">商談メモ<textarea rows={2} disabled={!canManage} value={draft.notes} onChange={e => field('notes', e.target.value)}/></label>
               {canManage && <div className="crm-actions"><button className="primary-button" disabled={busy}><Save size={16}/>案件を保存</button>{selected?.sales_document_id && <Link to="/documents">関連する帳票を開く</Link>}{!selected?.sales_document_id && allowed('documents.view') && <Link to="/documents">見積・帳票管理へ</Link>}</div>}
             </form>
-            {selected && <><hr/><h3>メール・対応履歴</h3>
+            {selected && <><div className="crm-exclusion-actions">
+              {selected.excluded_at
+                ? <><p className="crm-hint">除外済み：{selected.excluded_reason||'営業対象外'}。メール履歴は削除されていません。</p>
+                    {canManage && <button type="button" className="secondary-button" disabled={busy} onClick={()=>void excludeCase([selected.id],false)}>対象案件に復元</button>}</>
+                : canManage && <><button type="button" className="secondary-button" disabled={busy} onClick={()=>void excludeCase([selected.id],true)}>この案件のみ除外</button>
+                  {selected.mailbox_id && messageList.some(m=>m.direction==='inbound') &&
+                    <button type="button" className="secondary-button" disabled={busy} onClick={()=>void excludeFutureSender()}>この送信元を今後も除外</button>}</>}
+            </div>
+            {!selected.excluded_at && canManage && <CrmReplyPanel key={selected.id} inquiryId={selected.id}
+              onError={setError} onNotice={setNotice} onSummarySaved={refresh}/>}
+            <hr/><h3>メール・対応履歴</h3>
               {messageList.length + activityList.length === 0 && <p className="crm-empty">まだ対応履歴はありません。下のフォームから活動を登録できます。</p>}
               <div className="crm-timeline">{[
                 ...messageList.map(m => ({ id: m.id, when: m.sent_at, kind: m.direction === 'inbound' ? '受信メール' : '送信メール', title: m.subject || '(件名なし)', body: m.body_plain || m.snippet || '', direction: m.direction, message: m })),
@@ -281,6 +340,7 @@ export default function CrmPage() {
         </section>
       </div>
     </>}
+    {tab === 'knowledge' && canManage && <CrmKnowledgePanel onError={setError} onNotice={setNotice}/>}
     {tab === 'contacts' && <div className="crm-contacts-grid">
       <section className="panel"><h2><Building2 size={19}/>取引先（{companies.length}件）</h2>
         <div className="crm-records">{companies.map(c => <button key={c.id} onClick={() => { setCompanyEdit(c.id); setCompanyDraft({ name: c.name, website: c.website || '', industry: c.industry || '', country: c.country || '', notes: c.notes || '', document_customer_id: c.document_customer_id || '' }) }}><b>{c.name}</b><small>{c.country || '国未登録'} · {c.industry || '業種未登録'}</small></button>)}</div>
