@@ -36,7 +36,7 @@ export default defineConfig({
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
       if((prices||products)&&source==='../lib/products')return path.join(root,'qa/mockPriceList.ts');
-      if(fertilizer&&source==='../lib/fertilizers')return path.join(root,'qa/mockFertilizers.ts');
+      if((fertilizer||fertilizerHistory)&&source==='../lib/fertilizers')return path.join(root,'qa/mockFertilizers.ts');
       if(calendar&&source==='../lib/calendar')return path.join(root,'qa/mockCalendar.ts');
       if(documents&&source==='../lib/documents')return path.join(root,'qa/mockDocuments.ts');
       if(documents&&source==='../lib/products')return path.join(root,'qa/mockPriceList.ts');
@@ -56,7 +56,7 @@ export default defineConfig({
       if(expense&&source==='../lib/documentOcr')return path.join(root,'qa/mockVendorDocumentOcr.ts');
       if(sprayHistory&&source==='../lib/sprayHistory')return path.join(root,'qa/mockSprayHistory.ts');
       if(sprayHistory&&source==='../lib/sprays')return path.join(root,'qa/mockSprayHistory.ts');
-      if(fertilizerHistory&&source==='../lib/fertilizers')return path.join(root,'qa/mockFertilizerHistory.ts');
+      // Same source path is shared by fertilizer master and history; use a single safe mock.
     }
     return null;
    },

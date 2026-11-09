@@ -34,3 +34,23 @@ export async function saveFertilizer(input:any){
  return input.id;
 }
 export async function syncOfficialFertilizers():Promise<never>{throw new Error('Synthetic QA must not call official sync')}
+
+const historyFields=[{id:'qa-field-1',legacyId:'QA-A',name:'架空茶園A',location:'架空地域'}]
+const historyApplications:any[]=[{
+ id:'qa-app-1',legacyId:'QA-FAPP-001',date:'2026-11-03',
+ operator:'架空担当者',method:'手散布',weather:'晴',note:'架空施肥のみ',
+ totalKg:20,nKg:2,pKg:1,kKg:1,
+ lines:[{id:'qa-line-1',fertilizerId:'qa-fert-a',fieldId:'qa-field-1',
+  fieldLegacyId:'QA-A',fieldName:'架空茶園A',fertilizerName:'架空肥料A',
+  amountKg:20,rateKgPer10a:5,nKg:2,pKg:1,kKg:1}]
+}]
+const cloneHistory=(v:any)=>JSON.parse(JSON.stringify(v))
+export async function loadFertilizerApplications(){return cloneHistory(historyApplications)}
+export async function loadFertilizerFields(){return historyFields.map(x=>({...x}))}
+export async function loadFertilizerNpkByField(){return historyFields.map(x=>({
+ fieldId:x.id,legacyId:x.legacyId,fieldName:x.name,location:x.location,
+ fertilizerKg:20,nKg:2,pKg:1,kKg:1
+}))}
+export async function deleteFertilizerApplication():Promise<never>{
+ throw Error('Synthetic QA never deletes fertilizer applications')
+}

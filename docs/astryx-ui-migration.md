@@ -419,3 +419,11 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - The browser test must click the expansion action without manually
   scrolling the table, so any inaccessible action-column regression fails.
 - Roll out this CSS-only change to the main branch after validation.
+
+### Stage 25 QA failure fix: fertilizer import alias collision
+- The QA-only Vite optimizer identifies master and history imports of
+  `../lib/fertilizers` as the same module, so conflicting synthetic aliases
+  failed to resolve required master exports.
+- Both screens now resolve one in-memory `qa/mockFertilizers.ts` module,
+  which includes the master API plus read-only history/NPK stub functions.
+- No change to the real `src/lib/fertilizers.ts` or production database.
