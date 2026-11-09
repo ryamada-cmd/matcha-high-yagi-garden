@@ -39,6 +39,8 @@ try{
  const mobile=await openFixture({width:390,height:844});
  const page=mobile.page;
  assert.equal(await page.locator('.harvest-history-list article').count(),17);
+ assert.equal(await page.locator('.astryx-harvest .astryx-kpi').count(),4,'Real Astryx Card KPI components are present');
+ assert.equal(await page.getByRole('button',{name:'摘採と製茶を更新'}).count(),1,'Refresh button has an accessible name');
  assert.match(await page.locator('.harvest-provenance-summary').innerText(),/出所未特定 17件/);
  assert.equal(await page.getByText('摘採日未特定').count(),17);
  assert.equal(await page.locator('.harvest-provenance-tag.needs-evidence').count(),17);
