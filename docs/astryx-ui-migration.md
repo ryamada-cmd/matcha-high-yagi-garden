@@ -302,3 +302,11 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - At 390px Playwright checks Astryx task and harvest Dialog open/save,
   required fields, native date input preservation, Escape dismissal,
   viewport overflow and zero external requests.
+
+### Stage 16: shared action footer controls
+- Task/harvest submission, task creation from a plan and calendar day add use
+  Astryx Button with original submit/onClick semantics preserved.
+- Document draft, issuance, and customer-master save use Astryx Button;
+  printing/PDF actions and underlying document side effects remain unchanged.
+- CRM inquiry, company and contact submit controls use Astryx Button.
+- All permission checks and disable-while-busy flags remain in place.

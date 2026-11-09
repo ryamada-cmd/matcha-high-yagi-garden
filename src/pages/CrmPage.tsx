@@ -311,7 +311,7 @@ export default function CrmPage() {
               <label>通貨<select disabled={!canManage} value={draft.currency} onChange={e => field('currency', e.target.value)}><option>JPY</option><option>USD</option><option>EUR</option><option>GBP</option><option>AUD</option><option>CAD</option></select></label>
               <label className="crm-wide">要約<textarea rows={2} disabled={!canManage} value={draft.summary} onChange={e => field('summary', e.target.value)}/></label>
               <label className="crm-wide">商談メモ<textarea rows={2} disabled={!canManage} value={draft.notes} onChange={e => field('notes', e.target.value)}/></label>
-              {canManage && <div className="crm-actions"><button className="primary-button" disabled={busy}><Save size={16}/>案件を保存</button>{selected?.sales_document_id && <Link to="/documents">関連する帳票を開く</Link>}{!selected?.sales_document_id && allowed('documents.view') && <Link to="/documents">見積・帳票管理へ</Link>}</div>}
+              {canManage && <div className="crm-actions"><Button className="ui-astryx-action" type="submit" variant="primary" label="案件を保存" icon={<Save size={16}/>} isDisabled={busy}/>{selected?.sales_document_id && <Link to="/documents">関連する帳票を開く</Link>}{!selected?.sales_document_id && allowed('documents.view') && <Link to="/documents">見積・帳票管理へ</Link>}</div>}
             </form>
             {selected && <><div className="crm-exclusion-actions">
               {selected.excluded_at
@@ -352,7 +352,7 @@ export default function CrmPage() {
           {(['country','industry','website'] as const).map(key => <label key={key}>{({country:'国・地域',industry:'業種',website:'Webサイト'})[key]}<input value={companyDraft[key]} onChange={e => setCompanyDraft(x => ({ ...x, [key]: e.target.value }))}/></label>)}
           {allowed('documents.view') && <label className="crm-wide">帳票の取引先マスタ<select value={companyDraft.document_customer_id} onChange={e => setCompanyDraft(x => ({ ...x, document_customer_id: e.target.value }))}><option value="">未連携</option>{docCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
           <label className="crm-wide">メモ<textarea rows={2} value={companyDraft.notes} onChange={e => setCompanyDraft(x => ({ ...x, notes: e.target.value }))}/></label>
-          <div className="crm-actions"><button className="primary-button" disabled={busy}><Save size={16}/>保存</button>{companyEdit && <button type="button" className="secondary-button" onClick={() => { setCompanyEdit(''); setCompanyDraft({ name:'',country:'',industry:'',website:'',notes:'',document_customer_id:'' }) }}>新規登録へ</button>}</div></form>}
+          <div className="crm-actions"><Button className="ui-astryx-action" type="submit" variant="primary" label="保存" icon={<Save size={16}/>} isDisabled={busy}/>{companyEdit && <button type="button" className="secondary-button" onClick={() => { setCompanyEdit(''); setCompanyDraft({ name:'',country:'',industry:'',website:'',notes:'',document_customer_id:'' }) }}>新規登録へ</button>}</div></form>}
       </section>
       <section className="panel"><h2><Users size={19}/>担当者（{contacts.length}件）</h2>
         <div className="crm-records">{contacts.map(c => <button key={c.id} onClick={() => { setContactEdit(c.id); setContactDraft({ name:c.name, email:c.email || '',company_id:c.company_id || '',country:c.country || '',phone:c.phone || '',language:c.language || '',position:c.position || '',notes:c.notes || '' }) }}><b>{c.name || c.email}</b><small>{companyName(c.company_id)} · {c.email}</small></button>)}</div>
@@ -362,7 +362,7 @@ export default function CrmPage() {
           <label>所属企業<select value={contactDraft.company_id} onChange={e => setContactDraft(x => ({ ...x, company_id: e.target.value }))}><option value="">未登録</option>{companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
           {(['country','phone','language','position'] as const).map(key => <label key={key}>{({ country:'国',phone:'電話',language:'言語',position:'部署・役職' })[key]}<input value={contactDraft[key]} onChange={e => setContactDraft(x => ({ ...x, [key]: e.target.value }))}/></label>)}
           <label className="crm-wide">メモ<textarea rows={2} value={contactDraft.notes} onChange={e => setContactDraft(x => ({ ...x, notes: e.target.value }))}/></label>
-          <div className="crm-actions"><button className="primary-button" disabled={busy}><Save size={16}/>保存</button>{contactEdit && <button type="button" className="secondary-button" onClick={() => { setContactEdit(''); setContactDraft({ name:'',email:'',company_id:'',country:'',phone:'',language:'',position:'',notes:'' }) }}>新規登録へ</button>}</div></form>}
+          <div className="crm-actions"><Button className="ui-astryx-action" type="submit" variant="primary" label="保存" icon={<Save size={16}/>} isDisabled={busy}/>{contactEdit && <button type="button" className="secondary-button" onClick={() => { setContactEdit(''); setContactDraft({ name:'',email:'',company_id:'',country:'',phone:'',language:'',position:'',notes:'' }) }}>新規登録へ</button>}</div></form>}
       </section>
     </div>}
     {tab === 'mail' && canMail && <section className="panel crm-mail-settings">
