@@ -15,9 +15,9 @@ export async function loadEquipmentServiceRecords(){return records.map(r=>({...r
 export async function saveEquipmentAsset(input:any){
  const id=input.id||'qa-asset-'+(assets.length+1)
  const index=assets.findIndex(a=>a.id===id)
- const result={id,assetNo:index<0?'QA-EQ-NEW-'+(assets.length+1):assets[index].assetNo,
+ const result={...input,id,assetNo:index<0?'QA-EQ-NEW-'+(assets.length+1):assets[index].assetNo,
    serviceRecordCount:0,repairCount:0,lifetimeServiceCostYen:0,lastServiceDate:'',
-   nextDueDate:input.nextMaintenanceDate||'',...input}
+   nextDueDate:input.nextMaintenanceDate||''}
  if(index<0)assets.push(result);else assets[index]=result
  ;(window as any).__qa_equipment_asset={...result}
  return id
@@ -25,7 +25,7 @@ export async function saveEquipmentAsset(input:any){
 export async function saveEquipmentServiceRecord(input:any){
  const id=input.id||'qa-service-'+(records.length+1)
  const asset=assets.find(a=>a.id===input.equipmentId)
- const result={id,...input,assetNo:asset?.assetNo||'',
+ const result={...input,id,assetNo:asset?.assetNo||'',
   equipmentName:asset?.name||'架空設備',equipmentCategory:asset?.category||'OTHER'}
  const index=records.findIndex(x=>x.id===id)
  if(index<0)records.unshift(result);else records[index]=result
