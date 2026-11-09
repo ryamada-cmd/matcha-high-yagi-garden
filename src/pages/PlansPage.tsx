@@ -1,3 +1,4 @@
+import { Button } from '@astryxdesign/core/Button'
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, CheckCircle2, Circle, Pencil, Plus, RefreshCw, Save, Trash2, X, XCircle } from 'lucide-react'
 import { deleteAnnualPlan, loadAnnualPlans, saveAnnualPlan, type AnnualPlan, type AnnualPlanInput, type PlanField, type PlanPesticide } from '../lib/plans'
@@ -55,8 +56,8 @@ export default function PlansPage(){
 
   const fieldName=(p:AnnualPlan)=>p.allFields?'全圃場':(()=>{const f=fields.find(x=>x.id===p.fieldId);return f?`${f.legacyId}｜${f.name}`:'個別圃場'})()
 
-  return <div className="page master-page">
-    <div className="page-head"><div><p className="eyebrow">ANNUAL PLAN</p><h1>年間防除計画</h1><p className="sub">月・旬・病害虫・推奨農薬・実施状況を年度単位で管理します。</p></div><div className="head-actions">{canManage&&<button className="secondary-button" onClick={beginNew}><Plus size={16}/>計画追加</button>}<button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div></div>
+  return <div className="page master-page astryx-page astryx-spray-plans">
+    <div className="page-head"><div><p className="eyebrow">ANNUAL PLAN</p><h1>年間防除計画</h1><p className="sub">月・旬・病害虫・推奨農薬・実施状況を年度単位で管理します。</p></div><div className="head-actions">{canManage&&<Button className="ui-astryx-action" variant="primary" label="計画追加" icon={<Plus size={16}/>} onClick={beginNew}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="年間防除計画を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
 
     <div className="plan-toolbar"><label>年度<select value={year} onChange={e=>setYear(Number(e.target.value))}>{years.map(y=><option key={y} value={y}>{y}年</option>)}</select></label><div className="plan-status-summary"><span className="plan-pill planned">予定 {summary.planned}</span><span className="plan-pill completed">実施済 {summary.completed}</span><span className="plan-pill cancelled">中止 {summary.cancelled}</span></div></div>

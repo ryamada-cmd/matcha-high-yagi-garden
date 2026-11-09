@@ -1,3 +1,4 @@
+import { Card } from '@astryxdesign/core/Card'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Search, ShieldCheck, ChevronRight, Clock3, GitBranch, Lightbulb, CircleHelp, BadgeCheck } from 'lucide-react'
@@ -99,9 +100,9 @@ export default function ManualPage(){
   const q=query.trim().normalize('NFKC').toLowerCase()
   const sections=useMemo(()=>guideSections.map(s=>({...s,items:s.items.filter(i=>!q||`${s.label} ${s.description} ${i.title} ${i.summary} ${i.steps.join(' ')} ${(i.notes||[]).join(' ')}`.normalize('NFKC').toLowerCase().includes(q))})).filter(s=>s.items.length>0),[q])
   const resultCount=sections.reduce((n,s)=>n+s.items.length,0)
-  return <div className="page manual-page">
+  return <div className="page manual-page astryx-page astryx-manual">
     <div className="page-head manual-page-head"><div><p className="eyebrow">USER GUIDE</p><h1>操作ガイド</h1><p className="sub">現在公開中の茶園管理アプリに対応した説明書です。茶在庫、商品価格表、見積書・請求書・納品書、OneDrive外部ストレージを含む現行機能に対応しています。</p></div><div className="manual-version"><span><Clock3 size={13}/>アプリ更新 {formatBuildDate(__APP_BUILD_TIME__)}</span><span><GitBranch size={13}/>リビジョン {__APP_REVISION__||'—'}</span><span><BadgeCheck size={13}/>CI照合 {permissionCoverageKeys.length}権限</span></div></div>
-    <section className="panel manual-intro"><div className="manual-intro-icon"><BookOpen size={23}/></div><div><h2>五代目八木一兵衛｜茶園管理 操作説明書</h2><p>分からない操作は下の検索欄から「請求書」「OneDrive」「ファイル」「価格表」「権限」「車検」「農薬」「日報」などの言葉で探してください。</p></div><span className="manual-policy"><ShieldCheck size={15}/>画面追加をCIで照合</span></section>
+    <Card className="panel manual-intro astryx-section"><div className="manual-intro-icon"><BookOpen size={23}/></div><div><h2>五代目八木一兵衛｜茶園管理 操作説明書</h2><p>分からない操作は下の検索欄から「請求書」「OneDrive」「ファイル」「価格表」「権限」「車検」「農薬」「日報」などの言葉で探してください。</p></div><span className="manual-policy"><ShieldCheck size={15}/>画面追加をCIで照合</span></Card>
     <div className="search-box manual-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="操作・機能・キーワードで説明書を検索"/><span>{resultCount}項目</span></div>
     <div className="manual-layout">
       <aside className="panel manual-index"><div className="manual-index-title"><CircleHelp size={16}/><b>目次</b></div>{sections.map(s=><a key={s.id} href={`#manual-${s.id}`}>{s.label}<ChevronRight size={14}/></a>)}</aside>

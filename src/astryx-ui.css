@@ -273,3 +273,47 @@ html, body { background: #f5f7f3; }
 @media print {
   .astryx-documents .no-print { display:none !important; }
 }
+
+/* Stage 6: field, compliance, equipment and administration routes */
+.astryx-fertilizers-master .fertilizer-source-tabs,
+.astryx-fertilizer-plans .plan-year-tabs,
+.astryx-equipment .equipment-tabs { display:flex; gap:8px; }
+.astryx-fertilizers-master .fertilizer-source-tabs button,
+.astryx-fertilizer-plans .plan-year-tabs button,
+.astryx-equipment .equipment-tabs button {
+  min-height:42px; border:1px solid #d9e5d9 !important;
+  border-radius:10px !important; font-weight:750 !important;
+}
+.astryx-fertilizers-master .fertilizer-source-tabs button.active,
+.astryx-fertilizer-plans .plan-year-tabs button.active,
+.astryx-equipment .equipment-tabs button.active {
+  background:#173f2b !important; border-color:#173f2b !important; color:#fff !important;
+}
+.astryx-pesticides .panel,
+.astryx-spray-plans .panel,
+.astryx-fertilizers-master .panel,
+.astryx-fertilizer-plans .panel,
+.astryx-dossier .panel,
+.astryx-equipment .panel,
+.astryx-library .panel,
+.astryx-storage .panel,
+.astryx-gallery .panel,
+.astryx-manual .panel,
+.astryx-settings .panel {
+  border:1px solid #d9e5d9 !important; border-radius:17px !important;
+  box-shadow:0 4px 18px rgba(20,57,36,.04) !important;
+}
+.astryx-pesticides .metric,
+.astryx-equipment .metric,
+.astryx-library .metric {
+  border-radius:15px !important; background:#fff !important; border-color:#d7e4d9 !important;
+}
+.astryx-dossier .ui-astryx-action { white-space:nowrap; }
+@media(max-width:800px) {
+  .astryx-fertilizers-master .fertilizer-source-tabs,
+  .astryx-fertilizer-plans .plan-year-tabs,
+  .astryx-equipment .equipment-tabs { overflow-x:auto; max-width:100%; }
+  .astryx-fertilizers-master .fertilizer-source-tabs button,
+  .astryx-fertilizer-plans .plan-year-tabs button,
+  .astryx-equipment .equipment-tabs button { flex-shrink:0; }
+}

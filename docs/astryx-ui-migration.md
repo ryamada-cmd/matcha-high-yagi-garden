@@ -111,3 +111,28 @@ Visual and authenticated write-path regression tests remain outstanding.
 All sensitive business logic (mail sending, document creation, expense approvals,
 payments and OCR) stays as-is. Production DB access from preview must be treated
 as **view-only** until an isolated staging database is configured.
+
+## Stage 6 (remaining routes — first-pass Astryx integration)
+- `/pesticides`: Astryx Cards for FAMIC/guide stats, refresh and sync actions.
+- `/plans`: Astryx add/refresh Buttons.
+- `/fertilizers`: Astryx new/sync/refresh and master/official tab Buttons.
+- `/fertilizer-plans`: Astryx add/refresh and year selector Buttons.
+- `/fields/:fieldId`: Astryx navigation, refresh and harvest entry Buttons.
+- `/equipment`: Astryx stock overview Cards, add/refresh and tab Buttons.
+- `/library`: Astryx KPI Cards and upload/export/refresh Buttons.
+- `/storage` and `/storage?view=photos`: Astryx-scoped visual system,
+  OneDrive storage refresh action.
+- `/manual`: Astryx Card for guide introduction.
+- `/settings`: Astryx refresh action and unified panel visual style.
+
+All route screens now have Astryx theme styles. Most high-impact routes also
+use genuine Astryx UI primitives, but the forms, complex tables and modals are
+still predominantly custom React/HTML controls. This is *not* yet a claim of
+complete component-by-component migration.
+
+### Release blockers
+- Do not merge into main yet.
+- Browser accessibility QA, responsive visual review, regression tests required.
+- Staging DB needed before write-path testing, as Vercel previews may share
+  Supabase production configuration. Keep preview interactions read-only.
+- Verify global CSS layers and Astryx reset for unaffected components.
