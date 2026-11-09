@@ -43,3 +43,21 @@ test('extracts method from Request objects and allows GET metadata', () => {
   assert.match(previewMutationBlockReason(req,undefined,BASE),/閲覧専用/)
   assert.equal(reason('/storage/v1/object/public/leaf.png'),null)
 })
+
+test('blocks same-origin Vercel API mutations and OCR requests', () => {
+  const app = 'https://astryx-preview.vercel.app'
+  for (const path of ['/api/sync-famic','/api/ocr-invoice']) {
+    assert.match(previewMutationBlockReason(app+path,{method:'POST'},BASE,app),/閲覧専用/)
+    assert.match(previewMutationBlockReason(path,{method:'POST'},BASE,app),/閲覧専用/)
+    assert.match(previewMutationBlockReason(app+path,{method:'GET'},BASE,app),/閲覧専用/)
+  }
+  assert.equal(previewMutationBlockReason('/assets/logo.svg',{method:'GET'},BASE,app),null)
+  assert.equal(previewMutationBlockReason('https://open-meteo.com/v1',{method:'GET'},BASE,app),null)
+})
+
+test('keeps Supabase read-only requests and auth working with explicit app origin', () => {
+  const app = 'https://astryx-preview.vercel.app'
+  assert.equal(previewMutationBlockReason(BASE+'/rest/v1/fields',{method:'GET'},BASE,app),null)
+  assert.match(previewMutationBlockReason(BASE+'/rest/v1/inventory',{method:'PATCH'},BASE,app),/閲覧専用/)
+  assert.equal(previewMutationBlockReason(BASE+'/auth/v1/token',{method:'POST'},BASE,app),null)
+})

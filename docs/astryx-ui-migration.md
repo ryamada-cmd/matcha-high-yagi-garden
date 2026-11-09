@@ -222,3 +222,12 @@ substitute for RLS or a complete security review.
 - CI workflow `harvest-ui-fixture.yml` runs both fixture scripts on relevant PR.
 - To run locally: `npx vite --config qa/vite.config.ts --port 5178`,
   then `node qa/harvest-ui.e2e.mjs` and `node qa/astryx-ui.e2e.mjs`.
+
+## Stage 12: prevent same-origin API bypass
+- The preview fetch guard explicitly recognizes the browser origin.
+- All same-origin `/api/*` calls are blocked, including `/api/sync-famic`
+  (server-side database snapshot replacement) and `/api/ocr-invoice`.
+- This includes absolute and relative URLs, GET and POST calls.
+- Static assets and external weather lookups remain accessible.
+- Supabase read RPCs and login/refresh continue unaffected.
+- Two regression tests verify those boundaries.

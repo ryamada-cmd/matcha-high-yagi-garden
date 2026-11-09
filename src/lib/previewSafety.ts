@@ -27,21 +27,26 @@ export function previewMutationBlockReason(
   input: RequestInfo | URL,
   init: RequestInit | undefined,
   backendUrl: string,
+  appOrigin?: string,
 ): string | null {
   const requestTarget = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
   let requested: URL
   let backend: URL
   try {
-    requested = new URL(requestTarget, backendUrl)
+    requested = new URL(requestTarget, appOrigin || backendUrl)
     backend = new URL(backendUrl)
   } catch {
     // An invalid URL will fail naturally in the underlying fetch.
     return null
   }
-  if (requested.origin !== backend.origin) return null
-
   const method = String(init?.method || (typeof input === 'string' || input instanceof URL ? 'GET' : input.method) || 'GET').toUpperCase()
   const path = requested.pathname
+
+  // Same-origin Vercel API routes may mutate data server-side.
+  // Deny them on read-only previews regardless of the HTTP verb.
+  if (appOrigin && requested.origin === new URL(appOrigin).origin && path.startsWith('/api/')) return notice
+
+  if (requested.origin !== backend.origin) return null
 
   // Functions may write business data even when called with GET.
   if (path.startsWith('/functions/v1/')) return notice
@@ -66,7 +71,7 @@ export function installPreviewFetchGuard(backendUrl: string): void {
   if (typeof window === 'undefined') return
   const originalFetch = globalThis.fetch.bind(globalThis)
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
-    const blocked = previewMutationBlockReason(input, init, backendUrl)
+    const blocked = previewMutationBlockReason(input, init, backendUrl, window.location.origin)
     if (blocked) return Promise.reject(new Error(blocked))
     return originalFetch(input, init)
   }) as typeof fetch
