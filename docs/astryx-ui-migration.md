@@ -78,3 +78,20 @@ Supabase instance. Do not execute write tests without an isolated test database.
 - Calculation, lot provenance and CRUD functions are unchanged.
 
 **Visual QA still pending** for responsive layouts and authenticated workflows.
+
+## Stage 4 (purchasing, commerce, costing and SKU UI)
+- `/tea-procurement`: Matcha-themed KPI Cards, Astryx Button for refreshing,
+  procurement / blend / stock tabs, and original form submit actions.
+- `/costing`: Astryx Cards for pool and reference KPIs, Button for period create,
+  refresh and form submission.
+- `/sales`: Astryx Cards for sales/gross margin KPIs, Button for refresh,
+  export and sale registration.
+- `/products`: Astryx Cards for SKU totals, Button for product creation,
+  refresh and existing form submission.
+- `/price-list`: Astryx Button for refresh and save, scoped themed panel CSS.
+- `/product-packaging`: Astryx Cards for SKU stock KPIs, Button for refresh
+  and product-packaging form submission.
+
+Only page-level presentation was changed; pricing calculations, traceability,
+inventory mutations and role checks are unchanged.
+Visual and authenticated write-path regression tests remain outstanding.

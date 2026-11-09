@@ -186,3 +186,49 @@ html, body { background: #f5f7f3; }
   .astryx-production .production-tabs button { flex-shrink:0; }
   .astryx-tea-inventory .metrics.harvest-metrics { gap:9px !important; }
 }
+
+/* Stage 4: commerce, purchasing, costing, product and SKU controls */
+.astryx-tea-procurement .tea-procurement-tabs,
+.astryx-production .production-tabs { display:flex; gap:8px; }
+.astryx-tea-procurement .tea-procurement-tabs button {
+  min-height:42px; border-radius:10px !important; font-weight:750 !important;
+  border:1px solid #d7e5da !important;
+}
+.astryx-tea-procurement .tea-procurement-tabs button.active {
+  color:#fff !important; background:#173f2b !important; border-color:#173f2b !important;
+}
+.astryx-products .product-master-metrics,
+.astryx-packaging .product-packaging-metrics { gap:12px; }
+.astryx-products .product-master-metrics>.astryx-kpi,
+.astryx-packaging .product-packaging-metrics>.astryx-kpi {
+  min-width:0; min-height:102px;
+  background:white !important; border:1px solid #d9e4d9 !important;
+  border-radius:15px !important; padding:18px !important;
+  box-shadow:0 3px 16px rgba(20,57,36,.05) !important;
+  display:flex; flex-direction:column; justify-content:center; gap:8px;
+}
+.astryx-products .product-master-metrics>.astryx-kpi span,
+.astryx-packaging .product-packaging-metrics>.astryx-kpi span { font-size:12px; color:#6a7f6d; }
+.astryx-products .product-master-metrics>.astryx-kpi strong,
+.astryx-packaging .product-packaging-metrics>.astryx-kpi strong {
+  font-size:clamp(20px,2.1vw,27px); line-height:1.1; color:#19402a;
+  font-variant-numeric:tabular-nums;
+}
+.astryx-costing .costing-layout>.panel,
+.astryx-sales .sales-entry,
+.astryx-tea-procurement .panel,
+.astryx-packaging .panel,
+.astryx-products .panel,
+.astryx-price-list .panel {
+  border-color:#d9e4d9 !important; border-radius:18px !important;
+  box-shadow:0 3px 18px rgba(20,57,36,.04) !important;
+}
+.astryx-sales .sales-save,
+.astryx-packaging .packaging-save { width:100%; min-height:46px; }
+.astryx-page .ui-astryx-action { flex-shrink:0; }
+@media(max-width:800px){
+  .astryx-tea-procurement .tea-procurement-tabs { overflow-x:auto; }
+  .astryx-tea-procurement .tea-procurement-tabs button { flex-shrink:0; }
+  .astryx-products .product-master-metrics>.astryx-kpi,
+  .astryx-packaging .product-packaging-metrics>.astryx-kpi { padding:12px !important; min-height:93px; }
+}

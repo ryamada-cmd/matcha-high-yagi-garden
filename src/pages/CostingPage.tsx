@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ArrowDownToLine, Calculator, CheckCircle2, CircleDollarSign, FileCheck2, Leaf, Package, Pencil, Plus, ReceiptText, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useAppPermissions } from '../lib/permissions'
@@ -116,17 +118,17 @@ export default function CostingPage(){
    return{...p,raw,standard,margin}
  })
 
- return <div className="page costing-page">
-   <div className="page-head"><div><p className="eyebrow">ANNUAL COST ALLOCATION</p><h1>原価計算・年度配賦</h1><p className="sub">自社茶は年度・茶園・茶期単位で費用をまとめ、製茶後の販売可能重量へ配賦します。外部調達茶は実仕入原価を使用します。</p></div><div className="head-actions"><select value={year} onChange={e=>{const y=Number(e.target.value);setYear(y);setSelectedId('');setForm(blank(y))}}>{Array.from({length:7},(_,i)=>currentYear()+1-i).map(y=><option key={y} value={y}>{y}年度</option>)}</select>{canManage&&<button className="secondary-button" onClick={newPeriod}><Plus size={16}/>新規原価期間</button>}<button className="icon-button" disabled={loading} onClick={()=>void refresh()}><RefreshCw size={17} className={loading?'spin':''}/></button></div></div>
+ return <div className="page costing-page astryx-page astryx-costing">
+   <div className="page-head"><div><p className="eyebrow">ANNUAL COST ALLOCATION</p><h1>原価計算・年度配賦</h1><p className="sub">自社茶は年度・茶園・茶期単位で費用をまとめ、製茶後の販売可能重量へ配賦します。外部調達茶は実仕入原価を使用します。</p></div><div className="head-actions"><select value={year} onChange={e=>{const y=Number(e.target.value);setYear(y);setSelectedId('');setForm(blank(y))}}>{Array.from({length:7},(_,i)=>currentYear()+1-i).map(y=><option key={y} value={y}>{y}年度</option>)}</select>{canManage&&<Button className="ui-astryx-action" variant="primary" label="新規原価期間" icon={<Plus size={16}/>} onClick={newPeriod}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="原価データを更新" icon={<RefreshCw size={17} className={loading?'spin':''}/>} isIconOnly isDisabled={loading} onClick={()=>void refresh()}/></div></div>
    {error&&<div className="notice error">{error}</div>}{success&&<div className="notice success">{success}</div>}
 
    <section className="costing-method-guide"><article><Leaf size={19}/><div><b>自社茶</b><span>年度費用 ÷ 製茶後の対象kg</span></div><strong>配賦原価方式</strong></article><article><Package size={19}/><div><b>外部調達茶</b><span>仕入総額 ÷ 仕入数量</span></div><strong>実仕入原価方式</strong></article></section>
 
    <div className="metrics costing-reference-metrics">
-     <article className="metric"><span>{year}年 承認済み経費（参考）</span><strong>{yen.format(data?.references.approvedExpenseClaimsYen||0)}</strong><small>自動加算しません</small></article>
-     <article className="metric"><span>{year}年 仕入請求書（参考）</span><strong>{yen.format(data?.references.vendorInvoicesYen||0)}</strong><small>二重計上防止のため参考値</small></article>
-     <article className="metric"><span>今回の原価プール</span><strong>{yen.format(activeTotal)}</strong><small>{form.status==='FINAL'?'実績':'予定'}</small></article>
-     <article className="metric"><span>配賦単価</span><strong>{yen.format(activeRate)}/kg</strong><small>30g換算 {yen.format(thirtyGram)}</small></article>
+     <Card className="metric astryx-kpi"><span>{year}年 承認済み経費（参考）</span><strong>{yen.format(data?.references.approvedExpenseClaimsYen||0)}</strong><small>自動加算しません</small></Card>
+     <Card className="metric astryx-kpi"><span>{year}年 仕入請求書（参考）</span><strong>{yen.format(data?.references.vendorInvoicesYen||0)}</strong><small>二重計上防止のため参考値</small></Card>
+     <Card className="metric astryx-kpi"><span>今回の原価プール</span><strong>{yen.format(activeTotal)}</strong><small>{form.status==='FINAL'?'実績':'予定'}</small></Card>
+     <Card className="metric astryx-kpi"><span>配賦単価</span><strong>{yen.format(activeRate)}/kg</strong><small>30g換算 {yen.format(thirtyGram)}</small></Card>
    </div>
 
    <div className="costing-layout">
@@ -153,7 +155,7 @@ export default function CostingPage(){
 
        <div className="costing-live-summary"><div><span>{form.status==='FINAL'?'確定原価':'暫定標準原価'}</span><strong>{yen.format(activeRate)}/kg</strong></div><div><span>30g原料換算</span><strong>{yen.format(thirtyGram)}</strong></div><div><span>対象重量</span><strong>{num.format(denominator)}kg</strong></div></div>
        <label>備考<textarea rows={2} disabled={!canManage} value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label>
-       {canManage&&<div className="costing-editor-actions"><button className="primary-button" disabled={busy}><Save size={16}/>{busy?'保存中…':form.status==='FINAL'?'確定原価として保存':'暫定原価を保存'}</button>{form.id&&<button type="button" className="danger-button" disabled={busy} onClick={()=>{const p=data?.periods.find(x=>x.id===form.id);if(p)void removePeriod(p)}}><Trash2 size={15}/>削除</button>}</div>}
+       {canManage&&<div className="costing-editor-actions"><Button className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':form.status==='FINAL'?'確定原価として保存':'暫定原価を保存'} icon={<Save size={16}/>} isDisabled={busy}/>{form.id&&<button type="button" className="danger-button" disabled={busy} onClick={()=>{const p=data?.periods.find(x=>x.id===form.id);if(p)void removePeriod(p)}}><Trash2 size={15}/>削除</button>}</div>}
      </form>
    </div>
 
