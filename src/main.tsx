@@ -2,6 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { Theme } from '@astryxdesign/core/theme'
+import { matchaTheme } from '@astryxdesign/theme-matcha/built'
+import '@astryxdesign/core/reset.css'
+import '@astryxdesign/core/astryx.css'
+import '@astryxdesign/theme-matcha/theme.css'
 import './styles.css'
 import './features.css'
 import './layout-fixes.css'
@@ -46,11 +51,14 @@ import './unified-ui.css'
 import './ui-refresh.css'
 import './ui-refresh-safety.css'
 import './ui-cohesion.css'
+import './astryx-ui.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <App />
+      <Theme theme={matchaTheme} mode="light">
+        <App />
+      </Theme>
     </BrowserRouter>
   </React.StrictMode>,
 )

@@ -1,3 +1,5 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, MapPinned, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
@@ -83,11 +85,11 @@ export default function FieldsPage() {
     } catch (e: any) { setError(e?.message || '圃場の削除に失敗しました。') }
   }
 
-  return <div className="page master-page">
-    <div className="page-head"><div><p className="eyebrow">FIELDS</p><h1>圃場管理</h1><p className="sub">面積を正本に、反・a・標準散布量を自動計算します。各圃場のカルテから防除・施肥履歴を一元確認できます。</p></div><div className="head-actions">{canManage&&<button className="secondary-button" onClick={beginNew}><Plus size={16}/>圃場追加</button>}<button className="icon-button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={18} className={loading?'spin':''}/></button></div></div>
+  return <div className="page master-page astryx-page astryx-fields">
+    <div className="page-head"><div><p className="eyebrow">FIELDS</p><h1>圃場管理</h1><p className="sub">面積を正本に、反・a・標準散布量を自動計算します。各圃場のカルテから防除・施肥履歴を一元確認できます。</p></div><div className="head-actions">{canManage&&<Button className="ui-astryx-action" variant="primary" label="圃場追加" icon={<Plus size={16}/>} onClick={beginNew}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="圃場を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
     {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
 
-    <div className="metrics field-metrics"><article className="metric"><span>有効圃場</span><strong>{active.length}圃場</strong></article><article className="metric"><span>総面積</span><strong>{totalM2.toLocaleString()}㎡</strong></article><article className="metric"><span>総面積（反）</span><strong>{(totalM2/1000).toFixed(3)}反</strong></article><article className="metric"><span>標準散布量合計</span><strong>{Math.round(totalL*10)/10}L</strong></article></div>
+    <div className="metrics field-metrics"><Card className="metric astryx-kpi"><span>有効圃場</span><strong>{active.length}圃場</strong></Card><Card className="metric astryx-kpi"><span>総面積</span><strong>{totalM2.toLocaleString()}㎡</strong></Card><Card className="metric astryx-kpi"><span>総面積（反）</span><strong>{(totalM2/1000).toFixed(3)}反</strong></Card><Card className="metric astryx-kpi"><span>標準散布量合計</span><strong>{Math.round(totalL*10)/10}L</strong></Card></div>
 
     {canManage&&formOpen&&<section className="panel master-form-panel">
       <div className="section-head"><div><h2>{editingId?'圃場を編集':'圃場を追加'}</h2><p className="muted">標準散布量 = 面積(m²) ÷ 1000 × 基準散布量(L/反)</p></div><button className="close-detail" onClick={closeForm}><X size={16}/></button></div>

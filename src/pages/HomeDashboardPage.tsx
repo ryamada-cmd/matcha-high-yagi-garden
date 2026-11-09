@@ -1,3 +1,6 @@
+import { Button } from '@astryxdesign/core/Button'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, CalendarClock, CalendarDays, Check, CheckCircle2, CircleAlert, Factory, Leaf, PackageCheck, RefreshCw, Scissors, ShieldAlert, ShoppingCart, SprayCan, Tractor, Users } from 'lucide-react'
@@ -187,16 +190,16 @@ export default function HomeDashboardPage() {
   const hasModules = canDefense || canFertilizer || canHarvest || canProduction || canPackaging || canSales || canEquipment
   const hasNextWork = canCalendar || canSprayPlans || canFertilizerPlans || canFields || canEquipment
 
-  return <div className="page home-dashboard">
+  return <div className="page home-dashboard astryx-page astryx-home">
     <div className="page-head home-dashboard-head">
       <div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理ダッシュボード</h1><p className="sub">あなたに許可された防除・施肥・収穫・製造・在庫・販売・設備の状況をまとめて確認します。</p></div>
-      <div className="head-actions"><span className="status">茶園管理 接続済</span><button className="icon-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={18} className={loading ? 'spin' : ''}/></button></div>
+      <div className="head-actions"><Badge variant="success" label="茶園管理 接続済"/><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="画面を更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/></div>
     </div>
 
     {error && <div className="notice error dashboard-notice">{error}</div>}
 
     {topCards.length > 0 && <div className="home-overview-metrics">
-      {topCards.map(card => <article className={`home-overview-card ${card.tone || ''}`} key={card.label}><span>{card.label}</span><strong>{loading && !data ? '…' : card.value}</strong><small>{card.note}</small></article>)}
+      {topCards.map(card => <Card className={`home-overview-card ${card.tone || ''}`} key={card.label}><span>{card.label}</span><strong>{loading && !data ? '…' : card.value}</strong><small>{card.note}</small></Card>)}
     </div>}
 
     {canCalendar&&<section className="panel home-workboard">
