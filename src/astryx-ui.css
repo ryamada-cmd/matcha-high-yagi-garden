@@ -601,3 +601,17 @@ html, body { background: #f5f7f3; }
  .astryx-vendor-payment-dialog .invoice-modal-actions { display:flex; gap:8px; }
  .astryx-vendor-payment-dialog .invoice-modal-actions button { flex:1; min-height:44px; }
 }
+
+/* Stage 23: Astryx native Field shells for optional work notes and expense line items */
+.astryx-daily-reports .daily-report-reflection-grid > .astryx-operations-field,
+.astryx-expenses .expense-item-row > .astryx-operations-field,
+.astryx-expenses .expense-claim-form > .astryx-operations-field {
+  min-width:0; display:grid; gap:7px; width:100%;
+}
+.astryx-daily-reports .daily-report-reflection-grid > .astryx-operations-field textarea,
+.astryx-expenses .astryx-operations-field :is(input,textarea) {
+  box-sizing:border-box; width:100%; min-width:0; max-width:100%;
+  background:#fff; border:1px solid #d1dfd3; border-radius:10px;
+  min-height:44px; padding:10px 12px; font-size:16px;
+}
+.astryx-expenses .expense-item-row>.expense-desc.astryx-operations-field { grid-column:auto; }

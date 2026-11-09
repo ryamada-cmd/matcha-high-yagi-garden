@@ -392,3 +392,12 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - This is required for the user's fix-as-we-go UI rollout approach:
   every dev-branch commit triggers a TypeScript/build and synthetic
   regression check; production main keeps its own CI and Pages workflow.
+
+## Stage 23: Daily reflection + expense item Field migration
+- The three daily reflection textareas are now actual Astryx Field
+  components with linked input IDs and original state handlers.
+- Expense purchase-item descriptions are Astryx Field with stable per-row
+  IDs and unchanged native required attributes; optional expense note
+  also uses an Astryx Field shell.
+- No persistence, arithmetic, upload, OCR or authorization logic changed.
+- Mobile synthetic QA validates in-memory create/edit and receipt math.
