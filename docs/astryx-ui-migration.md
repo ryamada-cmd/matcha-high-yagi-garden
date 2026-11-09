@@ -231,3 +231,13 @@ substitute for RLS or a complete security review.
 - Static assets and external weather lookups remain accessible.
 - Supabase read RPCs and login/refresh continue unaffected.
 - Two regression tests verify those boundaries.
+
+### QA fixture correction
+The first cross-page browser QA run (Actions run 42639657518) passed
+Harvest and mobile Inventory but failed at the desktop Price List fixture.
+The QA-only `mockPriceList.ts` was missing a `deleteProduct` export required
+by the Vite dependency scanner; this was fixed with an in-memory stub.
+The QA Vite scanner now scopes entries to `qa/index.html` only; the
+Price List Playwright assertion targets the actual visible table row
+rather than relying on an unscoped text match.
+A fresh GitHub Actions run is required before claiming E2E pass.

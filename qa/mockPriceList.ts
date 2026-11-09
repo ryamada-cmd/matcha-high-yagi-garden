@@ -19,3 +19,10 @@ export async function saveProduct(input:QAProduct){
  (window as any).__qa_price_save={...input};
  return input.id;
 }
+
+export async function deleteProduct(id:string){
+ const at=products.findIndex(x=>x.id===id);
+ if(at<0)throw Error('架空商品が見つかりません');
+ products.splice(at,1);
+ (window as any).__qa_price_delete=id;
+}

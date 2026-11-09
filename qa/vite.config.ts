@@ -9,6 +9,8 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export default defineConfig({
  root,
+ // The synthetic QA bundle must not scan the real production index.html.
+ optimizeDeps:{entries:['qa/index.html']},
  plugins:[
   {
    name:'qa-harvest-fail-closed-mock-alias',

@@ -53,11 +53,14 @@ try {
 
  const prices=await fixture('prices',{width:1280,height:900})
  const q=prices.page
- await q.getByText('架空抹茶 30g').first().waitFor()
+ // Use the visible table row, not any offscreen measurement clone.
+ await q.locator('table.price-list-table tbody tr').first().waitFor({state:'visible',timeout:12000})
+ const match=await q.locator('table.price-list-table tbody tr').first().getByText('架空抹茶 30g').isVisible()
+ assert.equal(match,true,'Price-list row must be visible at desktop width')
  assert.equal(await q.locator('table.price-list-table tbody tr').count(),2)
  await q.getByRole('searchbox',{name:'商品価格を検索'}).fill('QA-MATCHA')
  assert.equal(await q.locator('table.price-list-table tbody tr').count(),1)
- await q.getByRole('button',{name:'編集'}).click()
+ await q.locator('table.price-list-table tbody tr').first().getByRole('button',{name:'編集'}).click()
  await q.getByRole('dialog').waitFor()
  assert.equal(await q.getByRole('dialog').getByRole('heading',{name:'架空抹茶 30g'}).count(),1)
  await q.screenshot({path:'qa/screenshots/astryx-price-dialog-desktop-1280.png',fullPage:true})
