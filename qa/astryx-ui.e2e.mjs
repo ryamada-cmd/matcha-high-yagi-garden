@@ -203,6 +203,36 @@ try {
  documents.verify();await documents.context.close();passes++
  console.log('PASS [390px documents] actual Astryx customer Dialog, native required validation, in-memory customer + estimate draft, no network')
 
+
+ const crm=await fixture('crm',{width:390,height:844})
+ const cp=crm.page
+ await cp.getByRole('heading',{name:'営業・問い合わせ管理'}).waitFor()
+ await cp.getByRole('button',{name:'新規案件'}).click()
+ await cp.getByLabel('件名').fill('架空海外卸売案件')
+ await cp.getByRole('button',{name:'案件を保存'}).click()
+ await cp.getByText('架空海外卸売案件').first().waitFor({state:'visible'})
+ const caseSaved=await cp.evaluate(()=>window.__qa_crm_inquiry)
+ assert.equal(caseSaved.subject,'架空海外卸売案件')
+ await cp.getByRole('button',{name:'取引先・担当者'}).click()
+ const crmCompany=cp.locator('.crm-contacts-grid section.panel').first()
+ await crmCompany.getByLabel('会社・店舗名').fill('架空海外問屋')
+ await crmCompany.getByRole('button',{name:'保存',exact:true}).click()
+ await crmCompany.getByText('架空海外問屋').first().waitFor()
+ const companySaved=await cp.evaluate(()=>window.__qa_crm_company)
+ assert.equal(companySaved.name,'架空海外問屋')
+ const crmContact=cp.locator('.crm-contacts-grid section.panel').nth(1)
+ await crmContact.getByLabel('担当者名').fill('架空商談担当')
+ await crmContact.getByLabel('メールアドレス').fill('example@qa.invalid')
+ await crmContact.getByRole('button',{name:'保存',exact:true}).click()
+ await crmContact.getByText('架空商談担当').first().waitFor()
+ const contactSaved=await cp.evaluate(()=>window.__qa_crm_contact)
+ assert.equal(contactSaved.email,'example@qa.invalid')
+ const crmDims=await cp.evaluate(()=>({w:innerWidth,scroll:document.documentElement.scrollWidth}))
+ assert.ok(crmDims.scroll<=crmDims.w+2,'CRM page viewport overflow '+JSON.stringify(crmDims))
+ await cp.screenshot({path:'qa/screenshots/astryx-crm-mobile-390.png',fullPage:true})
+ crm.verify();await crm.context.close();passes++
+ console.log('PASS [390px CRM] actual Astryx subject/contacts forms, synthetic inquiry/company/contact saves, no external calls')
+
  const compact=await fixture('inventory',{width:320,height:720})
  const k=compact.page
  await k.getByText('架空農薬A').first().waitFor()

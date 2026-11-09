@@ -8,6 +8,7 @@ import ProductMasterPage from '../src/pages/ProductMasterPage';
 import FertilizerMasterPage from '../src/pages/FertilizerMasterPage';
 import CalendarPage from '../src/pages/CalendarPage';
 import DocumentsPage from '../src/pages/DocumentsPage';
+import CrmPage from '../src/pages/CrmPage';
 import { Theme } from '@astryxdesign/core/theme';
 import { matchaTheme } from '@astryxdesign/theme-matcha/built';
 import '@astryxdesign/core/reset.css';
@@ -60,7 +61,7 @@ import '../src/astryx-ui.css';
 import './fixture.css';
 
 const screen=new URLSearchParams(window.location.search).get('screen')||'harvest';
-const Screen=screen==='inventory'?InventoryPage:screen==='prices'?PriceListPage:screen==='products'?ProductMasterPage:screen==='fertilizers'?FertilizerMasterPage:screen==='calendar'?CalendarPage:screen==='documents'?DocumentsPage:HarvestProcessingPage;
+const Screen=screen==='inventory'?InventoryPage:screen==='prices'?PriceListPage:screen==='products'?ProductMasterPage:screen==='fertilizers'?FertilizerMasterPage:screen==='calendar'?CalendarPage:screen==='documents'?DocumentsPage:screen==='crm'?CrmPage:HarvestProcessingPage;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
  <BrowserRouter>

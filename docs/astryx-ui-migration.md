@@ -330,3 +330,11 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
   constraint, customer add / save, and estimate draft save without network.
 - Synthetic business data is used; no real customer, invoice, or OneDrive
   content is touched.
+
+### Stage 18 QA: isolated CRM sales inquiry and contact operations
+- Added the real `CrmPage` to the synthetic-only QA entry.
+- `qa/mockCrm.ts`, `qa/mockCrmSupabase.ts` and no-op child panels
+  prevent any Gmail / AI / Supabase access.
+- Playwright covers new inquiry, company, contact and email inputs at 390px,
+  preserving the originals' save actions while writing only to memory.
+- The browser fails closed for any unexpected external requests.
