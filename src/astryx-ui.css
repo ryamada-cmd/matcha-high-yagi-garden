@@ -470,3 +470,17 @@ html, body { background: #f5f7f3; }
   .astryx-fertilizers-master .toolbar { min-width:0; }
   .astryx-products .product-master-toolbar .astryx-search-field { min-width:0; width:100%; }
 }
+
+/* Stage 15: Astryx Field shell with native required input semantics */
+.astryx-master-dialog .astryx-master-field { width:100%; min-width:0; }
+.astryx-master-dialog .astryx-master-field input {
+  display:block; box-sizing:border-box;
+  width:100%; max-width:100%; min-width:0;
+  min-height:44px; border:1px solid #d2e1d5;
+  background:#fff; border-radius:10px;
+  padding:10px 13px; font-size:16px;
+}
+.astryx-master-dialog .astryx-master-field input:focus-visible {
+  outline:2px solid #82ae8b; outline-offset:1px;
+}
+.astryx-master-dialog .form-grid .astryx-master-field { min-width:0; }

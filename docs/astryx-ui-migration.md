@@ -274,3 +274,12 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - QA covers product filter/create at 390px and fertilizer filtering, dialog Escape,
   official data tab at 320px. All external network requests are blocked by Playwright.
 - Synthetic writes only modify in-memory QA arrays, never production.
+
+## Stage 15: native form validation retained with Astryx Field
+- SKU, product name and fertilizer name now use actual Astryx Field shells
+  with stable linked HTML input IDs and a native `required` attribute.
+- Existing state setters and submit logic remain untouched; the browser's
+  built-in constraint validation continues to prevent blank submissions.
+- Playwright confirms native required attributes in the synthetic dialogs.
+- Do not replace numeric/date/checkbox inputs without preserving their
+  native min/step/required logic and field validation in a dedicated test.
