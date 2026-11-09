@@ -196,3 +196,13 @@ substitute for RLS or a complete security review.
 - Equipment and fertilizer tabs now use Astryx Button labels as intended,
   avoiding duplicate children and count-label rendering.
 - Auth and workflow checks need testing with dedicated accounts before release.
+
+## Stage 10: remaining key searches and master dialogs
+- Astryx TextInput for fertilizer history, sales, fertilizer master and
+  official fertilizer database, product master, vendor invoices and sales documents.
+- Astryx Dialog/DialogHeader for product master add/edit and fertilizer master
+  add/edit/import; existing form validators, role checks and CRUD functions unchanged.
+- Dialog uses purpose=form with native focus management. Backdrop clicks do not
+  discard user edits. Close is blocked while an operation is in flight.
+- Mobile layout uses a single-column form grid in narrow dialogs.
+- Still requires authenticated browser QA and isolated write-path regression tests.

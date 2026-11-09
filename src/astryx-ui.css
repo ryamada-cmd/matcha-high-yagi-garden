@@ -398,3 +398,19 @@ html, body { background: #f5f7f3; }
 @media(max-width:600px) {
  .astryx-auth-page .astryx-auth-card { padding:19px !important; border-radius:16px !important; }
 }
+
+/* Stage 10: accessible search fields and master edit dialogs */
+.astryx-master-dialog .astryx-inventory-dialog-body { padding:10px 0; }
+.astryx-master-dialog .inventory-action-form { display:flex; flex-direction:column; gap:12px; }
+.astryx-master-dialog label { min-width:0; }
+.astryx-master-dialog .official-import-notice { border-radius:12px; }
+.astryx-fertilizer-history .astryx-search-field,
+.astryx-sales .astryx-search-field,
+.astryx-fertilizers-master .astryx-search-field,
+.astryx-products .astryx-search-field,
+.astryx-vendor-invoices .astryx-search-field,
+.astryx-documents .astryx-search-field { min-width:0; width:100%; }
+@media(max-width:800px) {
+  .astryx-master-dialog .form-grid { grid-template-columns:1fr; }
+  .astryx-master-dialog .astryx-inventory-dialog-body { padding:5px 0; }
+}
