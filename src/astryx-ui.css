@@ -1,0 +1,92 @@
+/*
+ * Astryx / Matcha theme integration — Stage 1.
+ * Page-specific presentation only: storage, RPCs, auth, validation and
+ * product calculations remain in the original components and libs.
+ * Keep this last in main.tsx while legacy CSS migration is in progress.
+ */
+:root {
+  --astryx-yagi-deep: #133a29;
+  --astryx-yagi-soft: #eff4ee;
+  --astryx-yagi-ink: #1c2b20;
+  --astryx-yagi-border: #d9e4d9;
+  --app-bg: #f5f7f3;
+  --app-green: #173f2b;
+  --ui-bg: #f5f7f3;
+  --v3-bg: #f5f7f3;
+  --v3-green: #173f2b;
+  --v3-border: #dce5dc;
+  --v3-page: 1480px;
+}
+html, body { background: #f5f7f3; }
+.app-shell { background: #f5f7f3; }
+.app-shell main { background: #f5f7f3 !important; }
+.desktop-sidebar {
+  background: linear-gradient(175deg,#102e22 0%,#17422d 57%,#102e22 100%) !important;
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+.desktop-sidebar .nav-section-label { color: #b5cbb9 !important; }
+.desktop-sidebar nav a.active {
+  background: rgba(225,244,224,.16) !important;
+  box-shadow: inset 3px 0 0 #b1dfaf !important;
+}
+.desktop-sidebar nav a.active::before { display: none; }
+.astryx-page .page-head { border-bottom: none; padding-bottom: 4px; margin-bottom: 22px !important; }
+.astryx-page .page-head h1 { font-size: clamp(24px,2.3vw,32px) !important; color: var(--astryx-yagi-ink); letter-spacing:-.035em; }
+.astryx-page .eyebrow { letter-spacing:.18em !important; color:#4c7760 !important; }
+.astryx-page .sub { line-height:1.7 !important; color:#69796e !important; }
+.astryx-page .metrics, .astryx-page .home-overview-metrics { gap:14px !important; }
+.astryx-page .metric,
+.astryx-page .home-overview-card {
+  min-height:122px;
+  background:#fff !important;
+  border:1px solid var(--astryx-yagi-border) !important;
+  border-radius:18px !important;
+  box-shadow:0 3px 15px rgba(25,58,38,.045) !important;
+  padding:19px !important;
+}
+.astryx-page .metric span,
+.astryx-page .home-overview-card>span { color:#708275 !important; font-size:12px !important; font-weight:650; }
+.astryx-page .metric strong,
+.astryx-page .home-overview-card>strong { color:#183c28 !important; font-size:clamp(22px,2vw,29px) !important; letter-spacing:-.035em; }
+.astryx-page .metric:hover,
+.astryx-page .home-overview-card:hover { border-color:#b7ceb9 !important; }
+.astryx-page .panel {
+  border-radius:18px !important;
+  border-color:var(--astryx-yagi-border) !important;
+  box-shadow:0 3px 17px rgba(21,52,34,.045) !important;
+}
+.astryx-page .panel-title h2 { color:#1e3a29; font-weight:800; }
+.astryx-page .ui-astryx-action {
+  min-height:40px;
+  border-radius:11px !important;
+  font-weight:750 !important;
+  font-size:12px !important;
+  cursor:pointer;
+}
+.astryx-page .ui-astryx-refresh { min-width:40px; }
+.astryx-fields .field-master-group { padding:20px !important; }
+.astryx-fields .field-master-card {
+  border:1px solid #dce6db !important;
+  background:linear-gradient(180deg,#fff 0%,#fbfdfb 100%) !important;
+  border-radius:15px !important;
+  transition:border-color .14s ease, box-shadow .14s ease;
+}
+.astryx-fields .field-master-card:hover { border-color:#95b59b !important; box-shadow:0 8px 24px rgba(21,56,34,.09) !important; }
+.astryx-harvest .harvest-multi-field-row.selected { background:#eef5ed !important; border-color:#9fc5a4 !important; }
+.astryx-harvest .harvest-tabs button.active { background:#173f2b !important; color:#fff !important; border-color:#173f2b !important; }
+.astryx-harvest .harvest-history-list article,
+.astryx-harvest .processing-history-list article { border-radius:13px; }
+.astryx-page input:focus-visible, .astryx-page select:focus-visible,
+.astryx-page textarea:focus-visible { outline:2px solid #80ac84; outline-offset:1px; }
+@media(max-width:800px) {
+  .astryx-page .page-head { gap:12px !important; }
+  .astryx-page .metrics, .astryx-page .home-overview-metrics { gap:10px !important; }
+  .astryx-page .metric, .astryx-page .home-overview-card { min-height:108px; padding:13px !important; border-radius:14px !important; }
+  .astryx-page .metric strong, .astryx-page .home-overview-card>strong { font-size:22px !important; }
+  .astryx-page .panel { border-radius:14px !important; }
+  .astryx-page .ui-astryx-action { min-height:44px; }
+  .astryx-fields .field-master-group { padding:12px !important; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .astryx-page .metric,.astryx-page .field-master-card { transition:none !important; }
+}
