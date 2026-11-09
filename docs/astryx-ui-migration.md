@@ -385,3 +385,10 @@ production bundle. Keep screenshot checks against both 1280px and 320/390px.
 - QA validates daily report creation/edit with a field selection, and an
   expense with 2 item lines, a fictional PDF receipt and a 7100-yen total.
 - All outward network requests are blocked by Playwright.
+
+## Stage 22: continuous CI on feature branch
+- The full CI and synthetic browser test workflows now run directly on
+  pushes to `feature/astryx-ui-migration`, not only PR events.
+- This is required for the user's fix-as-we-go UI rollout approach:
+  every dev-branch commit triggers a TypeScript/build and synthetic
+  regression check; production main keeps its own CI and Pages workflow.

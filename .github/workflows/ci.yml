@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/harvest-provenance-ai-readiness-v1]
+    branches: [main, feature/harvest-provenance-ai-readiness-v1, feature/astryx-ui-migration]
   pull_request:
     branches: [main]
 

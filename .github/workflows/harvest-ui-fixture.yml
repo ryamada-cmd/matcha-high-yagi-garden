@@ -2,7 +2,7 @@ name: Harvest + Astryx UI Synthetic E2E
 
 on:
   push:
-    branches: [feature/harvest-provenance-ai-readiness-v1]
+    branches: [feature/harvest-provenance-ai-readiness-v1, feature/astryx-ui-migration]
   pull_request:
     branches: [main]
     paths:
