@@ -14,9 +14,15 @@ export default defineConfig({
    name:'qa-harvest-fail-closed-mock-alias',
    enforce:'pre',
    resolveId(source,importer) {
-    if(importer?.replaceAll('\\','/').endsWith('/src/pages/HarvestProcessingPage.tsx')){
-      if(source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
+    const page=importer?.replaceAll('\\','/')||'';
+    const harvest=page.endsWith('/src/pages/HarvestProcessingPage.tsx');
+    const inventory=page.endsWith('/src/pages/InventoryPage.tsx');
+    const prices=page.endsWith('/src/pages/PriceListPage.tsx');
+    if(harvest||inventory||prices){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
+      if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
+      if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
+      if(prices&&source==='../lib/products')return path.join(root,'qa/mockPriceList.ts');
     }
     return null;
    },

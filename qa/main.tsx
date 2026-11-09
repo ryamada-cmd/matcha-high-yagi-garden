@@ -2,6 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import {BrowserRouter} from 'react-router-dom';
 import HarvestProcessingPage from '../src/pages/HarvestProcessingPage';
+import InventoryPage from '../src/pages/InventoryPage';
+import PriceListPage from '../src/pages/PriceListPage';
+import { Theme } from '@astryxdesign/core/theme';
+import { matchaTheme } from '@astryxdesign/theme-matcha/built';
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
+import '@astryxdesign/theme-matcha/theme.css';
 import '../src/styles.css'
 import '../src/features.css'
 import '../src/layout-fixes.css'
@@ -45,11 +52,17 @@ import '../src/unified-ui.css'
 import '../src/ui-refresh.css'
 import '../src/ui-refresh-safety.css'
 import '../src/ui-cohesion.css';
+import '../src/astryx-ui.css';
+
+const screen=new URLSearchParams(window.location.search).get('screen')||'harvest';
+const Screen=screen==='inventory'?InventoryPage:screen==='prices'?PriceListPage:HarvestProcessingPage;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
  <BrowserRouter>
-  <div className="app-shell" data-qa="synthetic-harvest-only">
-   <main><HarvestProcessingPage/></main>
-  </div>
+  <Theme theme={matchaTheme} mode="light">
+   <div className="app-shell" data-qa="astryx-synthetic-only">
+    <main><Screen/></main>
+   </div>
+  </Theme>
  </BrowserRouter>
 );

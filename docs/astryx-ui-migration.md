@@ -206,3 +206,19 @@ substitute for RLS or a complete security review.
   discard user edits. Close is blocked while an operation is in flight.
 - Mobile layout uses a single-column form grid in narrow dialogs.
 - Still requires authenticated browser QA and isolated write-path regression tests.
+
+## Stage 11: synthetic browser QA expansion (no real backend)
+- Existing QA Vite fixture now wraps real components with Astryx Matcha Theme and
+  imports the same core/theme CSS + last project override as production.
+- Mock facade wiring added for `InventoryPage` and `PriceListPage`; the
+  original `HarvestProcessingPage` fixture remains.
+- Synthetic-only stores in `qa/mockInventory.ts` and `qa/mockPriceList.ts`.
+  No actual Supabase credentials or requests are used in this QA bundle.
+- Playwright checks real Astryx Table/TextInput/Dialog interactions at
+  390px, 320px and 1280px, verifies no viewport horizontal overflow, and
+  intercepts/blocks every non-local request. Screenshots are CI artifacts.
+- Harvest fixture now also asserts actual Astryx KPI Cards and accessible
+  refresh action.
+- CI workflow `harvest-ui-fixture.yml` runs both fixture scripts on relevant PR.
+- To run locally: `npx vite --config qa/vite.config.ts --port 5178`,
+  then `node qa/harvest-ui.e2e.mjs` and `node qa/astryx-ui.e2e.mjs`.
