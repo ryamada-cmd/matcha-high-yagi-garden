@@ -20,3 +20,25 @@ The `申請一覧・承認` section of the expense claims page showed overlappin
 - Off-origin requests are forbidden by the test; no production Supabase writes or real OneDrive interactions occur.
 
 CI validates TypeScript, build and existing workflows as usual. A passing WebKit run approximates iPhone rendering but does not establish an iPhone Safari OS-device test. The public Vercel/Pages cache still requires delivery verification after merge.
+
+## Follow-up iPhone correction (2026-11-10, second report)
+
+The previous tests inspected the border on the native `<input>` and the
+AstryX `.astryx-text-input` wrapper, but **did not measure the outer
+`.astryx-search-field` Field**. The user still observed a green outer
+rectangle and an inset grey rectangle around the search text.
+
+The fix now explicitly selects the **outer Field** as the only visual
+border/focus ring. The inner AstryX TextInput control is borderless,
+transparent and shadowless, and the native input remains borderless. This
+retains the search icon, clear affordance and accessible Field label.
+
+The smoke test now inspects **all three layers** (Field / TextInput control /
+native input), at 320px and 390px in the expense-claim toolbar, plus search
+inputs in inventory, product master, vendor invoices, documents and desktop
+prices. It requires one border total rather than only testing the native
+input's border. Test data is synthetic and off-origin requests are denied.
+
+Delivery must still be verified separately: GitHub `main` merge and passing
+mocked-browser tests do not prove that the Vercel proxy or Safari cache has
+served the updated CSS. Confirm release SHA and test on physical iPhone.
