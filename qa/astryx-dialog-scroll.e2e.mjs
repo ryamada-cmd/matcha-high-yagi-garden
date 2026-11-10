@@ -49,13 +49,21 @@ async function checkScrollable(page,selector,label){
   label+' dialog must stay within the visual viewport')
 
  // Exercise a user-visible wheel scroll, not merely hidden document scrolling.
- const rect=await dialog.boundingBox()
- await page.mouse.move(rect.x+rect.width*0.5,rect.y+rect.height*0.65)
- await page.mouse.wheel(0,690)
- await page.waitForTimeout(250)
- let after=await scrollBox.evaluate(node=>node.scrollTop)
- if(after<=20){ // Some WebKit builds consume wheel gestures; verify DOM scroller too.
-  after=await scrollBox.evaluate(node=>{node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,540);return node.scrollTop})
+ let after=0
+ if(label.startsWith('WebKit')){
+  // Playwright rejects mouse.wheel in mobile WebKit. Validate the actual
+  // scroll container and movable scroll range without inventing a wheel device.
+  after=await scrollBox.evaluate(node=>{
+   node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,540)
+   return node.scrollTop
+  })
+ }else{
+  const rect=await dialog.boundingBox()
+  await page.mouse.move(rect.x+rect.width*0.5,rect.y+rect.height*0.65)
+  await page.mouse.wheel(0,690)
+  await page.waitForTimeout(250)
+  after=await scrollBox.evaluate(node=>node.scrollTop)
+  assert.ok(after>30,label+' must respond to an actual mouse-wheel gesture')
  }
  assert.ok(after>30,label+' must move the dialog content down')
 
