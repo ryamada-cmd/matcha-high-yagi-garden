@@ -15,7 +15,7 @@ const normalizeRoute=(value)=>{
   return withoutDynamic.replace(/\/$/,'')||'/'
 }
 
-const appRoutes=[...app.matchAll(/<Route\s+path="([^"]+)"/g)].map(m=>normalizeRoute(m[1]))
+const appRoutes=[...app.matchAll(/<Route\s+path="([^"]+)"/g)].filter(m=>m[1]!=='*').map(m=>normalizeRoute(m[1]))
 const guideRoutes=[...manual.matchAll(/path:'([^']+)'/g)].map(m=>normalizeRoute(m[1]))
 const routeSet=new Set(guideRoutes)
 const missingRoutes=[...new Set(appRoutes)].filter(route=>!routeSet.has(route))

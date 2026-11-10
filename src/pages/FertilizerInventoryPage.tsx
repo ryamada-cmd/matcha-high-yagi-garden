@@ -1,4 +1,4 @@
-import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { Dialog, DialogHeader } from '../components/AppDialog'
 import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'

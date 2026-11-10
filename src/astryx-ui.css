@@ -5,6 +5,7 @@
  * Keep this last in main.tsx while legacy CSS migration is in progress.
  */
 :root {
+  --app-font: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", Meiryo, "Noto Sans JP", sans-serif;
   --astryx-yagi-deep: #133a29;
   --astryx-yagi-soft: #eff4ee;
   --astryx-yagi-ink: #1c2b20;
@@ -17,6 +18,17 @@
   --v3-border: #dce5dc;
   --v3-page: 1480px;
 }
+
+/* Japanese operational typography, also inherited by AstryX portal layers. */
+[data-astryx-theme="matcha"] {
+  --font-family-body: var(--app-font) !important;
+  --font-family-heading: var(--app-font) !important;
+  --text-body-size: 1rem;
+  --text-supporting-size: .875rem;
+  --text-label-size: .875rem;
+}
+html, body { font-family:var(--app-font); line-height:1.6; }
+:where(button, input, select, textarea) { font-family:var(--app-font); }
 html, body { background: #f5f7f3; }
 .app-shell { background: #f5f7f3; }
 .app-shell main { background: #f5f7f3 !important; }
@@ -45,7 +57,7 @@ html, body { background: #f5f7f3; }
   padding:19px !important;
 }
 .astryx-page .metric span,
-.astryx-page .home-overview-card>span { color:#708275 !important; font-size:12px !important; font-weight:650; }
+.astryx-page .home-overview-card>span { color:#708275 !important; font-size:14px !important; font-weight:650; }
 .astryx-page .metric strong,
 .astryx-page .home-overview-card>strong { color:#183c28 !important; font-size:clamp(22px,2vw,29px) !important; letter-spacing:-.035em; }
 .astryx-page .metric:hover,
@@ -59,8 +71,8 @@ html, body { background: #f5f7f3; }
 .astryx-page .ui-astryx-action {
   min-height:40px;
   border-radius:11px !important;
-  font-weight:750 !important;
-  font-size:12px !important;
+  font-weight:600 !important;
+  font-size:14px !important;
   cursor:pointer;
 }
 .astryx-page .ui-astryx-refresh { min-width:40px; }
@@ -126,7 +138,7 @@ html, body { background: #f5f7f3; }
 }
 .astryx-inventory .inventory-tabs { gap:8px; }
 .astryx-inventory .inventory-tabs button {
-  font-weight:750 !important; border-radius:10px !important;
+  font-weight:600 !important; border-radius:10px !important;
   border:1px solid #d8e4d8 !important;
 }
 .astryx-inventory .inventory-tabs button.active {
@@ -191,7 +203,7 @@ html, body { background: #f5f7f3; }
 .astryx-tea-procurement .tea-procurement-tabs,
 .astryx-production .production-tabs { display:flex; gap:8px; }
 .astryx-tea-procurement .tea-procurement-tabs button {
-  min-height:42px; border-radius:10px !important; font-weight:750 !important;
+  min-height:42px; border-radius:10px !important; font-weight:600 !important;
   border:1px solid #d7e5da !important;
 }
 .astryx-tea-procurement .tea-procurement-tabs button.active {
@@ -240,7 +252,7 @@ html, body { background: #f5f7f3; }
 .astryx-crm .crm-tabs button {
   min-height:42px; border:1px solid #d7e5da !important;
   background:#fff !important; border-radius:10px !important;
-  color:#477053 !important; font-weight:750 !important;
+  color:#477053 !important; font-weight:600 !important;
 }
 .astryx-documents .document-tabs button.active,
 .astryx-crm .crm-tabs button.active {
@@ -282,7 +294,7 @@ html, body { background: #f5f7f3; }
 .astryx-fertilizer-plans .plan-year-tabs button,
 .astryx-equipment .equipment-tabs button {
   min-height:42px; border:1px solid #d9e5d9 !important;
-  border-radius:10px !important; font-weight:750 !important;
+  border-radius:10px !important; font-weight:600 !important;
 }
 .astryx-fertilizers-master .fertilizer-source-tabs button.active,
 .astryx-fertilizer-plans .plan-year-tabs button.active,
@@ -337,7 +349,7 @@ html, body { background: #f5f7f3; }
 .astryx-page .astryx-form-control { width:100%; min-width:0; }
 .astryx-page .form-grid > .astryx-form-control { min-width:0; align-self:stretch; }
 .astryx-page .astryx-form-control .astryx-field-label,
-.astryx-page .astryx-search-field .astryx-field-label { font-size:12px; font-weight:700; }
+.astryx-page .astryx-search-field .astryx-field-label { font-size:14px; font-weight:700; }
 .astryx-page .astryx-table { width:100%; min-width:680px; }
 .astryx-price-list .astryx-table { min-width:680px; }
 .astryx-spray-history .astryx-table { min-width:880px; }
@@ -642,57 +654,6 @@ html, body { background: #f5f7f3; }
  .astryx-spray-history .history-page-actions { justify-content:flex-end; }
 }
 
-/* Mobile native AstryX dialogs: the dialog is the vertical scroll container.
-   Safari's backdrop locks document scrolling, so a clipped form MUST be able
-   to pan inside the modal itself. Applies to all long-form AstryX workflows. */
-@media (max-width:800px) {
-  :is(
-    .astryx-inventory-dialog,
-    .astryx-master-dialog,
-    .astryx-calendar-dialog,
-    .astryx-document-customer-dialog,
-    .astryx-equipment-dialog,
-    .astryx-vendor-payment-dialog
-  ) {
-    box-sizing:border-box;
-    max-height:min(88dvh, calc(100dvh - 24px)) !important;
-    overflow:hidden !important; /* AstryX's inner flex wrapper owns scrolling. */
-  }
-  :is(
-    .astryx-inventory-dialog,
-    .astryx-master-dialog,
-    .astryx-calendar-dialog,
-    .astryx-document-customer-dialog,
-    .astryx-equipment-dialog,
-    .astryx-vendor-payment-dialog
-  ) > div {
-    /* @astryxdesign/core Dialog v0.7.x renders one flex inner wrapper with
-       overflow:hidden; that inner wrapper was clipping long forms on iOS. */
-    min-height:0;
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior-y:contain;
-    touch-action:pan-y;
-  }
-  .astryx-document-customer-dialog .astryx-customer-dialog-body,
-  .astryx-calendar-dialog .astryx-calendar-dialog-body,
-  .astryx-equipment-dialog .astryx-equipment-dialog-body,
-  .astryx-vendor-payment-dialog .astryx-vendor-payment-body,
-  .astryx-inventory-dialog .astryx-inventory-dialog-body {
-    min-height:0;
-    max-height:none !important;
-    overflow:visible !important;
-  }
-  .astryx-document-customer-dialog .astryx-customer-dialog-body {
-    padding-bottom:max(20px, env(safe-area-inset-bottom));
-  }
-  .astryx-document-customer-dialog .astryx-customer-dialog-body > button[type="submit"] {
-    min-height:44px;
-    margin-bottom:4px;
-  }
-}
-
 /* Shared AstryX filter and text-control normalization (iOS Safari).
    AstryX TextInput draws its border on .astryx-text-input, with the native
    <input> borderless. Legacy global .page input rules had reintroduced a
@@ -820,4 +781,98 @@ html, body { background: #f5f7f3; }
     grid-column:1;
     min-height:46px !important;
   }
+}
+
+/* Shared interaction contract. Keep this after the module-specific rules. */
+.page, .auth-page, .app-dialog { font-family:var(--app-font); font-size:14px; line-height:1.6; }
+:is(.page, .auth-page, .app-dialog) :is(h1,h2,h3,h4,h5,h6) {
+  font-family:var(--app-font) !important;
+  letter-spacing:0 !important;
+  line-height:1.45;
+}
+:is(.page, .auth-page, .app-dialog) :is(label,.astryx-field-label) {
+  font-size:14px !important; font-weight:600 !important; line-height:1.5 !important;
+}
+.page .sub, .page .panel-title p, .page .section-head p, .auth-lead, .notice {
+  font-size:14px !important; line-height:1.7 !important;
+}
+.page :is(.metric small,.home-overview-card>small,.muted) { color:#586b60 !important; }
+:is(.page, .auth-page, .app-dialog) :is(button,.primary-button,.secondary-button) {
+  font-family:var(--app-font) !important;
+  font-size:14px !important; font-weight:600 !important;
+  line-height:1.4; min-height:44px;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(33,92,54,.18);
+  transition:background-color .14s ease, box-shadow .14s ease, filter .14s ease, transform .1s ease !important;
+}
+.page [class*="-tabs"] button { min-height:44px !important; font-size:14px !important; }
+:is(.page,.auth-page,.app-dialog) :is(button,a.primary-button,a.secondary-button):active:not(:disabled):not([aria-disabled="true"]) {
+  transform:translateY(1px) scale(.98) !important;
+  filter:brightness(.9);
+  box-shadow:inset 0 2px 5px rgba(10,40,22,.18) !important;
+}
+:is(.page,.auth-page,.app-dialog) :is(button,a,summary):focus-visible {
+  outline:2px solid #376c47 !important; outline-offset:3px;
+}
+:is(.page,.auth-page,.app-dialog) button:disabled { cursor:not-allowed; }
+:is(.page,.auth-page,.app-dialog) button[aria-busy="true"] { cursor:wait; opacity:1 !important; }
+:is(.page,.auth-page,.app-dialog) :is(input,select,textarea) {
+  font-family:var(--app-font) !important; font-size:16px !important; line-height:1.5;
+  scroll-margin-block:24px; min-width:0; max-width:100%;
+}
+.page input::placeholder, .page textarea::placeholder { color:#6c7b70 !important; }
+.page table { font-size:14px !important; }
+.page thead th { font-size:13px !important; }
+.desktop-sidebar nav a { font-size:14px !important; min-height:44px; }
+.desktop-sidebar .nav-section-label { font-size:12px !important; }
+.mobile-more-links a { font-size:15px !important; }
+.mobile-bottom-nav :is(a,button) { font-size:12px !important; }
+
+/* A single scroll owner at every size; direct content must not flex-shrink
+   into an unscrollable clipped box. Native dialog retains focus containment. */
+.app-dialog {
+  box-sizing:border-box;
+  min-width:0;
+  max-width:calc(100vw - 24px) !important;
+  max-height:calc(var(--app-viewport-height, 100dvh) - 24px) !important;
+  inset-block-start:var(--app-viewport-top, 0px) !important;
+  inset-block-end:max(0px, calc(100dvh - var(--app-viewport-height, 100dvh) - var(--app-viewport-top, 0px))) !important;
+  margin-block:auto !important;
+  overflow:hidden !important;
+}
+.app-dialog > div {
+  min-width:0; min-height:0;
+  overflow-y:auto !important; overflow-x:hidden !important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y pinch-zoom;
+  scroll-padding-block:16px;
+  padding-bottom:max(12px, env(safe-area-inset-bottom));
+}
+.app-dialog > div > * { flex-shrink:0; }
+.app-dialog :is(.astryx-inventory-dialog-body,.astryx-customer-dialog-body,.astryx-calendar-dialog-body,.astryx-equipment-dialog-body,.astryx-vendor-payment-body) {
+  min-height:0; max-height:none !important; overflow:visible !important;
+}
+.app-dialog :is(form,.form-grid,label) { min-width:0; }
+.app-dialog button { flex-shrink:0; }
+.app-dialog :is(input,select,textarea):focus-visible { outline:2px solid #6a9c73; outline-offset:2px; }
+.app-dialog .astryx-text-input > input:focus-visible { outline:none !important; }
+.app-dialog .form-grid { gap:14px !important; }
+.page .astryx-field-label, .app-dialog .astryx-field-label {
+  display:flex !important; align-items:center; flex-wrap:wrap; gap:6px !important;
+}
+.screen-error { margin:24px; max-width:720px; }
+.screen-error h2 { margin:12px 0; }
+.screen-error p { margin:12px 0; }
+.page .boot-screen { min-height:45vh; }
+@media(max-width:800px) {
+  .app-dialog { border-radius:14px !important; }
+  .app-dialog :is(.form-grid.two,.form-grid.three,.form-grid.four,.payment-form-grid) { grid-template-columns:minmax(0,1fr); }
+  .page .head-actions { flex-wrap:wrap; }
+  .page .head-actions > :is(button,a) { max-width:100%; white-space:normal; }
+  .page :is(.panel-title,.section-head) { flex-wrap:wrap; }
+}
+@media(prefers-reduced-motion:reduce) {
+  :is(.page,.auth-page,.app-dialog) :is(button,a) { transition:none !important; }
+  :is(.page,.auth-page,.app-dialog) button:active:not(:disabled) { transform:none !important; }
 }

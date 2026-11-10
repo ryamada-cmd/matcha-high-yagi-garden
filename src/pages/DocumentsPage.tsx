@@ -1,5 +1,5 @@
 import { Field } from '@astryxdesign/core/Field'
-import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { Dialog, DialogHeader } from '../components/AppDialog'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
 import { useEffect, useMemo, useState } from 'react'

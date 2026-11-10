@@ -1,4 +1,4 @@
-import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { Dialog, DialogHeader } from '../components/AppDialog'
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHeaderCell } from '@astryxdesign/core/Table'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'

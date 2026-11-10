@@ -1,5 +1,5 @@
 import { Field } from '@astryxdesign/core/Field'
-import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { Dialog, DialogHeader } from '../components/AppDialog'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
@@ -67,7 +67,7 @@ export default function ProductMasterPage() {
       <div className="form-grid three"><label>内容量<input type="number" min="0" step="0.001" value={form.netContent} onChange={e=>setForm({...form,netContent:e.target.value})}/></label><label>内容量単位<select value={form.contentUnit} onChange={e=>setForm({...form,contentUnit:e.target.value})}><option>g</option><option>kg</option><option>ml</option><option>個</option><option>袋</option><option>本</option></select></label><label>容器・包装<input list="package-type-list" value={form.packageType} onChange={e=>setForm({...form,packageType:e.target.value})}/><datalist id="package-type-list"><option value="缶"/><option value="アルミ袋"/><option value="紙箱"/><option value="ティーバッグ袋"/><option value="化粧箱"/><option value="バルク"/></datalist></label></div>
       <div className="form-grid three"><label>卸価格<input type="number" min="0" step="1" value={form.wholesalePriceYen} onChange={e=>setForm({...form,wholesalePriceYen:e.target.value})}/></label><label>小売価格<input type="number" min="0" step="1" value={form.retailPriceYen} onChange={e=>setForm({...form,retailPriceYen:e.target.value,standardPriceYen:e.target.value})}/></label><label>その他価格<input type="number" min="0" step="1" value={form.otherPriceYen} onChange={e=>setForm({...form,otherPriceYen:e.target.value})}/></label></div>
       <div className="form-grid two"><label>標準販売価格（互換用）<input type="number" min="0" step="1" value={form.standardPriceYen} onChange={e=>setForm({...form,standardPriceYen:e.target.value})}/></label><label>包材原価 / 1商品<input type="number" min="0" step="1" value={form.packagingCostYen} onChange={e=>setForm({...form,packagingCostYen:e.target.value})}/></label></div>
-      <label>備考<textarea rows={3} value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label><label className="check-line"><input type="checkbox" checked={form.status==='ACTIVE'} onChange={e=>setForm({...form,status:e.target.checked?'ACTIVE':'INACTIVE'})}/>販売中の商品として表示</label><Button className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':'保存'} isDisabled={busy}/>
+      <label>備考<textarea rows={3} value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label><label className="check-line"><input type="checkbox" checked={form.status==='ACTIVE'} onChange={e=>setForm({...form,status:e.target.checked?'ACTIVE':'INACTIVE'})}/>販売中の商品として表示</label><Button isLoading={busy} className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':'保存'} isDisabled={busy}/>
     </form></div></Dialog>}
   </div>
 }

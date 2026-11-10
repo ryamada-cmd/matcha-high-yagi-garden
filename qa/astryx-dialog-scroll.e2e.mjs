@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import {mkdirSync} from 'node:fs'
 import {chromium,webkit} from 'playwright'
 
-const origin='http://127.0.0.1:5178'
+const origin=process.env.QA_ORIGIN||'http://127.0.0.1:5178'
 mkdirSync('qa/screenshots',{recursive:true})
 let passes=0
 
@@ -73,8 +73,8 @@ async function checkScrollable(page,selector,label){
 }
 
 try{
- for(const [engine,browserType] of [['Chromium',chromium],['WebKit',webkit]]){
-  const browser=await browserType.launch({headless:true,args:engine==='Chromium'?['--no-sandbox']:[]})
+ for(const [engine,browserType] of (process.env.QA_CHROMIUM_ONLY ? [['Chromium',chromium]] : [['Chromium',chromium],['WebKit',webkit]])){
+  const browser=await browserType.launch({executablePath:engine==='Chromium'?process.env.QA_CHROMIUM_PATH:undefined,headless:true,args:engine==='Chromium'?['--no-sandbox']:[]})
   try{
    for(const [width,height] of [[390,720],[320,568]]){
     const {page,context,verify}=await makePage(browser,'documents',width,height)

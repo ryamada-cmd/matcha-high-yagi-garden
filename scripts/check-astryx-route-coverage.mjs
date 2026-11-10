@@ -41,7 +41,8 @@ const expected={
 const matches=[...app.matchAll(/<Route\s+path="([^"]+)"\s+element=\{<PermissionRoute\s+permission="([^"]+)"><([A-Za-z_]\w*)\/><\/PermissionRoute>\}\/>/g)]
 const actualRoutes=[...app.matchAll(/<Route\s+path="/g)].length
 assert.equal(matches.length,33,'Exactly 33 routes must have an explicit PermissionRoute guard')
-assert.equal(actualRoutes,matches.length,'No unprotected Route may bypass the wrapper')
+assert.equal(actualRoutes,matches.length+1,'Only the not-found screen may be unguarded')
+assert.ok(app.includes('<Route path="*" element={<div className="page"><section className="panel"><h1>ページが見つかりません</h1>'), 'The fallback must not expose a business screen')
 assert.equal(Object.keys(expected).length,33)
 const encountered=new Set()
 for(const [,url,permission,component] of matches){

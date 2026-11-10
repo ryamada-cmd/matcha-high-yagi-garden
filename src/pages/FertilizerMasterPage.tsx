@@ -1,6 +1,6 @@
 import { Field } from '@astryxdesign/core/Field'
 import { Card } from '@astryxdesign/core/Card'
-import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { Dialog, DialogHeader } from '../components/AppDialog'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'

@@ -174,7 +174,7 @@ export default function TeaProcurementPage(){
         <div className="form-grid four"><label>仕入数量<input required type="number" inputMode="decimal" min="0.001" step="0.001" value={procure.quantity} onChange={e=>setProcure({...procure,quantity:e.target.value})}/></label><label>単位<select value={procure.unit} onChange={e=>setProcure({...procure,unit:e.target.value})}><option>kg</option><option>g</option></select></label><label>仕入総額（円）<input type="number" inputMode="numeric" min="0" step="1" value={procure.totalCostYen} onChange={e=>setProcure({...procure,totalCostYen:e.target.value})}/></label><label>保管場所<input value={procure.storageLocation} onChange={e=>setProcure({...procure,storageLocation:e.target.value})}/></label></div>
         <div className="tea-procure-cost-preview"><span>仕入単価</span><b>{procureUnitCost?yen.format(procureUnitCost)+' / '+procure.unit:'—'}</b></div>
         <label>備考<textarea rows={2} value={procure.note} onChange={e=>setProcure({...procure,note:e.target.value})}/></label>
-        <Button className="ui-astryx-action" type="submit" variant="primary" label={busy?'登録中…':'調達茶を入庫'} isDisabled={busy}/>
+        <Button isLoading={busy} className="ui-astryx-action" type="submit" variant="primary" label={busy?'登録中…':'調達茶を入庫'} isDisabled={busy}/>
       </form>}
     </section>}
 

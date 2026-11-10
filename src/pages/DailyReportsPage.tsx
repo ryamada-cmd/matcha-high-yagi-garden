@@ -113,7 +113,7 @@ export default function DailyReportsPage(){
         </div>
         {photoFiles.length>0&&<div className="daily-report-photo-selected">{photoFiles.map((file,index)=><div key={photoKey(file)}><ImageIcon size={15}/><span>{file.name}</span><button type="button" onClick={()=>setPhotoFiles(v=>v.filter((_,i)=>i!==index))} aria-label="写真を外す"><X size={15}/></button></div>)}</div>}
       </section>
-      <div className="daily-report-form-actions">{form.id&&<button type="button" className="secondary-button" onClick={resetForm}>編集をやめる</button>}<Button className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':form.id?'日報を更新':'日報を登録'} isDisabled={busy}/></div>
+      <div className="daily-report-form-actions">{form.id&&<button type="button" className="secondary-button" onClick={resetForm}>編集をやめる</button>}<Button isLoading={busy} className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':form.id?'日報を更新':'日報を登録'} isDisabled={busy}/></div>
     </form>}
 
     <section className="daily-report-review">

@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import {chromium,webkit} from 'playwright'
 
-const origin='http://127.0.0.1:5179'
+const origin=process.env.QA_AUTH_ORIGIN||'http://127.0.0.1:5179'
 const cases=[
  {name:'anonymous-login',anonymous:true,role:'worker',route:'/'},
  {name:'viewer-approval',role:'viewer',route:'/sales'},
@@ -21,7 +21,7 @@ const cases=[
 let passed=0
 const runners=[['chromium',chromium],['webkit',webkit]]
 for(const [engine,browserType] of runners){
- const browser=await browserType.launch({headless:true,args:engine==='chromium'?['--no-sandbox']:[]})
+ const browser=await browserType.launch({executablePath:engine==='Chromium'?process.env.QA_CHROMIUM_PATH:undefined,headless:true,args:engine==='chromium'?['--no-sandbox']:[]})
  try{
   for(const entry of cases){
    const context=await browser.newContext({viewport:{width:390,height:844},locale:'ja-JP'})
