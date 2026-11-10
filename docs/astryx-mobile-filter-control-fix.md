@@ -8,7 +8,7 @@ The `申請一覧・承認` section of the expense claims page showed overlappin
 
 ## Fix
 - `src/astryx-ui.css` is loaded after legacy CSS and resets only the nested `.astryx-text-input > input` border/shadow/background/padding, allowing the **AstryX wrapper** to retain the brand border, focus treatment, icon and clear button.
-- Set `flex:1 1 0%`, `width:0`, `min-width:0` on that inner element to prevent icon + input intrinsic widths from overflowing the wrapper.
+- Set `flex:1 1 auto`, `width:auto` and `min-width:0` on that inner element. A zero-width value is not appropriate: the 1280px pricing-page regression proved it made a text input invisible even though its parent border remained visible.
 - Search fields use a consistent 46px minimum touch height.
 - The expense filter grid is a true single-column `minmax(0,1fr)` on phones with 100%-width month, status and applicant controls; selectors remain narrow enough to avoid unintended horizontal scrolling.
 
