@@ -11,6 +11,7 @@ The `申請一覧・承認` section of the expense claims page showed overlappin
 - Set `flex:1 1 auto`, `width:auto` and `min-width:0` on that inner element. A zero-width value is not appropriate: the 1280px pricing-page regression proved it made a text input invisible even though its parent border remained visible.
 - Search fields use a consistent 46px minimum touch height.
 - The expense filter grid is a true single-column `minmax(0,1fr)` on phones with 100%-width month, status and applicant controls; selectors remain narrow enough to avoid unintended horizontal scrolling.
+- In mixed search/select **flex toolbars** (e.g. desktop price list), the legacy native `select {width:100%!important}` rule could occupy the entire row and collapse the search Field to 0px. Search now gets `flex-basis:240px`, while peer selects are content-sized on desktop; mobile switches to full-width wrapping.
 
 ## Regression and safety
 `qa/astryx-filter-controls.e2e.mjs` uses actual React screens and CSS with synthetic-only modules:
