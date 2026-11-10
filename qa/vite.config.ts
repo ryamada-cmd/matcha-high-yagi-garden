@@ -40,7 +40,11 @@ export default defineConfig({
     const storage=page.endsWith('/src/pages/StoragePage.tsx');
     const library=page.endsWith('/src/pages/LibraryPage.tsx');
     const settings=page.endsWith('/src/pages/SettingsPage.tsx');
-    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense||sprayHistory||fertilizerHistory||sales||costing||storage||library||settings){
+    const home=page.endsWith('/src/pages/HomeDashboardPage.tsx');
+    const photo=page.endsWith('/src/pages/PhotoGallerySection.tsx');
+    const weatherSettings=page.endsWith('/src/components/WeatherLocationSettings.tsx');
+    const weatherPanel=page.endsWith('/src/components/WeatherPanel.tsx');
+    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense||sprayHistory||fertilizerHistory||sales||costing||storage||library||settings||home||photo){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
@@ -69,11 +73,16 @@ export default defineConfig({
       if(costing&&source==='../lib/costing')return path.join(root,'qa/mockCosting.ts');
       if((storage||library)&&source==='../lib/externalStorage')return path.join(root,'qa/mockExternalStorage.ts');
       if(library&&source==='../lib/documentLibrary')return path.join(root,'qa/mockDocumentLibrary.ts');
-      if(storage&&source==='./PhotoGallerySection')return path.join(root,'qa/mockPhotoGallerySection.tsx');
+
       if(settings&&source==='../lib/adminConsole')return path.join(root,'qa/mockAdminConsole.ts');
-      if(settings&&source==='../components/WeatherLocationSettings')return path.join(root,'qa/mockWeatherLocationSettings.tsx');
+
+      if(photo&&source==='../lib/photoGallery')return path.join(root,'qa/mockPhotoGallery.ts');
+      if(home&&['../lib/dashboard','../lib/fertilizerDashboard','../lib/harvestProcessing','../lib/production','../lib/salesDashboard','../lib/equipmentDashboard','../lib/calendar'].includes(source))
+       return path.join(root,'qa/mockHomeDashboard.ts');
       // Same source path is shared by fertilizer master and history; use a single safe mock.
     }
+    if(weatherSettings&&source==='../lib/adminConsole')return path.join(root,'qa/mockAdminConsole.ts');
+    if((weatherSettings||weatherPanel)&&source==='../lib/weather')return path.join(root,'qa/mockWeather.ts');
     return null;
    },
   },

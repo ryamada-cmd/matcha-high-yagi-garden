@@ -1,6 +1,7 @@
 // Nonpersistent synthetic administrator state. No real auth, RLS, audit or Supabase access.
 const clone=<T,>(v:T):T=>JSON.parse(JSON.stringify(v))
-const settings:any={low_stock_threshold_percent:20,expiry_warning_days:90,
+const settings:any={weather_location_name:'架空井手町',weather_latitude:34.8,weather_longitude:135.8,
+ low_stock_threshold_percent:20,expiry_warning_days:90,
  upcoming_plan_warning_days:14,upcoming_harvest_warning_days:30,
  updated_at:'2026-11-01T09:00:00+09:00'}
 const users:any[]=[
@@ -29,6 +30,12 @@ export async function loadRolePermissionMatrix(){return clone({definitions})}
 export async function saveAppSettings(input:any){
  Object.assign(settings,{low_stock_threshold_percent:input.lowStockPercent,expiry_warning_days:input.expiryDays,
  upcoming_plan_warning_days:input.planDays,upcoming_harvest_warning_days:input.harvestDays})
+ if('weatherLocationName' in input){
+  settings.weather_location_name=input.weatherLocationName
+  settings.weather_latitude=input.weatherLatitude
+  settings.weather_longitude=input.weatherLongitude
+  ;(window as any).__qa_weather_saved=clone(input)
+ }
  ;(window as any).__qa_settings_saved=clone(input)
 }
 export async function changeUserRole(id:string,role:'admin'|'worker'|'viewer'){
