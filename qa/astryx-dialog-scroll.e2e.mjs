@@ -32,15 +32,19 @@ async function makePage(browser,screen,width,height){
 async function checkScrollable(page,selector,label){
  const dialog=page.locator(selector)
  await dialog.waitFor({state:'visible'})
- const first=await dialog.evaluate(node=>{
-  const css=getComputedStyle(node),rect=node.getBoundingClientRect()
+ // AstryX Dialog 0.7.x renders an inner flex wrapper with overflow:hidden.
+ // That wrapper, NOT the native <dialog> shell, must become the real scroller.
+ const scrollBox=dialog.locator(':scope > div').first()
+ const first=await scrollBox.evaluate(node=>{
+  const css=getComputedStyle(node),rect=node.parentElement.getBoundingClientRect()
   return {height:node.clientHeight,scrollHeight:node.scrollHeight,top:rect.top,
-   bottom:rect.bottom,overflowY:css.overflowY,scrollTop:node.scrollTop,viewport:innerHeight}
+   bottom:rect.bottom,overflowY:css.overflowY,scrollTop:node.scrollTop,viewport:innerHeight,
+   children:node.children.length}
  })
  console.log('SCROLL DIAGNOSTIC',label,JSON.stringify(first))
- assert.ok(first.scrollHeight>first.height+80,label+' content must exceed dialog height')
+ assert.ok(first.scrollHeight>first.height+80,label+' content must exceed inner wrapper height')
  assert.ok(['auto','scroll'].includes(first.overflowY),
-  label+' dialog must have an active vertical scroller')
+  label+' AstryX inner wrapper must be the vertical scroll container')
  assert.ok(first.top>=-4&&first.bottom<=first.viewport+4,
   label+' dialog must stay within the visual viewport')
 
@@ -49,13 +53,13 @@ async function checkScrollable(page,selector,label){
  await page.mouse.move(rect.x+rect.width*0.5,rect.y+rect.height*0.65)
  await page.mouse.wheel(0,690)
  await page.waitForTimeout(250)
- let after=await dialog.evaluate(node=>node.scrollTop)
+ let after=await scrollBox.evaluate(node=>node.scrollTop)
  if(after<=20){ // Some WebKit builds consume wheel gestures; verify DOM scroller too.
-  after=await dialog.evaluate(node=>{node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,540);return node.scrollTop})
+  after=await scrollBox.evaluate(node=>{node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,540);return node.scrollTop})
  }
  assert.ok(after>30,label+' must move the dialog content down')
 
- await dialog.evaluate(node=>{node.scrollTop=node.scrollHeight})
+ await scrollBox.evaluate(node=>{node.scrollTop=node.scrollHeight})
  await page.waitForTimeout(100)
  return dialog
 }
