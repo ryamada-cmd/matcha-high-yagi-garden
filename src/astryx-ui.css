@@ -886,3 +886,11 @@ html, body { background: #f5f7f3; }
  .tea-procure-cost-preview { width:auto; max-width:100%; flex-wrap:wrap; }
  .tea-procure-form > button { max-width:100%; white-space:normal; }
 }
+@media screen and (max-width:800px) {
+  .astryx-documents .document-preview-shell {
+    margin-inline:0;
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+}
