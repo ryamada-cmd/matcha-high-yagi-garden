@@ -56,6 +56,22 @@ for(const [engine,launcher,widths] of [['chromium',chromium,[320,390,1280]],['we
     results.push({engine,screen,width,status:'FAIL',error:error.message})
    }finally{await context.close()}
   }
+  // A failed save must remain inside the open dialog with values preserved.
+  {
+   const {page,context,verify}=await pageFor(browser,'prices&saveError=1',390,568)
+   try {
+    await page.getByRole('button',{name:'編集',exact:true}).first().click()
+    const dialog=page.locator('dialog[open]')
+    await dialog.locator('input[type=number]').first().fill('1234')
+    await dialog.getByRole('button',{name:'価格を保存',exact:true}).click()
+    await dialog.getByRole('alert').waitFor()
+    assert.match(await dialog.getByRole('alert').innerText(),/架空の保存エラー/)
+    assert.equal(await dialog.locator('input[type=number]').first().inputValue(),'1234')
+    assert.equal(await dialog.getByRole('button',{name:'価格を保存',exact:true}).isEnabled(),true)
+    verify();results.push({engine,screen:'prices-save-error',status:'PASS'})
+    console.log('PASS',engine,'save error visible inside dialog; inputs preserved and retry enabled')
+   }finally{await context.close()}
+  }
   // Long dialogs must work above the former 800px cutoff and in landscape.
   for(const [screen,buttons] of [
    ['documents',['取引先・発行元','追加']],['products',['商品を追加']],
