@@ -734,6 +734,33 @@ html, body { background: #f5f7f3; }
   border-radius:10px;
 }
 .astryx-page .toolbar > .astryx-search-field { min-width:0; max-width:100%; }
+/* AstryX search fields can live in a flex toolbar beside legacy native
+   <select> elements. The older .page select {width:100%!important} consumed
+   the entire row and forced the flex-basis:0 search field to 0px.
+   Allocate a real flex basis for search and let selectors size to content. */
+.astryx-page .toolbar:has(> .astryx-search-field) > .astryx-search-field {
+  flex:1 1 240px;
+  min-width:180px;
+  max-width:100%;
+}
+.astryx-page .toolbar:has(> .astryx-search-field) > select {
+  flex:0 1 auto;
+  width:auto !important;
+  min-width:120px;
+  max-width:100%;
+}
+@media(max-width:800px) {
+  .astryx-page .toolbar:has(> .astryx-search-field) > .astryx-search-field {
+    flex:1 1 100%;
+    width:100%;
+    min-width:0;
+  }
+  .astryx-page .toolbar:has(> .astryx-search-field) > select {
+    width:100% !important;
+    flex:1 1 100%;
+    min-width:0;
+  }
+}
 
 /* Expense-claim toolbar is a GRID, not a flex row. Force all four direct
    controls into equal-width columns on phones regardless of the generic
@@ -743,6 +770,10 @@ html, body { background: #f5f7f3; }
   min-width:0;
   max-width:100%;
   width:100%;
+}
+.astryx-page.astryx-expenses .expense-toolbar > select {
+  width:100% !important;
+  min-width:0;
 }
 @media(max-width:800px) {
   .astryx-expenses .expense-toolbar {
