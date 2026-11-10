@@ -31,7 +31,9 @@ export default defineConfig({
     const expense=page.endsWith('/src/pages/ExpenseClaimsPage.tsx');
     const sprayHistory=page.endsWith('/src/pages/SprayHistoryPage.tsx');
     const fertilizerHistory=page.endsWith('/src/pages/FertilizerHistoryPage.tsx');
-    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense||sprayHistory||fertilizerHistory){
+    const sales=page.endsWith('/src/pages/SalesPage.tsx');
+    const costing=page.endsWith('/src/pages/CostingPage.tsx');
+    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense||sprayHistory||fertilizerHistory||sales||costing){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
@@ -56,6 +58,8 @@ export default defineConfig({
       if(expense&&source==='../lib/documentOcr')return path.join(root,'qa/mockVendorDocumentOcr.ts');
       if(sprayHistory&&source==='../lib/sprayHistory')return path.join(root,'qa/mockSprayHistory.ts');
       if(sprayHistory&&source==='../lib/sprays')return path.join(root,'qa/mockSprayHistory.ts');
+      if(sales&&source==='../lib/sales')return path.join(root,'qa/mockSales.ts');
+      if(costing&&source==='../lib/costing')return path.join(root,'qa/mockCosting.ts');
       // Same source path is shared by fertilizer master and history; use a single safe mock.
     }
     return null;
