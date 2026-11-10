@@ -71,13 +71,14 @@ for(const [engine,launcher] of engines){
    await context.close();pass++
    console.log('PASS',engine,width,'expense search border, icon sizing, four aligned filters')
   }
-  for(const [screen,searchLabel] of [
-   ['inventory','農薬在庫の検索'],
-   ['products','商品マスタを検索'],
-   ['vendor-invoices','仕入請求書を検索'],
-   ['documents','帳票を検索']
+  for(const [screen,searchLabel,viewportWidth] of [
+   ['inventory','農薬在庫の検索',390],
+   ['products','商品マスタを検索',390],
+   ['vendor-invoices','仕入請求書を検索',390],
+   ['documents','帳票を検索',390],
+   ['prices','商品価格を検索',1280]
   ]){
-   const context=await browser.newContext({viewport:{width:390,height:844}})
+   const context=await browser.newContext({viewport:{width:viewportWidth,height:844}})
    const page=await context.newPage(),offOrigin=[]
    await page.route('**/*',route=>{
     if(!route.request().url().startsWith(origin+'/')&&!route.request().url().startsWith('data:'))
