@@ -19,7 +19,7 @@ This shared fix covers:
 ## Regression
 `qa/astryx-dialog-scroll.e2e.mjs` renders **real page components and CSS** but synthetic-only service mocks:
 - Customer modal at 390x720 and 320x568 in Chromium and WebKit.
-- Assert dialog has a scrollable overflow, stays inside viewport and actually scrolls.
+- Assert the **inner AstryX flex wrapper** has scrollable overflow, remains within viewport and actually changes scrollTop. Chromium uses a real wheel gesture; mobile WebKit uses a programmatic scroll because Playwright does not support mouse.wheel in that device mode.
 - Reach the bottom Save action, fill the last notes field and save only to in-memory QA.
 - Product modal at 390x568 for each engine; scroll to the Save button and save to in-memory QA.
 - No requests to Supabase, external storage or other off-origin services.
