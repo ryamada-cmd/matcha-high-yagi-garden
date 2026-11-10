@@ -141,7 +141,7 @@ try{
  await p.getByPlaceholder('操作・対象・ユーザー・IDで検索').fill('')
  const firstThreshold=p.locator('.settings-grid input[type="number"]').first()
  await firstThreshold.fill('27')
- await p.getByRole('button',{name:'設定を保存'}).click()
+ await p.getByRole('button',{name:'設定を保存',exact:true}).click()
  await p.getByText('警告基準を更新しました。ダッシュボードへ即時反映されます。').waitFor()
  assert.equal((await p.evaluate(()=>window.__qa_settings_saved)).lowStockPercent,27)
  const groups=p.locator('.permission-row')
@@ -166,7 +166,7 @@ try{
  assert.equal(await ro.locator('.permission-settings-section').count(),0)
  assert.equal(await ro.locator('.audit-row').count(),2,'Audit remains visible with audit.view')
  assert.equal(await ro.locator('.settings-grid input').first().isDisabled(),true)
- assert.equal(await ro.getByRole('button',{name:'設定を保存'}).isDisabled(),true)
+ assert.equal(await ro.getByRole('button',{name:'設定を保存',exact:true}).isDisabled(),true)
  await noOverflow(ro,'settings reader 320px')
  settingsReader.verify();await settingsReader.context.close();passes++
  console.log('PASS settings read-only: no user/permission editors, warning thresholds disabled')
