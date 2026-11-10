@@ -3,6 +3,7 @@
 export function useAppPermissions() {
  const viewOnly=new URLSearchParams(window.location.search).get('viewOnly')==='1'
  return {role:viewOnly?'worker':'admin',loading:false,error:'',
-  allowed:(permission:string)=>!(viewOnly&&permission.endsWith('.manage')),
+  allowed:(permission:string)=>!(viewOnly&&(permission.endsWith('.manage')||
+   permission==='storage.upload'||permission==='storage.delete'||permission==='audit.export')),
   refresh:async()=>{}}
 }
