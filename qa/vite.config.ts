@@ -10,6 +10,10 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export default defineConfig({
  root,
  // The synthetic QA bundle must not scan the real production index.html.
+ define:{
+  __APP_BUILD_TIME__: JSON.stringify('2026-11-10T00:00:00Z'),
+  __APP_REVISION__: JSON.stringify('QA-SYNTHETIC')
+ },
  optimizeDeps:{entries:['qa/index.html']},
  plugins:[
   {
@@ -33,7 +37,10 @@ export default defineConfig({
     const fertilizerHistory=page.endsWith('/src/pages/FertilizerHistoryPage.tsx');
     const sales=page.endsWith('/src/pages/SalesPage.tsx');
     const costing=page.endsWith('/src/pages/CostingPage.tsx');
-    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense||sprayHistory||fertilizerHistory||sales||costing){
+    const storage=page.endsWith('/src/pages/StoragePage.tsx');
+    const library=page.endsWith('/src/pages/LibraryPage.tsx');
+    const settings=page.endsWith('/src/pages/SettingsPage.tsx');
+    if(harvest||inventory||prices||products||fertilizer||calendar||documents||crm||equipment||vendor||daily||expense||sprayHistory||fertilizerHistory||sales||costing||storage||library||settings){
       if(source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
       if(harvest&&source==='../lib/harvestProcessing')return path.join(root,'qa/mockHarvestProcessing.ts');
       if(inventory&&source==='../lib/inventory')return path.join(root,'qa/mockInventory.ts');
@@ -60,6 +67,11 @@ export default defineConfig({
       if(sprayHistory&&source==='../lib/sprays')return path.join(root,'qa/mockSprayHistory.ts');
       if(sales&&source==='../lib/sales')return path.join(root,'qa/mockSales.ts');
       if(costing&&source==='../lib/costing')return path.join(root,'qa/mockCosting.ts');
+      if((storage||library)&&source==='../lib/externalStorage')return path.join(root,'qa/mockExternalStorage.ts');
+      if(library&&source==='../lib/documentLibrary')return path.join(root,'qa/mockDocumentLibrary.ts');
+      if(storage&&source==='./PhotoGallerySection')return path.join(root,'qa/mockPhotoGallerySection.tsx');
+      if(settings&&source==='../lib/adminConsole')return path.join(root,'qa/mockAdminConsole.ts');
+      if(settings&&source==='../components/WeatherLocationSettings')return path.join(root,'qa/mockWeatherLocationSettings.tsx');
       // Same source path is shared by fertilizer master and history; use a single safe mock.
     }
     return null;
