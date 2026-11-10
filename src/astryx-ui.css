@@ -656,12 +656,24 @@ html, body { background: #f5f7f3; }
   ) {
     box-sizing:border-box;
     max-height:min(88dvh, calc(100dvh - 24px)) !important;
+    overflow:hidden !important; /* AstryX's inner flex wrapper owns scrolling. */
+  }
+  :is(
+    .astryx-inventory-dialog,
+    .astryx-master-dialog,
+    .astryx-calendar-dialog,
+    .astryx-document-customer-dialog,
+    .astryx-equipment-dialog,
+    .astryx-vendor-payment-dialog
+  ) > div {
+    /* @astryxdesign/core Dialog v0.7.x renders one flex inner wrapper with
+       overflow:hidden; that inner wrapper was clipping long forms on iOS. */
+    min-height:0;
     overflow-y:auto !important;
     overflow-x:hidden !important;
     -webkit-overflow-scrolling:touch;
     overscroll-behavior-y:contain;
     touch-action:pan-y;
-    scrollbar-gutter:stable;
   }
   .astryx-document-customer-dialog .astryx-customer-dialog-body,
   .astryx-calendar-dialog .astryx-calendar-dialog-body,
