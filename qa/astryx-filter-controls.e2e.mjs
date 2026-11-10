@@ -32,25 +32,32 @@ for(const [engine,launcher] of engines){
      return {tag:node.tagName,x:r.x,y:r.y,w:r.width,h:r.height,
       gridColumn:style.gridColumn,boxSizing:style.boxSizing}
     })
-    const wrapper=bar.querySelector('.astryx-text-input')
+    const field=bar.querySelector('.astryx-search-field')
+    const wrapper=field.querySelector('.astryx-text-input')
     const input=wrapper?.querySelector('input')
-    const outerStyle=getComputedStyle(wrapper),innerStyle=getComputedStyle(input)
-    const outer=wrapper.getBoundingClientRect(),inner=input.getBoundingClientRect()
-    return {rects,wrapperBorder:outerStyle.borderLeftWidth,
-      inputBorder:innerStyle.borderLeftWidth,inputShadow:innerStyle.boxShadow,
-      inputBg:innerStyle.backgroundColor,inputWidth:inner.width,wrapperWidth:outer.width,
-      wrapperHeight:outer.height,toolbarWidth:bar.getBoundingClientRect().width,
+    const fieldStyle=getComputedStyle(field),controlStyle=getComputedStyle(wrapper),innerStyle=getComputedStyle(input)
+    const outer=field.getBoundingClientRect(),control=wrapper.getBoundingClientRect(),inner=input.getBoundingClientRect()
+    return {rects,fieldBorder:fieldStyle.borderLeftWidth,
+      controlBorder:controlStyle.borderLeftWidth,controlShadow:controlStyle.boxShadow,
+      controlBg:controlStyle.backgroundColor,inputBorder:innerStyle.borderLeftWidth,
+      inputShadow:innerStyle.boxShadow,inputBg:innerStyle.backgroundColor,
+      inputWidth:inner.width,controlWidth:control.width,fieldWidth:outer.width,
+      fieldHeight:outer.height,toolbarWidth:bar.getBoundingClientRect().width,
       viewport:innerWidth,pageScrollWidth:document.documentElement.scrollWidth}
    })
    console.log('FILTER DIAGNOSTIC',engine,width,JSON.stringify(controls))
    assert.equal(controls.rects.length,4,'Search, month, status, applicant must remain visible')
-   assert.ok(parseFloat(controls.wrapperBorder)>=1,'AstryX component owns one visible border')
-   assert.equal(parseFloat(controls.inputBorder),0,'Nested input must NOT draw a second border')
-   assert.equal(controls.inputShadow,'none','Nested input must not add its own focus shadow')
+   assert.ok(parseFloat(controls.fieldBorder)>=1,'Search Field owns the only visible border')
+   assert.equal(parseFloat(controls.controlBorder),0,'AstryX TextInput control must NOT draw an inset second border')
+   assert.equal(controls.controlShadow,'none','Inner AstryX control must not draw a second outline')
+   assert.equal(controls.controlBg,'rgba(0, 0, 0, 0)','Inner AstryX control must be transparent')
+   assert.equal(parseFloat(controls.inputBorder),0,'Native input must be borderless')
+   assert.equal(controls.inputShadow,'none','Native input must have no extra shadow')
    assert.equal(controls.inputBg,'rgba(0, 0, 0, 0)','Native input background must be transparent')
-   assert.ok(controls.inputWidth<controls.wrapperWidth-10,
+   assert.ok(controls.inputWidth<controls.controlWidth-10,
     'Input must leave room for AstryX search icon and clear button')
-   assert.ok(controls.wrapperHeight>=44,'Touch-friendly search control height')
+   assert.ok(controls.controlWidth<=controls.fieldWidth,'Inner control must fit inside Field')
+   assert.ok(controls.fieldHeight>=44,'Touch-friendly search control height')
    assert.ok(controls.pageScrollWidth<=width+2,'No horizontal page overflow')
    const target=controls.rects[0]
    for(const field of controls.rects){
@@ -89,22 +96,27 @@ for(const [engine,launcher] of engines){
    const search=page.getByRole('searchbox',{name:searchLabel})
    await search.waitFor()
    const styles=await search.evaluate(input=>{
-    const outer=input.closest('.astryx-text-input')
-    const a=getComputedStyle(input),b=getComputedStyle(outer),ir=input.getBoundingClientRect(),or=outer.getBoundingClientRect()
-    return {insideBorder:a.borderLeftWidth,outsideBorder:b.borderLeftWidth,
-      shadow:a.boxShadow,innerWidth:ir.width,outerWidth:or.width,
+    const control=input.closest('.astryx-text-input')
+    const field=input.closest('.astryx-search-field')
+    const a=getComputedStyle(input),b=getComputedStyle(control),c=getComputedStyle(field)
+    const ir=input.getBoundingClientRect(),cr=control.getBoundingClientRect(),fr=field.getBoundingClientRect()
+    return {inputBorder:a.borderLeftWidth,controlBorder:b.borderLeftWidth,
+      fieldBorder:c.borderLeftWidth,controlShadow:b.boxShadow,
+      inputWidth:ir.width,controlWidth:cr.width,fieldWidth:fr.width,
       pageOverflow:document.documentElement.scrollWidth-innerWidth}
    })
-   assert.equal(parseFloat(styles.insideBorder),0,screen+' duplicate input border')
-   assert.ok(parseFloat(styles.outsideBorder)>=1,screen+' wrapper border missing')
-   assert.equal(styles.shadow,'none')
-   assert.ok(styles.innerWidth<styles.outerWidth,screen+' inner control too wide')
+   assert.ok(parseFloat(styles.fieldBorder)>=1,screen+' search Field border missing')
+   assert.equal(parseFloat(styles.controlBorder),0,screen+' inset AstryX control border')
+   assert.equal(parseFloat(styles.inputBorder),0,screen+' duplicate native input border')
+   assert.equal(styles.controlShadow,'none',screen+' inset control shadow')
+   assert.ok(styles.inputWidth<styles.controlWidth,screen+' inner control too wide')
+   assert.ok(styles.controlWidth<=styles.fieldWidth,screen+' inset control exceeds Field width')
    assert.ok(styles.pageOverflow<=2,screen+' viewport overflow')
    await search.fill('QA-FILTER')
    assert.equal(await search.inputValue(),'QA-FILTER')
    assert.deepEqual(offOrigin,[])
    await context.close();pass++
-   console.log('PASS',engine,screen,'single AstryX TextInput border and working search')
+   console.log('PASS',engine,screen,'single outer Field border (zero inset borders) and working search')
   }
  }finally{await browser.close()}
 }
