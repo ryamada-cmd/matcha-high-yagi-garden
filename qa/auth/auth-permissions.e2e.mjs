@@ -75,7 +75,8 @@ for(const [engine,browserType] of runners){
      assert.equal(await page.getByRole('dialog',{name:'その他のメニュー'}).count(),0)
     }else if(entry.name==='permissions-rpc-failure'){
      await page.getByRole('heading',{name:'この機能を利用する権限がありません'}).waitFor()
-     await page.getByText('架空権限DB読込エラー').waitFor()
+     await page.locator('.sidebar-user small').waitFor({state:'attached'})
+     assert.equal(await page.locator('.sidebar-user small').textContent(),'架空権限DB読込エラー')
      assert.equal(await page.locator('[data-qa="protected-page"]').count(),0)
     }else if(entry.name==='admin-demoted'){
      await page.locator('[data-qa="protected-page"]').waitFor()
