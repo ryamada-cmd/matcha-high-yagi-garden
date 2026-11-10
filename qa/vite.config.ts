@@ -14,11 +14,7 @@ export default defineConfig({
   __APP_BUILD_TIME__: JSON.stringify('2026-11-10T00:00:00Z'),
   __APP_REVISION__: JSON.stringify('QA-SYNTHETIC')
  },
- // All production-facing modules are mocked through the fixture alias plugin.
- // Vite's dependency pre-scan tried to resolve PhotoGallerySection with the
- // DailyReports-only mock (missing exports), causing occasional page reloads
- // mid-E2E. Disable only this synthetic fixture's automatic dependency crawl.
- optimizeDeps:{entries:[],noDiscovery:true},
+ optimizeDeps:{entries:['qa/index.html']},
  plugins:[
   {
    name:'qa-harvest-fail-closed-mock-alias',
