@@ -727,11 +727,41 @@ html, body { background: #f5f7f3; }
 }
 /* All AstryX searches share the same minimum touch target; the component
    wrapper retains its native themed border, icons, clear and focus ring. */
-.astryx-page .astryx-search-field { box-sizing:border-box; max-width:100%; min-width:0; }
-.astryx-page .astryx-search-field .astryx-text-input {
+/* One border per AstryX search. Field container draws the visible outline.
+   The inner TextInput control also draws a themed border by default; remove
+   that SECOND border (not just the native input border) to prevent the
+   offset inset rectangle seen on iPhone Safari. */
+.astryx-page .astryx-search-field {
+  box-sizing:border-box;
+  max-width:100%;
+  min-width:0;
   min-height:46px;
+  border:1px solid #b5c9ba !important;
+  border-radius:10px !important;
+  background:#fff !important;
+  box-shadow:none !important;
+  transition:border-color .14s ease,box-shadow .14s ease;
+}
+.astryx-page .astryx-search-field:focus-within {
+  border-color:#7ba789 !important;
+  box-shadow:0 0 0 3px rgba(58,116,76,.13) !important;
+}
+.astryx-page .astryx-search-field .astryx-text-input {
+  box-sizing:border-box;
   width:100%;
-  border-radius:10px;
+  min-width:0;
+  min-height:44px;
+  height:44px;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  outline:none !important;
+}
+.astryx-page .astryx-search-field .astryx-text-input:is(:hover,:focus-within) {
+  border:0 !important;
+  box-shadow:none !important;
+  background:transparent !important;
 }
 .astryx-page .toolbar > .astryx-search-field { min-width:0; max-width:100%; }
 /* AstryX search fields can live in a flex toolbar beside legacy native
