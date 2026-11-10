@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'qa/**'
+      - 'src/App.tsx'
+      - 'scripts/check-astryx-route-coverage.mjs'
       - 'src/pages/**'
       - 'src/astryx-ui.css'
       - 'src/harvest-processing.css'
@@ -19,6 +21,8 @@ on:
     branches: [main]
     paths:
       - 'qa/**'
+      - 'src/App.tsx'
+      - 'scripts/check-astryx-route-coverage.mjs'
       - 'src/pages/**'
       - 'src/astryx-ui.css'
       - '.github/workflows/astryx-browser-qa.yml'
@@ -45,6 +49,8 @@ jobs:
           node-version: 22
       - name: Install application dependencies (no production credentials)
         run: npm install --no-audit --no-fund
+      - name: Verify all route guards and screen imports
+        run: node scripts/check-astryx-route-coverage.mjs
       - name: Install isolated Chromium test runtime
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.56.1
@@ -66,6 +72,8 @@ jobs:
         run: node qa/harvest-ui.e2e.mjs
       - name: Test AstryX forms, dialogs, tables, and mobile overflow with fake data
         run: node qa/astryx-ui.e2e.mjs
+      - name: Test isolated sales, cancellations and annual costing at phone widths
+        run: node qa/astryx-finance.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
         uses: actions/upload-artifact@v4
