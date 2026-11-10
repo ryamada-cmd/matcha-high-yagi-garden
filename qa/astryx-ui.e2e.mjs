@@ -73,7 +73,24 @@ try {
  }
  assert.equal(match,true,'Price-list row must be visible at desktop width')
  assert.equal(await q.locator('table.price-list-table tbody tr').count(),2)
- await q.getByRole('searchbox',{name:'商品価格を検索'}).fill('QA-MATCHA')
+ // Diagnostic kept for failed-visibility regressions caused by CSS overrides.
+ const priceSearch=q.getByRole('searchbox',{name:'商品価格を検索'})
+ if(!await priceSearch.isVisible()){
+  const inspect=await priceSearch.evaluate(el=>{
+   const chain=[];let node=el
+   while(node&&chain.length<10){
+    const css=getComputedStyle(node),r=node.getBoundingClientRect()
+    chain.push({tag:node.tagName,cls:typeof node.className==='string'?node.className.slice(0,140):'',
+     w:r.width,h:r.height,x:r.x,y:r.y,display:css.display,visibility:css.visibility,
+     overflow:css.overflow,flex:css.flex,width:css.width,minWidth:css.minWidth,
+     height:css.height,minHeight:css.minHeight})
+    node=node.parentElement
+   }
+   return chain
+  })
+  console.log('QA PRICE SEARCH VISIBILITY DIAGNOSTICS',JSON.stringify(inspect))
+ }
+ await priceSearch.fill('QA-MATCHA')
  assert.equal(await q.locator('table.price-list-table tbody tr').count(),1)
  await q.locator('table.price-list-table tbody tr').first().getByRole('button',{name:'編集'}).click()
  await q.getByRole('dialog').waitFor()

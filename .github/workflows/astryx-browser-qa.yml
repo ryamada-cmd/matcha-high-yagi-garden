@@ -101,6 +101,8 @@ jobs:
         run: node qa/auth/auth-permissions.e2e.mjs
       - name: Test mobile AstryX modal vertical scrolling and bottom actions in Chromium/WebKit
         run: node qa/astryx-dialog-scroll.e2e.mjs
+      - name: Verify single-border AstryX TextInput and aligned mobile filter controls
+        run: node qa/astryx-filter-controls.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
         uses: actions/upload-artifact@v4
