@@ -9,7 +9,8 @@ import {chromium,webkit} from 'playwright'
 const origin='http://127.0.0.1:5178'
 mkdirSync('qa/screenshots',{recursive:true})
 let pass=0
-for(const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]){
+const engines=process.env.QA_BROWSER==='chromium'?[['chromium',chromium]]:[['chromium',chromium],['webkit',webkit]];
+for(const [engine,launcher] of engines){
  const browser=await launcher.launch({headless:true,args:engine==='chromium'?['--no-sandbox']:[]})
  try{
   for(const width of [320,390]){
