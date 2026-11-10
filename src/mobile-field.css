@@ -21,11 +21,11 @@
   .mobile-brand{display:flex;align-items:center;gap:9px;color:#173f2b;min-width:0}
   .mobile-brand>div{display:grid;min-width:0}
   .mobile-brand b{font-size:13px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .mobile-brand span{font-size:10px;color:#758078;margin-top:2px}
+  .mobile-brand span{font-size:12px;color:#758078;margin-top:2px}
   .mobile-menu-trigger{width:42px;height:42px;display:grid;place-items:center;border:1px solid #d9e2db;border-radius:12px;background:#fff;color:#214d36;padding:0;flex:0 0 auto}
 
   .mobile-bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:0;right:0;bottom:0;z-index:60;background:rgba(255,255,255,.98);backdrop-filter:blur(12px);border-top:1px solid #dce4de;padding:5px 6px calc(5px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(26,55,37,.07)}
-  .mobile-bottom-nav a,.mobile-bottom-nav button{min-width:0;min-height:58px;border:0;background:transparent;color:#758078;text-decoration:none;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:5px 2px;font-size:10px;font-weight:700;cursor:pointer}
+  .mobile-bottom-nav a,.mobile-bottom-nav button{min-width:0;min-height:58px;border:0;background:transparent;color:#758078;text-decoration:none;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:5px 2px;font-size:12px;font-weight:700;cursor:pointer}
   .mobile-bottom-nav a.active,.mobile-bottom-nav button.active{color:#174b32;background:#edf5f0}
   .mobile-bottom-nav span{white-space:nowrap}
 
@@ -35,7 +35,7 @@
   .mobile-more-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 2px 13px;border-bottom:1px solid #edf1ed}
   .mobile-more-head>div{display:grid;gap:3px;min-width:0}
   .mobile-more-head b{font-size:18px}
-  .mobile-more-head span{font-size:11px;color:#7a847d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-more-head span{font-size:12px;color:#7a847d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mobile-more-head button{width:42px;height:42px;border:1px solid #dce4de;border-radius:12px;background:#fff;color:#315942;display:grid;place-items:center}
   .mobile-more-links{display:grid;padding:8px 0}
   .mobile-more-links a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;padding:8px 10px;border-bottom:1px solid #edf1ed;color:#263c2f;text-decoration:none;font-weight:700}
@@ -54,9 +54,9 @@
   .panel,.metric{border-radius:12px;padding:14px}
   .metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}
   .metric{min-width:0;padding:12px}
-  .metric span{font-size:11px}
+  .metric span{font-size:12px}
   .metric strong{font-size:20px!important;margin-top:5px;line-height:1.25}
-  .metric small{font-size:10px!important;line-height:1.35}
+  .metric small{font-size:12px!important;line-height:1.35}
   .panel-grid{gap:10px;margin-top:10px}
 
   input,select,textarea{font-size:16px!important}
@@ -91,7 +91,7 @@
   .field-check{display:grid!important;grid-template-columns:28px minmax(0,1fr);grid-template-rows:auto auto;column-gap:7px;align-items:center;min-height:68px;padding:11px 12px!important}
   .field-check input{grid-column:1;grid-row:1/3;width:20px!important;height:20px;margin:0!important}
   .field-check b{grid-column:2;grid-row:1;font-size:13px}
-  .field-check span{grid-column:2;grid-row:2;margin:3px 0 0!important;font-size:11px;line-height:1.4}
+  .field-check span{grid-column:2;grid-row:2;margin:3px 0 0!important;font-size:12px;line-height:1.4}
   .check-list{gap:8px}
   .check-list label{min-height:52px;padding:12px;line-height:1.45}
   .check-list input{width:20px!important;height:20px;flex:0 0 auto;margin-top:0}
@@ -117,7 +117,7 @@
   .inventory-table tbody,.transaction-table tbody{display:grid;gap:9px}
   .inventory-table tr,.transaction-table tr{display:block;border:1px solid #dfe7e1;border-radius:12px;background:#fff;padding:10px 11px;box-shadow:0 1px 2px rgba(20,45,29,.03)}
   .inventory-table td,.transaction-table td{display:flex!important;align-items:flex-start;justify-content:space-between;gap:14px;width:100%;padding:7px 0!important;border:0!important;text-align:right;font-size:12px;white-space:normal}
-  .inventory-table td::before,.transaction-table td::before{display:block;flex:0 0 auto;color:#7a857d;font-size:10px;font-weight:700;text-align:left}
+  .inventory-table td::before,.transaction-table td::before{display:block;flex:0 0 auto;color:#7a857d;font-size:12px;font-weight:700;text-align:left}
   .inventory-table td:first-child,.transaction-table td:nth-child(3){font-size:14px;font-weight:700;text-align:left;border-bottom:1px solid #edf1ed!important;padding-bottom:10px!important;margin-bottom:3px}
   .inventory-table td:first-child::before,.transaction-table td:nth-child(3)::before{display:none}
   .inventory-table td:nth-child(2)::before{content:'残量'}
@@ -149,7 +149,7 @@
   .full-history-table tbody{display:grid;gap:9px}
   .full-history-table tr:not(.history-expanded-row){display:block;border:1px solid #dfe7e1;border-radius:12px;background:#fff;padding:10px 11px}
   .full-history-table tr:not(.history-expanded-row)>td{display:flex!important;align-items:flex-start;justify-content:space-between;gap:12px;width:100%;padding:6px 0!important;border:0!important;text-align:right;font-size:12px}
-  .full-history-table tr:not(.history-expanded-row)>td::before{flex:0 0 auto;color:#7a857d;font-size:10px;font-weight:700;text-align:left}
+  .full-history-table tr:not(.history-expanded-row)>td::before{flex:0 0 auto;color:#7a857d;font-size:12px;font-weight:700;text-align:left}
   .full-history-table tr:not(.history-expanded-row)>td:nth-child(1)::before{content:'散布日'}
   .full-history-table tr:not(.history-expanded-row)>td:nth-child(2)::before{content:'調製ID'}
   .full-history-table tr:not(.history-expanded-row)>td:nth-child(3)::before{content:'担当'}
@@ -172,7 +172,7 @@
 
   /* Catalog / master / dashboard / settings compact but tap-friendly. */
   .catalog-tabs{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px}
-  .catalog-tabs button{min-width:0;display:grid!important;gap:3px!important;padding:8px 4px!important;font-size:10px;line-height:1.2;text-align:center}
+  .catalog-tabs button{min-width:0;display:grid!important;gap:3px!important;padding:8px 4px!important;font-size:12px;line-height:1.2;text-align:center}
   .catalog-card{padding:13px}
   .catalog-card-actions{gap:7px}
   .field-master-card{padding:12px}
@@ -189,15 +189,15 @@
   .admin-user-row{padding:11px}
   .audit-summary{min-height:58px;padding:10px;grid-template-columns:58px minmax(0,1fr) auto}
   .audit-main b,.audit-main span{white-space:normal}
-  .audit-detail pre{max-height:220px;font-size:10px}
+  .audit-detail pre{max-height:220px;font-size:12px}
 }
 
 @media (max-width:420px){
   .page{padding-left:10px!important;padding-right:10px!important}
-  .mobile-bottom-nav a,.mobile-bottom-nav button{font-size:9px}
+  .mobile-bottom-nav a,.mobile-bottom-nav button{font-size:12px}
   .metrics{gap:7px}
   .metric{padding:10px}
   .metric strong{font-size:18px!important}
-  .catalog-tabs button{font-size:9px}
+  .catalog-tabs button{font-size:12px}
   .summary-numbers{grid-template-columns:1fr 1fr}
 }

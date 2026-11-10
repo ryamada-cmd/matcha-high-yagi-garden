@@ -1,3 +1,4 @@
+import { saveLocalDraft, removeLocalDraft } from '../lib/localDraft'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
@@ -23,7 +24,7 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 const today = () => new Date().toLocaleDateString('sv-SE')
 const SPRAY_DRAFT_KEY='yagi:spray-draft:v1'
 type SprayDraft={savedDate:string;sprayDate:string;preparedL:string;target:string;weather:string;temperature:string;operator:string;note:string;selectedFields:string[];chemicals:ChemRow[]}
-function loadSprayDraft():SprayDraft|null{try{const raw=localStorage.getItem(SPRAY_DRAFT_KEY);if(!raw)return null;const d=JSON.parse(raw) as SprayDraft;if(d.savedDate!==today()){localStorage.removeItem(SPRAY_DRAFT_KEY);return null}return d}catch{return null}}
+function loadSprayDraft():SprayDraft|null{try{const raw=localStorage.getItem(SPRAY_DRAFT_KEY);if(!raw)return null;const d=JSON.parse(raw) as SprayDraft;if(!d || !Array.isArray(d.selectedFields) || !d.selectedFields.every(x=>typeof x==='string'))return null;if(d.savedDate!==today()){removeLocalDraft(SPRAY_DRAFT_KEY);return null}if(!Array.isArray(d.chemicals)||!d.chemicals.every(x=>x && typeof x.key==='string' && typeof x.lotId==='string' && typeof x.dilution==='string'))return null;return d}catch{return null}}
 
 export default function SprayPage() {
   const { allowed } = useAppPermissions()
@@ -72,7 +73,7 @@ export default function SprayPage() {
   }
 
   useEffect(() => { void refresh() }, [])
-  useEffect(()=>{if(editingId)return;const draft:SprayDraft={savedDate:today(),sprayDate,preparedL,target,weather,temperature,operator,note,selectedFields,chemicals};localStorage.setItem(SPRAY_DRAFT_KEY,JSON.stringify(draft))},[editingId,sprayDate,preparedL,target,weather,temperature,operator,note,selectedFields,chemicals])
+  useEffect(()=>{if(editingId)return;const draft:SprayDraft={savedDate:today(),sprayDate,preparedL,target,weather,temperature,operator,note,selectedFields,chemicals};saveLocalDraft(SPRAY_DRAFT_KEY,draft)},[editingId,sprayDate,preparedL,target,weather,temperature,operator,note,selectedFields,chemicals])
 
   const prepared = Number(preparedL) || 0
   const chosen = useMemo(() => fields.filter((f) => selectedFields.includes(f.id)), [fields, selectedFields])
@@ -110,7 +111,7 @@ export default function SprayPage() {
   }
 
   function resetForm() {
-    localStorage.removeItem(SPRAY_DRAFT_KEY)
+    removeLocalDraft(SPRAY_DRAFT_KEY)
     setEditingId('')
     setEditingLegacy('')
     setSprayDate(today())
@@ -318,7 +319,7 @@ export default function SprayPage() {
               {chemicals.length > 1 && <label><input type="checkbox" checked={mixCheck} onChange={(e) => setMixCheck(e.target.checked)}/>混用可否を現物ラベル・メーカー・公式登録情報で確認した</label>}
             </div>
             <label className="full-label">備考<textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3}/></label>
-            <Button className="ui-astryx-action save-spray" variant="primary" label={saving ? '在庫・履歴へ反映中…' : editingId ? '散布記録を更新' : '散布を登録'} icon={<Save size={18}/>} onClick={() => void save()} isDisabled={saving}/>
+            <Button isLoading={saving}  className="ui-astryx-action save-spray" variant="primary" label={saving ? '在庫・履歴へ反映中…' : editingId ? '散布記録を更新' : '散布を登録'} icon={<Save size={18}/>} onClick={() => void save()} isDisabled={saving}/>
           </Card></>}
         </div>
 

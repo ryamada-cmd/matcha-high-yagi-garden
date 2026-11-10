@@ -8,6 +8,10 @@ mkdirSync('qa/screenshots',{recursive:true})
 mkdirSync('qa/results',{recursive:true})
 async function pageFor(browser,screen,width,height=740){
  const context=await browser.newContext({viewport:{width,height},locale:'ja-JP',hasTouch:width<801})
+ if(width===320 && ['sprays','fertilizer-applications'].includes(screen)) await context.addInitScript(()=>{
+  Storage.prototype.setItem=function(){throw new DOMException('Quota exceeded','QuotaExceededError')}
+  Storage.prototype.removeItem=function(){throw new DOMException('Storage blocked','SecurityError')}
+ })
  const page=await context.newPage(),errors=[],external=[]
  page.on('pageerror',e=>errors.push(e.message))
  await page.route('**/*',route=>{
@@ -39,7 +43,7 @@ for(const [engine,launcher,widths] of [['chromium',chromium,[320,390,1280]],['we
     const names=await tabs.allTextContents()
     for(let i=0;i<names.length;i++){
      await tabs.nth(i).click()
-     assert.equal(await page.locator('main h1').count(),1)
+     assert.equal(await page.locator('main .page-head h1').count(),1)
      assert.ok(await page.locator('main').evaluate(el=>el.scrollWidth<=el.clientWidth+2),`${screen} tab ${names[i]} overflow`)
     }
     verify()

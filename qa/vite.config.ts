@@ -14,7 +14,7 @@ export default defineConfig({
   __APP_BUILD_TIME__: JSON.stringify('2026-11-10T00:00:00Z'),
   __APP_REVISION__: JSON.stringify('QA-SYNTHETIC')
  },
- optimizeDeps:{entries:['qa/index.html']},
+ optimizeDeps:{noDiscovery:true,include:['react','react-dom/client','react-router-dom','lucide-react','@astryxdesign/core/Button','@astryxdesign/core/Card','@astryxdesign/core/TextInput','@astryxdesign/core/Table','@astryxdesign/core/Field','@astryxdesign/core/Dialog','@astryxdesign/core/Badge','@astryxdesign/core/theme','@astryxdesign/core/i18n']},
  plugins:[
   {
    name:'qa-harvest-fail-closed-mock-alias',

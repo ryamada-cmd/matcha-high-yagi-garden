@@ -213,7 +213,7 @@ export default function CalendarPage(){
 
     {completionTask&&<div className="calendar-completion-toast"><div><Check size={18}/><span><b>タスクを完了しました</b><small>実際の作業記録も続けて登録できます。</small></span></div><div><button onClick={()=>setCompletionTask(null)}>閉じる</button><Link to={taskActionHref(completionTask)} onClick={()=>setCompletionTask(null)}>実績を記録<ArrowRight size={14}/></Link></div></div>}
 
-    {taskOpen&&canManage&&<Dialog className="astryx-calendar-dialog" purpose="form" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" onOpenChange={open=>{if(!open&&!busy)setTaskOpen(false)}}>
+    {taskOpen&&canManage&&<Dialog error={error} className="astryx-calendar-dialog" purpose="form" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" onOpenChange={open=>{if(!open&&!busy)setTaskOpen(false)}}>
       <DialogHeader title={taskId?'やることを編集':'やることを追加'} subtitle="TASK" onOpenChange={open=>{if(!open&&!busy)setTaskOpen(false)}}/>
       <div className="astryx-calendar-dialog-body">
       <form className="calendar-task-form" onSubmit={submitTask}>
@@ -229,7 +229,7 @@ export default function CalendarPage(){
       </form>
       </div></Dialog>}
 
-    {planDetail&&<Dialog className="astryx-calendar-dialog" purpose="form" isOpen={true} width="min(680px, 95vw)" maxHeight="88dvh" onOpenChange={open=>{if(!open)setPlanDetail(null)}}>
+    {planDetail&&<Dialog error={error} className="astryx-calendar-dialog" purpose="form" isOpen={true} width="min(680px, 95vw)" maxHeight="88dvh" onOpenChange={open=>{if(!open)setPlanDetail(null)}}>
       <DialogHeader title={planDetail.kind==='spray_plan'?'年間防除計画':planDetail.kind==='fertilizer_plan'?'年間施肥計画':'年間収穫計画'} subtitle="ANNUAL PLAN" onOpenChange={open=>{if(!open)setPlanDetail(null)}}/>
       <div className="astryx-calendar-dialog-body">
       <div className="calendar-plan-detail"><span>{planDetail.plan.date}{planDetail.plan.endDate?` 〜 ${planDetail.plan.endDate}`:''}</span><h3>{planDetail.plan.title}</h3><p>{planDetail.plan.fieldName}</p>{planDetail.plan.material&&<p>資材：{planDetail.plan.material}</p>}{planDetail.plan.method&&<p>方法：{planDetail.plan.method}</p>}{planDetail.plan.note&&<p>{planDetail.plan.note}</p>}</div>
@@ -237,7 +237,7 @@ export default function CalendarPage(){
       <div className="calendar-modal-actions">{planDetail.kind==='spray_plan'&&<Link className="secondary-button" to="/plans">年間防除計画を開く</Link>}{planDetail.kind==='fertilizer_plan'&&<Link className="secondary-button" to="/fertilizer-plans">年間施肥計画を開く</Link>}{planDetail.kind==='harvest_plan'&&canManage&&<button className="secondary-button" onClick={()=>editHarvest(planDetail.plan)}><Edit3 size={16}/>収穫計画を編集</button>}{canManage&&<Button className="ui-astryx-action" variant="primary" label="この計画からやること作成" icon={<Plus size={16}/>} onClick={()=>taskFromPlan(planDetail.kind,planDetail.plan)}/>}</div>
       </div></Dialog>}
 
-    {harvestOpen&&canManage&&<Dialog className="astryx-calendar-dialog" purpose="form" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" onOpenChange={open=>{if(!open&&!busy)setHarvestOpen(false)}}>
+    {harvestOpen&&canManage&&<Dialog error={error} className="astryx-calendar-dialog" purpose="form" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" onOpenChange={open=>{if(!open&&!busy)setHarvestOpen(false)}}>
       <DialogHeader title={harvestId?'年間収穫計画を編集':'年間収穫計画を追加'} subtitle="HARVEST PLAN" onOpenChange={open=>{if(!open&&!busy)setHarvestOpen(false)}}/>
       <div className="astryx-calendar-dialog-body">
       <form className="calendar-task-form" onSubmit={submitHarvest}>

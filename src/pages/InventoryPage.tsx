@@ -213,7 +213,7 @@ export default function InventoryPage() {
         </TableBody></Table></div>
       </Card>}
 
-      {canManage&&mode && <Dialog className="astryx-inventory-dialog" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" purpose="form" onOpenChange={(open)=>{if(!open&&!busy)closeAction()}}>
+      {canManage&&mode && <Dialog error={error} className="astryx-inventory-dialog" isOpen={true} width="min(760px, 95vw)" maxHeight="88dvh" purpose="form" onOpenChange={(open)=>{if(!open&&!busy)closeAction()}}>
         <DialogHeader title={mode==='receive'?'農薬を入庫':mode==='adjust'?'棚卸調整':'農薬を廃棄'} subtitle={mode==='receive'?'RECEIVING':mode==='adjust'?'STOCKTAKE':'DISPOSAL'} onOpenChange={(open)=>{if(!open&&!busy)closeAction()}}/>
         <div className="astryx-inventory-dialog-body">
 

@@ -783,7 +783,8 @@ html, body { background: #f5f7f3; }
   }
 }
 
-/* Shared interaction contract. Keep this after the module-specific rules. */
+/* Shared interaction contract. Keep printed business documents independent. */
+@media screen {
 .page, .auth-page, .app-dialog { font-family:var(--app-font); font-size:14px; line-height:1.6; }
 :is(.page, .auth-page, .app-dialog) :is(h1,h2,h3,h4,h5,h6) {
   font-family:var(--app-font) !important;
@@ -875,4 +876,13 @@ html, body { background: #f5f7f3; }
 @media(prefers-reduced-motion:reduce) {
   :is(.page,.auth-page,.app-dialog) :is(button,a) { transition:none !important; }
   :is(.page,.auth-page,.app-dialog) button:active:not(:disabled) { transform:none !important; }
+}
+
+}
+
+@media screen and (max-width:800px) {
+ .tea-procurement-page .tea-procurement-tabs { display:flex !important; flex-wrap:wrap; }
+ .tea-procurement-page .tea-procurement-tabs button { flex:1 1 110px; white-space:normal; height:auto; }
+ .tea-procure-cost-preview { width:auto; max-width:100%; flex-wrap:wrap; }
+ .tea-procure-form > button { max-width:100%; white-space:normal; }
 }
