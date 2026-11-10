@@ -56,10 +56,10 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Verify all route guards and screen imports
         run: node scripts/check-astryx-route-coverage.mjs
-      - name: Install isolated Chromium test runtime
+      - name: Install isolated Chromium and WebKit test runtimes
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
       - name: Start QA-only synthetic fixture
         run: |
           npx vite --config qa/vite.config.ts --host 127.0.0.1 --port 5178 > /tmp/yagi-astryx-qa.log 2>&1 &
@@ -83,6 +83,8 @@ jobs:
         run: node qa/astryx-admin-library.e2e.mjs
       - name: Test photo gallery, actual weather location and dashboard at mobile widths
         run: node qa/astryx-photo-weather-dashboard.e2e.mjs
+      - name: Test WebKit iPhone-like photo picker, HEIC selection and read-only UI
+        run: node qa/astryx-webkit-photo.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
         uses: actions/upload-artifact@v4
