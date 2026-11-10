@@ -8,6 +8,11 @@ on:
       - 'src/App.tsx'
       - 'scripts/check-astryx-route-coverage.mjs'
       - 'src/pages/**'
+      - 'src/components/WeatherLocationSettings.tsx'
+      - 'src/components/WeatherPanel.tsx'
+      - 'src/photo-gallery.css'
+      - 'src/weather-dashboard.css'
+      - 'src/home-dashboard.css'
       - 'src/astryx-ui.css'
       - 'src/harvest-processing.css'
       - 'src/spray-history.css'
@@ -76,6 +81,8 @@ jobs:
         run: node qa/astryx-finance.e2e.mjs
       - name: Test manual, OneDrive, library, settings and read-only permissions
         run: node qa/astryx-admin-library.e2e.mjs
+      - name: Test photo gallery, actual weather location and dashboard at mobile widths
+        run: node qa/astryx-photo-weather-dashboard.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
         uses: actions/upload-artifact@v4
