@@ -14,6 +14,7 @@ const cases=[
  {name:'worker-denied',role:'worker',route:'/settings'},
  {name:'admin-settings',role:'admin',route:'/settings'},
  {name:'permissions-rpc-failure',role:'admin',route:'/sales',rpcError:true},
+ {name:'permissions-retry',role:'admin',route:'/sales',rpcError:'once'},
  {name:'admin-demoted',role:'admin',route:'/sales'},
  {name:'admin-logout',role:'admin',route:'/'}
 ]
@@ -37,7 +38,7 @@ for(const [engine,browserType] of runners){
    page.on('pageerror',e=>errors.push(e.message))
    const params=new URLSearchParams({
     route:entry.route,role:entry.role,...(entry.anonymous?{anonymous:'1'}:{}),
-    ...(entry.rpcError?{rpcError:'1'}:{})
+    ...(entry.rpcError?{rpcError:entry.rpcError==='once'?'once':'1'}:{})
    })
    await page.goto(origin+'/qa/auth/index.html?'+params,{waitUntil:'networkidle',timeout:30000})
    try{
@@ -78,6 +79,15 @@ for(const [engine,browserType] of runners){
      await page.locator('.sidebar-user small').waitFor({state:'attached'})
      assert.equal(await page.locator('.sidebar-user small').textContent(),'架空権限DB読込エラー')
      assert.equal(await page.locator('[data-qa="protected-page"]').count(),0)
+     await page.getByRole('alert').getByText('架空権限DB読込エラー',{exact:false}).waitFor()
+     assert.equal(await page.getByRole('button',{name:'権限を再取得'}).isVisible(),true)
+    }else if(entry.name==='permissions-retry'){
+     await page.getByRole('alert').waitFor()
+     await page.getByRole('button',{name:'権限を再取得'}).click()
+     await page.locator('[data-qa="protected-page"]').waitFor()
+     assert.equal(await page.getByRole('alert').count(),0,'Error must disappear after a successful permission refresh')
+     const calls=await page.evaluate(()=>window.__qa_auth.rpcCalls())
+     assert.ok(calls.filter(x=>x==='get_my_app_permissions').length>=2,'Retry must call the real provider refresh')
     }else if(entry.name==='admin-demoted'){
      await page.locator('[data-qa="protected-page"]').waitFor()
      await page.evaluate(()=>{
