@@ -2,6 +2,7 @@
 type FakeSession={user:{id:string;email:string}}
 const params=new URLSearchParams(window.location.search)
 let role=params.get('role')||'worker'
+let remainingFailures=params.get('rpcError')==='1'?Infinity:params.get('rpcError')==='once'?1:0
 let session:FakeSession|null=params.get('anonymous')==='1'?null:{
  user:{id:'qa-synthetic-user',email:'qa-user@example.invalid'}
 }
@@ -50,7 +51,7 @@ export const supabase={
  async rpc(name:string,input?:any){
   ;(window as any).__qa_rpc_calls=[...((window as any).__qa_rpc_calls||[]),name]
   if(name==='get_my_app_permissions'){
-   if(params.get('rpcError')==='1')return{data:null,error:{message:'架空権限DB読込エラー'}}
+   if(remainingFailures>0){remainingFailures--;return{data:null,error:{message:'架空権限DB読込エラー'}}}
    return{data:{role,permissions:permissions()},error:null}
   }
   if(name==='has_app_permission')return{data:permissions()[input?.p_permission_key]===true,error:null}
