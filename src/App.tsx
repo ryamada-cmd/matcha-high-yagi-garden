@@ -109,7 +109,7 @@ function AuthScreen() {
 }
 
 function AppShell({ session }: { session: Session }) {
-  const { role, allowed, loading: permissionLoading, error: permissionError } = useAppPermissions()
+  const { role, allowed, loading: permissionLoading, error: permissionError, refresh: refreshPermissions } = useAppPermissions()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
 
@@ -178,7 +178,12 @@ function AppShell({ session }: { session: Session }) {
 
     <header className="mobile-topbar"><div className="mobile-brand mobile-logo-block"><img className="app-brand-logo" src="/yagi-ichibei-logo.svg" alt="五代目八木一兵衛"/></div><button type="button" className="mobile-menu-trigger" aria-label="メニューを開く" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={22}/></button></header>
 
-    <main><Suspense fallback={<RouteFallback/>}><Routes>
+    <main>
+      {permissionError && <div className="notice error permission-sync-error" role="alert" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:16 }}>
+        <span>権限情報を取得できませんでした。通信状態を確認し、再試行してください。{permissionError}</span>
+        <button className="secondary-button" type="button" onClick={() => void refreshPermissions()}>権限を再取得</button>
+      </div>}
+      <Suspense fallback={<RouteFallback/>}><Routes>
       <Route path="/" element={<PermissionRoute permission="dashboard.view"><HomeDashboardPage/></PermissionRoute>}/>
       <Route path="/sprays" element={<PermissionRoute permission="sprays.view"><SprayPage/></PermissionRoute>}/><Route path="/spray-history" element={<PermissionRoute permission="sprays.view"><SprayHistoryPage/></PermissionRoute>}/><Route path="/inventory" element={<PermissionRoute permission="pesticide_inventory.view"><InventoryPage/></PermissionRoute>}/><Route path="/pesticides" element={<PermissionRoute permission="pesticides.view"><PesticideCatalogPage/></PermissionRoute>}/><Route path="/plans" element={<PermissionRoute permission="spray_plans.view"><PlansPage/></PermissionRoute>}/>
       <Route path="/fertilizer-applications" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerApplicationPage/></PermissionRoute>}/><Route path="/fertilizer-history" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerHistoryPage/></PermissionRoute>}/><Route path="/fertilizer-inventory" element={<PermissionRoute permission="fertilizer_inventory.view"><FertilizerInventoryPage/></PermissionRoute>}/><Route path="/fertilizers" element={<PermissionRoute permission="fertilizers.view"><FertilizerMasterPage/></PermissionRoute>}/><Route path="/fertilizer-plans" element={<PermissionRoute permission="fertilizer_plans.view"><FertilizerPlansPage/></PermissionRoute>}/>
