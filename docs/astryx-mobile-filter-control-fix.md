@@ -16,7 +16,7 @@ The `申請一覧・承認` section of the expense claims page showed overlappin
 ## Regression and safety
 `qa/astryx-filter-controls.e2e.mjs` uses actual React screens and CSS with synthetic-only modules:
 - Expense claims: four controls align in width and x-position, with no overlap at **320px and 390px**, in both Chromium and Linux WebKit.
-- Existing screen searches: inventory, product master, vendor invoices and sales documents maintain the same one-border contract and work correctly.
+- Existing screen searches: inventory, product master, vendor invoices and sales documents at 390px, plus desktop **price list at 1280px**, maintain the one-border contract, keep visible/nonzero search widths and work correctly.
 - Off-origin requests are forbidden by the test; no production Supabase writes or real OneDrive interactions occur.
 
 CI validates TypeScript, build and existing workflows as usual. A passing WebKit run approximates iPhone rendering but does not establish an iPhone Safari OS-device test. The public Vercel/Pages cache still requires delivery verification after merge.
