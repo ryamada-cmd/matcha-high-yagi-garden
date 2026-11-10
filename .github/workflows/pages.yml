@@ -44,6 +44,21 @@ jobs:
           mkdir -p dist-pages/vercel-build
           cp -a dist/. dist-pages/vercel-build/
 
+      - name: Embed release SHA in both published entrypoints
+        env:
+          BUILD_SHA: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs')
+          const sha = process.env.BUILD_SHA
+          if (!/^[0-9a-f]{40}$/.test(sha || '')) throw new Error('Invalid release SHA')
+          for (const file of ['dist-pages/index.html', 'dist-pages/vercel-build/index.html']) {
+            const html = fs.readFileSync(file, 'utf8')
+            if (!html.includes('</head>')) throw new Error('Missing closing head in ' + file)
+            fs.writeFileSync(file, html.replace('</head>', '<meta name="yagi-release-sha" content="' + sha + '"></head>'))
+          }
+          NODE
+
       - uses: actions/configure-pages@v5
         with:
           enablement: true
@@ -61,3 +76,27 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Confirm public Pages mirror contains this exact release
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mirror="https://ryamada-cmd.github.io/matcha-high-yagi-garden/vercel-build/index.html"
+          expected="name=\"yagi-release-sha\" content=\"${EXPECTED_SHA}\""
+          for attempt in {1..24}; do
+            html="$(curl -fsSL --retry 1 --max-time 15 -H 'Cache-Control: no-cache' "${mirror}?verify=${EXPECTED_SHA}&attempt=${attempt}" || true)"
+            if grep -Fq "${expected}" <<< "${html}"; then
+              echo "Pages release verified: ${EXPECTED_SHA}"
+              live="$(curl -fsSL --max-time 20 -H 'Cache-Control: no-cache' "https://yagi-garden-manager.vercel.app/?verify=${EXPECTED_SHA}" || true)"
+              if grep -Fq "${expected}" <<< "${live}"; then
+                echo "Vercel root rewrite also serves the current release"
+              else
+                echo "::warning::Vercel root could not be independently verified (protection, cache, or stale rewrite)."
+              fi
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Pages mirror does not yet contain the current commit ${EXPECTED_SHA}"
+          exit 1
