@@ -641,3 +641,54 @@ html, body { background: #f5f7f3; }
  }
  .astryx-spray-history .history-page-actions { justify-content:flex-end; }
 }
+
+/* Mobile native AstryX dialogs: the dialog is the vertical scroll container.
+   Safari's backdrop locks document scrolling, so a clipped form MUST be able
+   to pan inside the modal itself. Applies to all long-form AstryX workflows. */
+@media (max-width:800px) {
+  :is(
+    .astryx-inventory-dialog,
+    .astryx-master-dialog,
+    .astryx-calendar-dialog,
+    .astryx-document-customer-dialog,
+    .astryx-equipment-dialog,
+    .astryx-vendor-payment-dialog
+  ) {
+    box-sizing:border-box;
+    max-height:min(88dvh, calc(100dvh - 24px)) !important;
+    overflow:hidden !important; /* AstryX's inner flex wrapper owns scrolling. */
+  }
+  :is(
+    .astryx-inventory-dialog,
+    .astryx-master-dialog,
+    .astryx-calendar-dialog,
+    .astryx-document-customer-dialog,
+    .astryx-equipment-dialog,
+    .astryx-vendor-payment-dialog
+  ) > div {
+    /* @astryxdesign/core Dialog v0.7.x renders one flex inner wrapper with
+       overflow:hidden; that inner wrapper was clipping long forms on iOS. */
+    min-height:0;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+  .astryx-document-customer-dialog .astryx-customer-dialog-body,
+  .astryx-calendar-dialog .astryx-calendar-dialog-body,
+  .astryx-equipment-dialog .astryx-equipment-dialog-body,
+  .astryx-vendor-payment-dialog .astryx-vendor-payment-body,
+  .astryx-inventory-dialog .astryx-inventory-dialog-body {
+    min-height:0;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+  .astryx-document-customer-dialog .astryx-customer-dialog-body {
+    padding-bottom:max(20px, env(safe-area-inset-bottom));
+  }
+  .astryx-document-customer-dialog .astryx-customer-dialog-body > button[type="submit"] {
+    min-height:44px;
+    margin-bottom:4px;
+  }
+}
