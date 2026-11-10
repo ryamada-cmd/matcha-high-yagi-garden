@@ -85,6 +85,20 @@ jobs:
         run: node qa/astryx-photo-weather-dashboard.e2e.mjs
       - name: Test WebKit iPhone-like photo picker, HEIC selection and read-only UI
         run: node qa/astryx-webkit-photo.e2e.mjs
+      - name: Start QA-only app authentication fixture
+        run: |
+          npx vite --config qa/auth/vite.config.ts --host 127.0.0.1 --port 5179 > /tmp/yagi-auth-qa.log 2>&1 &
+          for i in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5179/qa/auth/index.html >/dev/null; then
+              echo "Isolated Auth fixture ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/yagi-auth-qa.log
+          exit 1
+      - name: Test actual App and permission provider using fake Supabase sessions
+        run: node qa/auth/auth-permissions.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -95,4 +109,6 @@ jobs:
           retention-days: 7
       - name: Show fixture logs on failure
         if: failure()
-        run: cat /tmp/yagi-astryx-qa.log || true
+        run: |
+          cat /tmp/yagi-astryx-qa.log || true
+          cat /tmp/yagi-auth-qa.log || true
