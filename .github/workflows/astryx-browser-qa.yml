@@ -74,6 +74,8 @@ jobs:
         run: node qa/astryx-ui.e2e.mjs
       - name: Test isolated sales, cancellations and annual costing at phone widths
         run: node qa/astryx-finance.e2e.mjs
+      - name: Test manual, OneDrive, library, settings and read-only permissions
+        run: node qa/astryx-admin-library.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
         uses: actions/upload-artifact@v4
