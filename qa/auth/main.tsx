@@ -1,3 +1,4 @@
+import { AppTheme } from '../../src/components/AppTheme'
 import React from 'react'
 import {createRoot} from 'react-dom/client'
 import {MemoryRouter} from 'react-router-dom'
@@ -53,6 +54,6 @@ import '../../src/astryx-ui.css';
 const route=new URLSearchParams(window.location.search).get('route')||'/'
 createRoot(document.getElementById('root')!).render(
  <React.StrictMode>
-  <MemoryRouter initialEntries={[route]}><App/></MemoryRouter>
+  <MemoryRouter initialEntries={[route]}><AppTheme><App/></AppTheme></MemoryRouter>
  </React.StrictMode>
 )

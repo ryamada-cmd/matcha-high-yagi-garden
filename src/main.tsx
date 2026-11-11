@@ -1,9 +1,8 @@
+import { AppTheme } from './components/AppTheme'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
-import { Theme } from '@astryxdesign/core/theme'
-import { matchaTheme } from '@astryxdesign/theme-matcha/built'
 import '@astryxdesign/core/reset.css'
 import '@astryxdesign/core/astryx.css'
 import '@astryxdesign/theme-matcha/theme.css'
@@ -56,9 +55,9 @@ import './astryx-ui.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <Theme theme={matchaTheme} mode="light">
+      <AppTheme>
         <App />
-      </Theme>
+      </AppTheme>
     </BrowserRouter>
   </React.StrictMode>,
 )

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync } from 'node:fs'
 import { webkit, devices } from 'playwright'
 
-const origin='http://127.0.0.1:5178'
+const origin=process.env.QA_ORIGIN||'http://127.0.0.1:5178'
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO/jfXkAAAAASUVORK5CYII=','base64')
 mkdirSync('qa/screenshots',{recursive:true})
 const browser=await webkit.launch({headless:true})

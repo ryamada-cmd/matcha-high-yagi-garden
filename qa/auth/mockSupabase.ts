@@ -1,6 +1,7 @@
 // QA-only Supabase API shim. No imports, credentials, database or network access.
 type FakeSession={user:{id:string;email:string}}
 const params=new URLSearchParams(window.location.search)
+let sessionFailure=params.get('sessionError')==='1'
 let role=params.get('role')||'worker'
 let remainingFailures=params.get('rpcError')==='1'?Infinity:params.get('rpcError')==='once'?1:0
 let session:FakeSession|null=params.get('anonymous')==='1'?null:{
@@ -28,7 +29,7 @@ async function emit(event:string){
 }
 export const supabase={
  auth:{
-  async getSession(){return{data:{session},error:null}},
+  async getSession(){return sessionFailure?{data:{session:null},error:{message:'QA session unavailable'}}:{data:{session},error:null}},
   onAuthStateChange(cb:(event:string,session:FakeSession|null)=>void){
    callbacks.add(cb)
    return {data:{subscription:{unsubscribe:()=>callbacks.delete(cb)}}}
@@ -58,5 +59,5 @@ export const supabase={
   return{data:null,error:{message:'Unexpected RPC in isolated QA: '+name}}
  }
 }
-;(window as any).__qa_auth={setRole(next:string){role=next},getRole(){return role},
+;(window as any).__qa_auth={setSessionFailure(value:boolean){sessionFailure=value},setRole(next:string){role=next},getRole(){return role},
  getSession(){return session},rpcCalls(){return (window as any).__qa_rpc_calls||[]}}

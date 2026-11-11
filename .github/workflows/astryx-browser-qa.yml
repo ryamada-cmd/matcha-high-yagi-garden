@@ -6,6 +6,10 @@ on:
     paths:
       - 'qa/**'
       - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/components/**'
+      - 'src/*.css'
+      - 'package*.json'
       - 'scripts/check-astryx-route-coverage.mjs'
       - 'src/pages/**'
       - 'src/components/WeatherLocationSettings.tsx'
@@ -27,6 +31,10 @@ on:
     paths:
       - 'qa/**'
       - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/components/**'
+      - 'src/*.css'
+      - 'package*.json'
       - 'scripts/check-astryx-route-coverage.mjs'
       - 'src/pages/**'
       - 'src/astryx-ui.css'
@@ -53,7 +61,7 @@ jobs:
         with:
           node-version: 22
       - name: Install application dependencies (no production credentials)
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Verify all route guards and screen imports
         run: node scripts/check-astryx-route-coverage.mjs
       - name: Install isolated Chromium and WebKit test runtimes
@@ -103,12 +111,17 @@ jobs:
         run: node qa/astryx-dialog-scroll.e2e.mjs
       - name: Verify single-border AstryX TextInput and aligned mobile filter controls
         run: node qa/astryx-filter-controls.e2e.mjs
+      - name: Audit every operational screen and dialog at phone and desktop sizes
+        if: always()
+        run: node qa/astryx-all-pages.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: astryx-synthetic-browser-screenshots
-          path: qa/screenshots/*.png
+          path: |
+            qa/screenshots/*.png
+            qa/results/*.json
           if-no-files-found: ignore
           retention-days: 7
       - name: Show fixture logs on failure

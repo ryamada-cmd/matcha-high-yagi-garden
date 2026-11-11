@@ -13,6 +13,7 @@ const products:QAProduct[]=[
 ];
 export async function loadProducts(){return products.map(x=>({...x}))}
 export async function saveProduct(input:QAProduct){
+ if(new URLSearchParams(location.search).get('saveError')==='1')throw new Error('架空の保存エラー：通信を確認してください');
  const at=products.findIndex(x=>x.id===input.id);
  if(at<0){
    const id='qa-product-'+(products.length+1);

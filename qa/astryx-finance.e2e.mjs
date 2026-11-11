@@ -6,9 +6,9 @@ import assert from 'node:assert/strict'
 import { mkdirSync } from 'node:fs'
 import { chromium } from 'playwright'
 
-const origin='http://127.0.0.1:5178'
+const origin=process.env.QA_ORIGIN||'http://127.0.0.1:5178'
 mkdirSync('qa/screenshots',{recursive:true})
-const browser=await chromium.launch({headless:true,args:['--no-sandbox']})
+const browser=await chromium.launch({executablePath:process.env.QA_CHROMIUM_PATH,headless:true,args:['--no-sandbox']})
 let passes=0
 
 async function fixture(screen,viewport,{viewOnly=false}={}){

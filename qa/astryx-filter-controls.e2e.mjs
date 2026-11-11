@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import {mkdirSync} from 'node:fs'
 import {chromium,webkit} from 'playwright'
-const origin='http://127.0.0.1:5178'
+const origin=process.env.QA_ORIGIN||'http://127.0.0.1:5178'
 mkdirSync('qa/screenshots',{recursive:true})
 let pass=0
 const engines=process.env.QA_BROWSER==='chromium'?[['chromium',chromium]]:[['chromium',chromium],['webkit',webkit]];

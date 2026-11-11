@@ -155,7 +155,7 @@ export default function CostingPage(){
 
        <div className="costing-live-summary"><div><span>{form.status==='FINAL'?'確定原価':'暫定標準原価'}</span><strong>{yen.format(activeRate)}/kg</strong></div><div><span>30g原料換算</span><strong>{yen.format(thirtyGram)}</strong></div><div><span>対象重量</span><strong>{num.format(denominator)}kg</strong></div></div>
        <label>備考<textarea rows={2} disabled={!canManage} value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label>
-       {canManage&&<div className="costing-editor-actions"><Button className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':form.status==='FINAL'?'確定原価として保存':'暫定原価を保存'} icon={<Save size={16}/>} isDisabled={busy}/>{form.id&&<button type="button" className="danger-button" disabled={busy} onClick={()=>{const p=data?.periods.find(x=>x.id===form.id);if(p)void removePeriod(p)}}><Trash2 size={15}/>削除</button>}</div>}
+       {canManage&&<div className="costing-editor-actions"><Button isLoading={busy} className="ui-astryx-action" type="submit" variant="primary" label={busy?'保存中…':form.status==='FINAL'?'確定原価として保存':'暫定原価を保存'} icon={<Save size={16}/>} isDisabled={busy}/>{form.id&&<button type="button" className="danger-button" disabled={busy} onClick={()=>{const p=data?.periods.find(x=>x.id===form.id);if(p)void removePeriod(p)}}><Trash2 size={15}/>削除</button>}</div>}
      </form>
    </div>
 

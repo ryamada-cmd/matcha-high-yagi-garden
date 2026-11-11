@@ -6,8 +6,10 @@
 import assert from 'node:assert/strict'
 import {chromium,webkit} from 'playwright'
 
-const origin='http://127.0.0.1:5179'
+const origin=process.env.QA_AUTH_ORIGIN||'http://127.0.0.1:5179'
 const cases=[
+ {name:'session-retry',role:'admin',route:'/',sessionError:true},
+ {name:'unknown-route',role:'admin',route:'/unknown-route'},
  {name:'anonymous-login',anonymous:true,role:'worker',route:'/'},
  {name:'viewer-approval',role:'viewer',route:'/sales'},
  {name:'worker-sales',role:'worker',route:'/sales'},
@@ -21,7 +23,7 @@ const cases=[
 let passed=0
 const runners=[['chromium',chromium],['webkit',webkit]]
 for(const [engine,browserType] of runners){
- const browser=await browserType.launch({headless:true,args:engine==='chromium'?['--no-sandbox']:[]})
+ const browser=await browserType.launch({executablePath:engine==='Chromium'?process.env.QA_CHROMIUM_PATH:undefined,headless:true,args:engine==='chromium'?['--no-sandbox']:[]})
  try{
   for(const entry of cases){
    const context=await browser.newContext({viewport:{width:390,height:844},locale:'ja-JP'})
@@ -38,11 +40,20 @@ for(const [engine,browserType] of runners){
    page.on('pageerror',e=>errors.push(e.message))
    const params=new URLSearchParams({
     route:entry.route,role:entry.role,...(entry.anonymous?{anonymous:'1'}:{}),
+    ...(entry.sessionError?{sessionError:'1'}:{}),
     ...(entry.rpcError?{rpcError:entry.rpcError==='once'?'once':'1'}:{})
    })
    await page.goto(origin+'/qa/auth/index.html?'+params,{waitUntil:'networkidle',timeout:30000})
    try{
-    if(entry.name==='anonymous-login'){
+    if(entry.name==='session-retry'){
+     await page.getByRole('heading',{name:'接続を確認してください'}).waitFor()
+     assert.equal(await page.locator('[data-qa=protected-page]').count(),0)
+     await page.evaluate(()=>window.__qa_auth.setSessionFailure(false))
+     await page.getByRole('button',{name:'再試行',exact:true}).click()
+     await page.locator('[data-qa=protected-page]').waitFor()
+    }else if(entry.name==='unknown-route'){
+     await page.getByRole('heading',{name:'ページが見つかりません'}).waitFor()
+    }else if(entry.name==='anonymous-login'){
      await page.getByRole('heading',{name:'茶園管理',exact:true}).waitFor()
      assert.equal(await page.locator('[data-qa="protected-page"]').count(),0)
      await page.getByLabel('メールアドレス').fill('qa-login@example.invalid')

@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Home, SprayCan, Boxes, MapPinned, CalendarDays, CalendarClock, ShieldCheck, LogOut, Database, History, Settings, Menu, X, ChevronRight, Leaf, Scissors, Factory, ShoppingCart, Package, PackageCheck, ClipboardList, ReceiptText, BookOpen, Tractor, FileCheck2, LockKeyhole, Tags, FileText, Cloud, Images, PackagePlus, Calculator, Archive, MessagesSquare } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { AppPermissionProvider, useAppPermissions } from './lib/permissions'
+import { ScreenErrorBoundary } from './components/ScreenErrorBoundary'
 import HomeDashboardPage from './pages/HomeDashboardPage'
 
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
@@ -54,7 +55,7 @@ function PermissionRoute({ permission, children }: { permission:string; children
 }
 
 function PendingApprovalScreen({ session }: { session: Session }) {
-  return <div className="auth-page"><div className="auth-card">
+  return <div className="auth-page astryx-auth-page"><div className="auth-card astryx-auth-card">
     <div className="auth-brand"><LockKeyhole size={34}/><div><p className="eyebrow">ACCOUNT APPROVAL</p><h1>利用承認待ち</h1></div></div>
     <p className="auth-lead">アカウント登録は完了しています。管理者が「作業者」または「管理者」へ変更すると、茶園管理機能を利用できるようになります。</p>
     <div className="notice">登録アカウント：{session.user.email || 'メールアドレス未取得'}</div>
@@ -70,9 +71,10 @@ function AuthScreen() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const submitting = useRef(false)
 
   async function submit(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setMessage(''); setError('')
+    event.preventDefault(); if (submitting.current) return; submitting.current = true; setBusy(true); setMessage(''); setError('')
     try {
       if (mode === 'signup') {
         const { data, error: signUpError } = await supabase.auth.signUp({
@@ -90,10 +92,10 @@ function AuthScreen() {
       }
     } catch (e: any) {
       setError(e?.message || '認証に失敗しました。')
-    } finally { setBusy(false) }
+    } finally { submitting.current = false; setBusy(false) }
   }
 
-  return <div className="auth-page"><div className="auth-card">
+  return <div className="auth-page astryx-auth-page"><div className="auth-card astryx-auth-card">
     <div className="auth-brand"><ShieldCheck size={34}/><div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理</h1></div></div>
     <p className="auth-lead">防除・施肥・摘採・製茶・製造・製品在庫・販売・帳票・圃場・機械設備・写真・ファイルを一元管理します。</p>
     <div className="auth-tabs"><button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')} type="button">ログイン</button><button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')} type="button">新規登録</button></div>
@@ -183,14 +185,15 @@ function AppShell({ session }: { session: Session }) {
         <span>権限情報を取得できませんでした。通信状態を確認し、再試行してください。{permissionError}</span>
         <button className="secondary-button" type="button" onClick={() => void refreshPermissions()}>権限を再取得</button>
       </div>}
-      <Suspense fallback={<RouteFallback/>}><Routes>
+      <ScreenErrorBoundary key={location.pathname}><Suspense fallback={<RouteFallback/>}><Routes>
       <Route path="/" element={<PermissionRoute permission="dashboard.view"><HomeDashboardPage/></PermissionRoute>}/>
       <Route path="/sprays" element={<PermissionRoute permission="sprays.view"><SprayPage/></PermissionRoute>}/><Route path="/spray-history" element={<PermissionRoute permission="sprays.view"><SprayHistoryPage/></PermissionRoute>}/><Route path="/inventory" element={<PermissionRoute permission="pesticide_inventory.view"><InventoryPage/></PermissionRoute>}/><Route path="/pesticides" element={<PermissionRoute permission="pesticides.view"><PesticideCatalogPage/></PermissionRoute>}/><Route path="/plans" element={<PermissionRoute permission="spray_plans.view"><PlansPage/></PermissionRoute>}/>
       <Route path="/fertilizer-applications" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerApplicationPage/></PermissionRoute>}/><Route path="/fertilizer-history" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerHistoryPage/></PermissionRoute>}/><Route path="/fertilizer-inventory" element={<PermissionRoute permission="fertilizer_inventory.view"><FertilizerInventoryPage/></PermissionRoute>}/><Route path="/fertilizers" element={<PermissionRoute permission="fertilizers.view"><FertilizerMasterPage/></PermissionRoute>}/><Route path="/fertilizer-plans" element={<PermissionRoute permission="fertilizer_plans.view"><FertilizerPlansPage/></PermissionRoute>}/>
       <Route path="/harvests" element={<PermissionRoute permission="harvest_processing.view"><HarvestProcessingPage/></PermissionRoute>}/><Route path="/tea-inventory" element={<PermissionRoute permission="production.view"><TeaInventoryPage/></PermissionRoute>}/><Route path="/tea-procurement" element={<PermissionRoute permission="production.view"><TeaProcurementPage/></PermissionRoute>}/><Route path="/costing" element={<PermissionRoute permission="costing.view"><CostingPage/></PermissionRoute>}/><Route path="/production" element={<PermissionRoute permission="production.view"><ProductionPage/></PermissionRoute>}/><Route path="/products" element={<PermissionRoute permission="products.view"><ProductMasterPage/></PermissionRoute>}/><Route path="/price-list" element={<PermissionRoute permission="products.view"><PriceListPage/></PermissionRoute>}/><Route path="/product-packaging" element={<PermissionRoute permission="packaging.view"><ProductPackagingPage/></PermissionRoute>}/><Route path="/sales" element={<PermissionRoute permission="sales.view"><SalesPage/></PermissionRoute>}/><Route path="/documents" element={<PermissionRoute permission="documents.view"><DocumentsPage/></PermissionRoute>}/>
       <Route path="/crm" element={<PermissionRoute permission="crm.view"><CrmPage/></PermissionRoute>}/>
       <Route path="/equipment" element={<PermissionRoute permission="equipment.view"><EquipmentPage/></PermissionRoute>}/><Route path="/calendar" element={<PermissionRoute permission="calendar.view"><CalendarPage/></PermissionRoute>}/><Route path="/daily-reports" element={<PermissionRoute permission="daily_reports.view"><DailyReportsPage/></PermissionRoute>}/><Route path="/expenses" element={<PermissionRoute permission="expenses.view"><ExpenseClaimsPage/></PermissionRoute>}/><Route path="/vendor-invoices" element={<PermissionRoute permission="vendor_invoices.view"><VendorInvoicesPage/></PermissionRoute>}/><Route path="/fields" element={<PermissionRoute permission="fields.view"><FieldsPage/></PermissionRoute>}/><Route path="/fields/:fieldId" element={<PermissionRoute permission="fields.view"><FieldDossierPage/></PermissionRoute>}/><Route path="/library" element={<PermissionRoute permission="storage.view"><LibraryPage/></PermissionRoute>}/><Route path="/storage" element={<PermissionRoute permission="storage.view"><StoragePage/></PermissionRoute>}/><Route path="/manual" element={<PermissionRoute permission="manual.view"><ManualPage/></PermissionRoute>}/><Route path="/settings" element={<PermissionRoute permission="settings.view"><SettingsPage/></PermissionRoute>}/>
-    </Routes></Suspense></main>
+    <Route path="*" element={<div className="page"><section className="panel"><h1>ページが見つかりません</h1><p>メニューから目的の機能を選び直してください。</p><Link className="secondary-button" to="/">ホームへ戻る</Link></section></div>}/>
+    </Routes></Suspense></ScreenErrorBoundary></main>
 
     <nav className="mobile-bottom-nav" aria-label="主要メニュー">
       {allowed('dashboard.view')&&<NavLink to="/" end><Home size={21}/><span>ホーム</span></NavLink>}
@@ -217,11 +220,36 @@ function AppShell({ session }: { session: Session }) {
 
 export default function App() {
   const [session, setSession] = useState<Session|null|undefined>(undefined)
+  const [sessionError, setSessionError] = useState('')
+  const [sessionAttempt, setSessionAttempt] = useState(0)
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => data.subscription.unsubscribe()
-  }, [])
+    let active = true
+    let authChanged = false
+    setSessionError('')
+    const timer = window.setTimeout(() => {
+      if (active && !authChanged) setSessionError('ログイン状態の確認に時間がかかっています。通信状態を確認して再試行してください。')
+    }, 15000)
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!active || authChanged) return
+      window.clearTimeout(timer)
+      if (error) { setSessionError('ログイン状態を確認できませんでした。再試行してください。'); return }
+      setSession(data.session)
+    }).catch(() => {
+      if (active && !authChanged) {
+        window.clearTimeout(timer)
+        setSessionError('ログイン状態を確認できませんでした。通信状態を確認して再試行してください。')
+      }
+    })
+    const { data } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!active) return
+      authChanged = true
+      window.clearTimeout(timer)
+      setSessionError('')
+      setSession(s)
+    })
+    return () => { active = false; window.clearTimeout(timer); data.subscription.unsubscribe() }
+  }, [sessionAttempt])
+  if (sessionError && session === undefined) return <div className="auth-page astryx-auth-page"><section className="auth-card astryx-auth-card" role="alert"><h1>接続を確認してください</h1><p>{sessionError}</p><button className="primary-button" type="button" onClick={() => setSessionAttempt(value => value + 1)}>再試行</button></section></div>
   if (session === undefined) return <div className="boot-screen"><ShieldCheck size={36}/><span>読み込み中…</span></div>
   return session ? <AppPermissionProvider userId={session.user.id}><AppShell session={session}/></AppPermissionProvider> : <AuthScreen/>
 }

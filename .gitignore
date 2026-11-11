@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-pages/
+*.tsbuildinfo
+.env
+.env.*
+.vercel/
+qa/screenshots/
+qa/results/
+__pycache__/
+*.pyc

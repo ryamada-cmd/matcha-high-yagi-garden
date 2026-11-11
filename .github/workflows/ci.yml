@@ -21,7 +21,7 @@ jobs:
         working-directory: ocr-gateway
       - run: python -m unittest discover -s tests
         working-directory: ocr-gateway
-      - run: npm install
+      - run: npm ci
       - run: npm run check:manual
       - run: npm run test:harvest
       - run: npm run typecheck

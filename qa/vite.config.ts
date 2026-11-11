@@ -14,7 +14,7 @@ export default defineConfig({
   __APP_BUILD_TIME__: JSON.stringify('2026-11-10T00:00:00Z'),
   __APP_REVISION__: JSON.stringify('QA-SYNTHETIC')
  },
- optimizeDeps:{entries:['qa/index.html']},
+ optimizeDeps:{noDiscovery:true,include:['react','react-dom/client','react-router-dom','lucide-react','@astryxdesign/core/Button','@astryxdesign/core/Card','@astryxdesign/core/TextInput','@astryxdesign/core/Table','@astryxdesign/core/Field','@astryxdesign/core/Dialog','@astryxdesign/core/Badge','@astryxdesign/core/theme','@astryxdesign/core/i18n']},
  plugins:[
   {
    name:'qa-harvest-fail-closed-mock-alias',
@@ -83,6 +83,8 @@ export default defineConfig({
     }
     if(weatherSettings&&source==='../lib/adminConsole')return path.join(root,'qa/mockAdminConsole.ts');
     if((weatherSettings||weatherPanel)&&source==='../lib/weather')return path.join(root,'qa/mockWeather.ts');
+    if(page.includes('/src/') && (source==='./supabase'||source==='../lib/supabase'))return path.join(root,'qa/mockDatabase.ts');
+    if(page.includes('/src/pages/') && source==='../lib/permissions')return path.join(root,'qa/mockPermissions.ts');
     return null;
    },
   },
