@@ -127,13 +127,21 @@ export async function createDocumentPdfBlob(element: HTMLElement) {
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
     const renderedHeight = canvas.height * pageWidth / canvas.width
-    const pageCount = Math.max(1, Math.ceil(renderedHeight / pageHeight - 0.0001))
+    // Rounding from CSS mm to canvas pixels can put an otherwise A4-sized
+    // preview a fraction of a millimeter beyond the page boundary. Slightly
+    // taller documents are also better kept on one page than followed by an
+    // almost empty extra sheet. Limit auto-fit to 8 mm (under 3%).
+    const autoFitLimitMm = 8
+    const imageHeight = renderedHeight <= pageHeight + autoFitLimitMm
+      ? Math.min(renderedHeight, pageHeight)
+      : renderedHeight
+    const pageCount = Math.max(1, Math.ceil((imageHeight - 0.1) / pageHeight))
     const image = canvas.toDataURL('image/png')
 
-    // Preserve A4 preview scale. Do not shrink the whole document to fit one page.
+    // Keep an A4-sized document on one page; paginate genuinely long item lists.
     for (let page = 0; page < pageCount; page += 1) {
       if (page > 0) pdf.addPage('a4', 'portrait')
-      pdf.addImage(image, 'PNG', 0, -(page * pageHeight), pageWidth, renderedHeight, undefined, 'FAST')
+      pdf.addImage(image, 'PNG', 0, -(page * pageHeight), pageWidth, imageHeight, undefined, 'FAST')
     }
 
     return pdf.output('blob')
