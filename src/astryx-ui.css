@@ -894,3 +894,17 @@ html, body { background: #f5f7f3; }
     box-sizing:border-box;
   }
 }
+@media screen {
+  .page.astryx-page [class*="-tabs"] button:is(.active,[aria-pressed="true"]) {
+    color:#fff !important;
+    background:#173f2b !important;
+    border-color:#173f2b !important;
+  }
+  .page.astryx-page [class*="-tabs"] button span {
+    color:inherit !important;
+    background:transparent !important;
+  }
+}
+@media screen and (max-width:800px) {
+  .astryx-documents .document-editor-head { flex-direction:column; align-items:stretch; }
+}

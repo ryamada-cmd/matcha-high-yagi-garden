@@ -43,6 +43,8 @@ for(const [engine,launcher,widths] of [['chromium',chromium,[320,390,1280]],['we
     const names=await tabs.allTextContents()
     for(let i=0;i<names.length;i++){
      await tabs.nth(i).click()
+     const tabColors=await tabs.nth(i).evaluate(el=>({color:getComputedStyle(el).color,labels:[...el.querySelectorAll('span')].filter(e=>e.textContent.trim()).map(e=>getComputedStyle(e).color)}))
+     assert.ok(tabColors.labels.every(color=>color===tabColors.color),`${screen} tab ${names[i]} must retain readable label color while hovered`)
      assert.equal(await page.locator('main .page-head h1').count(),1)
      assert.ok(await page.locator('main').evaluate(el=>el.scrollWidth<=el.clientWidth+2),`${screen} tab ${names[i]} overflow`)
     }
