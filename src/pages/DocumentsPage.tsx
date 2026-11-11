@@ -152,7 +152,7 @@ function DocumentPreview({form,company,totals,taxGroups}:{form:EditorForm;compan
   {taxGroups.some(([r])=>r===0.08)&&<p className="doc-tax-note">{en?'* Reduced tax rate item.':'「※」は軽減税率対象品目です。'}</p>}
   <div className="doc-summary-area"><div className="doc-tax-breakdown"><b>{en?'Tax Breakdown':'税率別内訳'}</b>{taxGroups.map(([rate,v])=><div key={rate}><span>{Math.round(rate*100)}%{!en&&rate===0.08?'（軽減税率）':''}</span><span>{en?'Net':'税抜'} {nfmt.format(v.base)}</span><span>{en?'Tax':'消費税'} {nfmt.format(v.tax)}</span><span>{en?'Gross':'税込'} {nfmt.format(v.base+v.tax)}</span></div>)}</div><div className="doc-totals"><div><span>{en?'Subtotal':'小計'}</span><b>{nfmt.format(totals.subtotal)}</b></div><div><span>{en?'Total Tax':'消費税額合計'}</span><b>{nfmt.format(totals.tax)}</b></div><div className="grand"><span>{en?'Total':'合計'}</span><strong>{nfmt.format(totals.total)}</strong></div></div></div>
   {form.documentType==='INVOICE'&&<div className="doc-box"><b>{en?'Bank Details':'振込先'}</b><span>{bankName} {bankBranch}</span><span>{bankType} {company.bankAccountNo}</span><span>{bankAccountName}</span></div>}
-  <div className="doc-box"><b>{en?'Notes':'備考'}</b><span>{form.note||(en?company.noteEn:'')||' '}</span></div><div className="doc-page-number">1 / 1</div>
+  <div className="doc-box"><b>{en?'Notes':'備考'}</b><span>{form.note||(en?company.noteEn:'')||' '}</span></div>
  </div></section>
 }
 function labelType(type:DocumentType){return type==='ESTIMATE'?'見積書':type==='INVOICE'?'請求書':'納品書'}
