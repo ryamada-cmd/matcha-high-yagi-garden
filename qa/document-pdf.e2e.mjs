@@ -6,9 +6,10 @@ async function verifyPdfExport() {
  try {
  const page=await browser.newPage({viewport:{width:390,height:844}});
  await page.route('**/*',r=>r.request().url().startsWith('http://127.0.0.1:5178/')||r.request().url().startsWith('data:')?r.continue():r.abort());
- await page.goto('http://127.0.0.1:5178/qa/index.html?screen=documents');
  for(const [type,count] of [['請求書',5],['見積書',48],['納品書',30]]){
+ await page.goto('http://127.0.0.1:5178/qa/index.html?screen=documents');
  await page.getByRole('button',{name:type+'を作成',exact:true}).click();
+ await page.locator('.document-preview-print tbody tr').first().waitFor();
  const result=await page.evaluate(async ({count})=>{
  const preview=document.querySelector('.document-preview-print');
  const tbody=preview.querySelector('tbody');
