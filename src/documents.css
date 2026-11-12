@@ -14,3 +14,33 @@
 @media(max-width:700px){.document-editor-head{align-items:flex-start}.document-editor-head-controls{display:grid;grid-template-columns:1fr;width:100%}.document-language-toggle{display:grid;grid-template-columns:1fr 1fr}.document-language-toggle button{min-height:40px}.document-preview-shell{padding:6px;margin-left:-12px;margin-right:-12px;border-radius:0}.document-preview{transform-origin:top left;box-shadow:none}.form-grid.four{grid-template-columns:1fr 1fr}.document-list-row{grid-template-columns:80px 1fr}.document-list-total{grid-column:2}.document-list-actions{grid-column:1/-1}.price-edit-grid{grid-template-columns:1fr}}
 @media print{body *{visibility:hidden!important}.document-preview-print,.document-preview-print *{visibility:visible!important}.document-preview-print{position:absolute;left:0;top:0;width:210mm;min-height:297mm;margin:0;padding:12mm;box-sizing:border-box;box-shadow:none;overflow:visible}.document-preview-shell{background:white;padding:0}.no-print{display:none!important}.doc-items-table tr,.doc-summary-area,.doc-box{break-inside:avoid;page-break-inside:avoid}@page{size:A4;margin:0}}.estimate-convert-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding:10px;border:1px solid #eadfca;border-radius:11px;background:#fffaf0}.estimate-convert-actions>span{font-size:11px;font-weight:800;color:#725a2f;margin-right:auto}
 @media(max-width:700px){.documents-page .page-head .head-actions{display:grid;grid-template-columns:1fr 1fr}.documents-page .page-head .head-actions .icon-button{grid-column:auto}.documents-page .page-head .head-actions .estimate-create-button{grid-column:1/-1}.estimate-convert-actions{display:grid;grid-template-columns:1fr 1fr}.estimate-convert-actions>span{grid-column:1/-1}.estimate-convert-actions button{min-height:44px;justify-content:center}}
+
+/* Keep paper typography independent of the application's responsive table styles. */
+.document-preview,
+.document-preview * {
+  font-family: Arial, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif !important;
+  letter-spacing: 0 !important;
+  font-kerning: none;
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+.document-preview { line-height: 1.4; }
+.document-preview .document-preview-top { min-height: 0; }
+.document-preview .doc-seller img { object-fit: fill; width: 46mm; height: auto; max-width: 100%; }
+.document-preview .doc-total-banner { align-items: center; padding-block: 3mm; margin-block: 5mm 4mm; }
+.document-preview .doc-total-banner > * { margin: 0; line-height: 1.35; }
+.document-preview .doc-items-table { table-layout: fixed; font-size: 10pt !important; }
+.document-preview .doc-items-table th,
+.document-preview .doc-items-table td {
+  position: static !important;
+  white-space: normal !important;
+  padding: 1.65mm 1.4mm !important;
+  font-size: inherit !important;
+}
+.document-preview .doc-items-table th:nth-child(1) { width: 16%; }
+.document-preview .doc-items-table th:nth-child(3),
+.document-preview .doc-items-table th:nth-child(6) { width: 13%; }
+.document-preview .doc-items-table th:nth-child(4),
+.document-preview .doc-items-table th:nth-child(5) { width: 8%; }
+.document-preview .doc-summary-area { gap: 8mm; margin-top: 3mm; }
+.document-preview .doc-box { margin-top: 4mm; min-height: 0; }

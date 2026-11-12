@@ -96,6 +96,23 @@ function createFrozenPreviewClone(source: HTMLElement) {
   return { clone, sandbox }
 }
 
+// Rasterize the same-origin logo before capture so WebKit does not have to
+// load or draw an SVG inside html2canvas's cloned document.
+function embedLogo(preview: HTMLElement) {
+  const image = preview.querySelector<HTMLImageElement>('.doc-seller img')
+  if (!image) return
+  if (!image.naturalWidth) throw new Error('帳票のロゴを読み込めませんでした。再読み込みして再試行してください。')
+
+  const logo = document.createElement('canvas')
+  logo.width = 720
+  logo.height = Math.round(logo.width * image.naturalHeight / image.naturalWidth)
+  const context = logo.getContext('2d')
+  if (!context) throw new Error('帳票のロゴを描画できませんでした。')
+  context.drawImage(image, 0, 0, logo.width, logo.height)
+  image.removeAttribute('srcset')
+  image.src = logo.toDataURL('image/png')
+}
+
 export async function createDocumentPdfBlob(element: HTMLElement) {
   if ('fonts' in document) {
     try { await document.fonts.ready } catch { /* font fallback is acceptable */ }
@@ -104,6 +121,8 @@ export async function createDocumentPdfBlob(element: HTMLElement) {
 
   const { clone, sandbox } = createFrozenPreviewClone(element)
   try {
+    await waitForImages(clone)
+    embedLogo(clone)
     await waitForImages(clone)
     // Give the browser one paint cycle after inserting the frozen clone.
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
@@ -126,22 +145,46 @@ export async function createDocumentPdfBlob(element: HTMLElement) {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
-    const renderedHeight = canvas.height * pageWidth / canvas.width
-    // Rounding from CSS mm to canvas pixels can put an otherwise A4-sized
-    // preview a fraction of a millimeter beyond the page boundary. Slightly
-    // taller documents are also better kept on one page than followed by an
-    // almost empty extra sheet. Limit auto-fit to 8 mm (under 3%).
-    const autoFitLimitMm = 8
-    const imageHeight = renderedHeight <= pageHeight + autoFitLimitMm
-      ? Math.min(renderedHeight, pageHeight)
-      : renderedHeight
-    const pageCount = Math.max(1, Math.ceil((imageHeight - 0.1) / pageHeight))
-    const image = canvas.toDataURL('image/png')
+    const scale = canvas.height / captureHeight
+    const origin = clone.getBoundingClientRect().top
+    const bounds = (node: Element) => {
+      const rect = node.getBoundingClientRect()
+      return {
+        top: Math.floor((rect.top - origin) * scale),
+        bottom: Math.ceil((rect.bottom - origin) * scale),
+      }
+    }
+    const blocks = Array.from(clone.querySelectorAll(
+      'h1, .document-preview-top, .doc-total-banner, thead, tbody tr, .doc-tax-note, .doc-summary-area, .doc-box',
+    ), bounds)
+    // Exclude the preview's minimum A4 height and reserve paper margins on
+    // continuation pages. Measure before slicing so entire rows and boxes move.
+    const end = Math.min(canvas.height, Math.max(...blocks.map(block => block.bottom), 1))
+    const pixelsPerMm = canvas.width / pageWidth
+    const margin = 12
+    const slice = document.createElement('canvas')
+    slice.width = canvas.width
+    let start = 0
+    let page = 0
+    while (start < end) {
+      const topMargin = page === 0 ? 0 : margin
+      const capacity = Math.floor((pageHeight - topMargin - margin) * pixelsPerMm)
+      const limit = Math.min(end, start + capacity)
+      const crossing = blocks.find(block => block.top < limit && block.bottom > limit)
+      const stop = crossing ? (crossing.top > start ? crossing.top : Math.min(end, crossing.bottom)) : limit
+      slice.height = stop - start
+      const context = slice.getContext('2d')
+      if (!context) throw new Error('帳票のページを描画できませんでした。')
+      context.drawImage(canvas, 0, start, canvas.width, slice.height, 0, 0, slice.width, slice.height)
 
-    // Keep an A4-sized document on one page; paginate genuinely long item lists.
-    for (let page = 0; page < pageCount; page += 1) {
       if (page > 0) pdf.addPage('a4', 'portrait')
-      pdf.addImage(image, 'PNG', 0, -(page * pageHeight), pageWidth, imageHeight, undefined, 'FAST')
+      // An individual block taller than the printable area gets its own
+      // scaled page, keeping even exceptionally long notes in one piece.
+      const fit = Math.min(1, capacity / slice.height)
+      const width = pageWidth * fit
+      pdf.addImage(slice.toDataURL('image/png'), 'PNG', (pageWidth - width) / 2, topMargin, width, slice.height / pixelsPerMm * fit, undefined, 'FAST')
+      start = stop
+      page += 1
     }
 
     return pdf.output('blob')

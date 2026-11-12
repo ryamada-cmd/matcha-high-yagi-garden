@@ -47,6 +47,8 @@ jobs:
         env:
           QA_BROWSER: chromium
         run: node qa/astryx-filter-controls.e2e.mjs
+      - name: Generate A4 PDFs from the three document types
+        run: node qa/document-pdf.e2e.mjs
       - name: Upload filter screenshots
         if: always()
         uses: actions/upload-artifact@v4
