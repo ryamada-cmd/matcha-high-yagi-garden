@@ -34,6 +34,8 @@ jobs:
           npm ci --no-audit --no-fund
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install chromium
+      - name: Install Japanese fonts for PDF rendering
+        run: sudo apt-get update -qq && sudo apt-get install -y fonts-noto-cjk
       - name: Start local synthetic fixture
         run: |
           npx vite --config qa/vite.config.ts --host 127.0.0.1 --port 5178 >/tmp/yagi-filter-smoke.log 2>&1 &
@@ -49,12 +51,19 @@ jobs:
         run: node qa/astryx-filter-controls.e2e.mjs
       - name: Generate A4 PDFs from the three document types
         run: node qa/document-pdf.e2e.mjs
+      - name: Render the exported invoice for visual review
+        run: |
+          command -v pdftoppm || (sudo apt-get update -qq && sudo apt-get install -y poppler-utils)
+          pdftoppm -scale-to 1500 -png -singlefile qa/results/document-5.pdf qa/results/invoice
       - name: Upload filter screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: astryx-filter-control-screenshots
-          path: qa/screenshots/astryx-filter-*.png
+          path: |
+            qa/screenshots/astryx-filter-*.png
+            qa/results/document-*.pdf
+            qa/results/invoice.png
           retention-days: 7
           if-no-files-found: ignore
       - name: Show fixture errors

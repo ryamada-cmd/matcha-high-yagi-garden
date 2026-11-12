@@ -44,3 +44,10 @@
 .document-preview .doc-items-table th:nth-child(5) { width: 8%; }
 .document-preview .doc-summary-area { gap: 8mm; margin-top: 3mm; }
 .document-preview .doc-box { margin-top: 4mm; min-height: 0; }
+
+.document-preview .doc-parenthesis {
+  display: inline-block;
+  margin-inline: 0.14em;
+  font-family: Arial, sans-serif !important;
+}
+.document-preview .doc-notes { min-height: 13mm; }
