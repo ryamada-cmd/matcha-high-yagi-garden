@@ -113,6 +113,31 @@ function embedLogo(preview: HTMLElement) {
   image.src = logo.toDataURL('image/png')
 }
 
+// Canvas text metrics give the visible ink bounds. html2canvas's estimated
+// baseline can shift mixed Japanese and Latin text down inside a flex box.
+function centerAmountText(preview: HTMLElement) {
+  for (const label of preview.querySelectorAll<HTMLElement>('.doc-total-banner > *')) {
+    const { width, height } = label.getBoundingClientRect()
+    const style = getComputedStyle(label)
+    const canvas = document.createElement('canvas')
+    const resolution = 3
+    canvas.width = Math.ceil(width * resolution)
+    canvas.height = Math.ceil(height * resolution)
+    canvas.style.cssText = `display:block;width:${width}px;height:${height}px`
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('帳票の金額欄を描画できませんでした。')
+    context.scale(resolution, resolution)
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+    context.fillStyle = style.color
+    const text = label.textContent || ''
+    const metrics = context.measureText(text)
+    const baseline = (height + metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2
+    // Preserve the amount when the measured glyph run is wider than its DOM box.
+    context.fillText(text, 0, baseline, width)
+    label.replaceChildren(canvas)
+  }
+}
+
 export async function createDocumentPdfBlob(element: HTMLElement) {
   if ('fonts' in document) {
     try { await document.fonts.ready } catch { /* font fallback is acceptable */ }
@@ -127,6 +152,7 @@ export async function createDocumentPdfBlob(element: HTMLElement) {
     // Give the browser one paint cycle after inserting the frozen clone.
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
+    centerAmountText(clone)
     const captureWidth = Math.max(1, clone.scrollWidth, Math.ceil(clone.getBoundingClientRect().width))
     const captureHeight = Math.max(1, clone.scrollHeight, Math.ceil(clone.getBoundingClientRect().height))
     const canvas = await html2canvas(clone, {
@@ -228,7 +254,7 @@ export async function saveDocumentPdfToOneDrive(input: {
   const typeLabel = input.documentLanguage==='EN' ? (input.documentType==='ESTIMATE'?'Estimate':input.documentType==='INVOICE'?'Invoice':'Delivery_Note') : (input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書')
   const customer = safeFilePart(input.customerName, '取引先')
   const number = safeFilePart(input.documentNo, '番号未設定')
-  const revision = `_PDFv2_${revisionStamp()}_${crypto.randomUUID().slice(0, 8)}`
+  const revision = `_PDFv3_${revisionStamp()}_${crypto.randomUUID().slice(0, 8)}`
   const fileName = `${typeLabel}_${number}_${customer}${revision}.pdf`
   const file = new File([blob], fileName, { type: 'application/pdf' })
   const result = await uploadExternalFile({

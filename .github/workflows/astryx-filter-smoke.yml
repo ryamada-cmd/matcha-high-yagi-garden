@@ -49,12 +49,19 @@ jobs:
         run: node qa/astryx-filter-controls.e2e.mjs
       - name: Generate A4 PDFs from the three document types
         run: node qa/document-pdf.e2e.mjs
+      - name: Render the exported invoice for visual review
+        run: |
+          command -v pdftoppm || (sudo apt-get update -qq && sudo apt-get install -y poppler-utils)
+          pdftoppm -scale-to 1500 -png -singlefile qa/results/document-5.pdf qa/results/invoice
       - name: Upload filter screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: astryx-filter-control-screenshots
-          path: qa/screenshots/astryx-filter-*.png
+          path: |
+            qa/screenshots/astryx-filter-*.png
+            qa/results/document-*.pdf
+            qa/results/invoice.png
           retention-days: 7
           if-no-files-found: ignore
       - name: Show fixture errors

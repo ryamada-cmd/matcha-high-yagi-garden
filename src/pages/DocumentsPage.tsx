@@ -178,6 +178,14 @@ export default function DocumentsPage(){
  </div>
 }
 
+function PaperText({ text }: { text: string }) {
+ return <>{text.split(/([（()）])/).map((part, index) => {
+  if (part === '（' || part === '(') return <span key={index} className="doc-parenthesis">(</span>
+  if (part === '）' || part === ')') return <span key={index} className="doc-parenthesis">)</span>
+  return part
+ })}</>
+}
+
 function DocumentPreview({form,company,totals,taxGroups}:{form:EditorForm;company:CompanyDocumentSettings;totals:{subtotal:number;tax:number;total:number};taxGroups:Array<[number,{base:number;tax:number}]>}){
  const en=form.language==='EN'
  const title=en?englishDocumentTitle(form.documentType):labelType(form.documentType)
@@ -199,11 +207,11 @@ function DocumentPreview({form,company,totals,taxGroups}:{form:EditorForm;compan
    <div className="doc-seller"><img src={import.meta.env.BASE_URL + 'yagi-ichibei-logo.svg'} alt="五代目八木一兵衛"/><b>{sellerName}</b>{company.registrationNo&&<span>{en?'Registration No.: ':'登録番号: '}{company.registrationNo}</span>}<span>{en?'Postal Code: ':'〒'}{company.postalCode}</span><span>{sellerAddress1}</span><span>{sellerAddress2}</span><span>TEL: {company.phone}</span><div className="doc-meta"><span>{en?'Document No.':'帳票番号'}: {form.documentNo}</span><span>{issueLabel}: {formatDocumentDate(form.issueDate,form.language)}</span>{form.documentType==='INVOICE'?<span>{dueLabel}: {formatDocumentDate(form.dueDate,form.language)}</span>:form.documentType==='ESTIMATE'?<><span>{dueLabel}: {formatDocumentDate(form.dueDate,form.language)}</span><span>{deliveryLabel}: {formatDocumentDate(form.deliveryDate,form.language)}</span></>:<span>{deliveryLabel}: {formatDocumentDate(form.deliveryDate,form.language)}</span>}</div></div>
   </div>
   <div className="doc-total-banner"><b>{amountLabel}</b><strong>{formatDocumentMoney(totals.total,form.language)}</strong></div>
-  <table className="doc-items-table"><thead><tr><th>{deliveryLabel}</th><th>{en?'Description':'品目'}</th><th>{en?'Unit Price':'単価'}</th><th>{en?'Qty':'数量'}</th><th>{en?'Unit':'単位'}</th><th>{en?'Amount':'価格'}</th></tr></thead><tbody>{form.items.map(i=>{const amount=Math.round((Number(i.unitPrice)||0)*(Number(i.quantity)||0));return <tr key={i.key}><td>{formatDocumentDate(i.deliveryDate||form.deliveryDate||form.issueDate,form.language)}</td><td>{i.itemName.replace(/([（(])(?=[0-9０-９])/g, '$1 ')}{Number(i.taxRate)===0.08?(en?' *':' ※'):''}</td><td>{nfmt.format(Number(i.unitPrice)||0)}</td><td>{nfmt.format(Number(i.quantity)||0)}</td><td>{localizeUnit(i.unit,form.language)}</td><td>{nfmt.format(amount)}</td></tr>})}</tbody></table>
+  <table className="doc-items-table"><thead><tr><th>{deliveryLabel}</th><th>{en?'Description':'品目'}</th><th>{en?'Unit Price':'単価'}</th><th>{en?'Qty':'数量'}</th><th>{en?'Unit':'単位'}</th><th>{en?'Amount':'価格'}</th></tr></thead><tbody>{form.items.map(i=>{const amount=Math.round((Number(i.unitPrice)||0)*(Number(i.quantity)||0));return <tr key={i.key}><td>{formatDocumentDate(i.deliveryDate||form.deliveryDate||form.issueDate,form.language)}</td><td><PaperText text={i.itemName}/>{Number(i.taxRate)===0.08?(en?' *':' ※'):''}</td><td>{nfmt.format(Number(i.unitPrice)||0)}</td><td>{nfmt.format(Number(i.quantity)||0)}</td><td>{localizeUnit(i.unit,form.language)}</td><td>{nfmt.format(amount)}</td></tr>})}</tbody></table>
   {taxGroups.some(([r])=>r===0.08)&&<p className="doc-tax-note">{en?'* Reduced tax rate item.':'※ 軽減税率対象品目'}</p>}
-  <div className="doc-summary-area"><div className="doc-tax-breakdown"><b>{en?'Tax Breakdown':'税率別内訳'}</b>{taxGroups.map(([rate,v])=><div key={rate}><span>{Math.round(rate*100)}%{!en&&rate===0.08?'（軽減税率）':''}</span><span>{en?'Net':'税抜'} {nfmt.format(v.base)}</span><span>{en?'Tax':'消費税'} {nfmt.format(v.tax)}</span><span>{en?'Gross':'税込'} {nfmt.format(v.base+v.tax)}</span></div>)}</div><div className="doc-totals"><div><span>{en?'Subtotal':'小計'}</span><b>{nfmt.format(totals.subtotal)}</b></div><div><span>{en?'Total Tax':'消費税額合計'}</span><b>{nfmt.format(totals.tax)}</b></div><div className="grand"><span>{en?'Total':'合計'}</span><strong>{nfmt.format(totals.total)}</strong></div></div></div>
+  <div className="doc-summary-area"><div className="doc-tax-breakdown"><b>{en?'Tax Breakdown':'税率別内訳'}</b>{taxGroups.map(([rate,v])=><div key={rate}><span>{Math.round(rate*100)}%{!en&&rate===0.08&&<PaperText text="（軽減税率）"/>}</span><span>{en?'Net':'税抜'} {nfmt.format(v.base)}</span><span>{en?'Tax':'消費税'} {nfmt.format(v.tax)}</span><span>{en?'Gross':'税込'} {nfmt.format(v.base+v.tax)}</span></div>)}</div><div className="doc-totals"><div><span>{en?'Subtotal':'小計'}</span><b>{nfmt.format(totals.subtotal)}</b></div><div><span>{en?'Total Tax':'消費税額合計'}</span><b>{nfmt.format(totals.tax)}</b></div><div className="grand"><span>{en?'Total':'合計'}</span><strong>{nfmt.format(totals.total)}</strong></div></div></div>
   {form.documentType==='INVOICE'&&<div className="doc-box"><b>{en?'Bank Details':'振込先'}</b><span>{bankName} {bankBranch}</span><span>{bankType} {company.bankAccountNo}</span><span>{bankAccountName}</span></div>}
-  {(form.note.trim() || (en && company.noteEn.trim())) && <div className="doc-box"><b>{en?'Notes':'備考'}</b><span>{form.note.trim() ? form.note : company.noteEn}</span></div>}
+  <div className="doc-box doc-notes"><b>{en?'Notes':'備考'}</b><span>{form.note.trim() || (en ? company.noteEn : '') || '\u00a0'}</span></div>
  </div></section>
 }
 function labelType(type:DocumentType){return type==='ESTIMATE'?'見積書':type==='INVOICE'?'請求書':'納品書'}
