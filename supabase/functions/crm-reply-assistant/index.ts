@@ -50,6 +50,58 @@ function obj(row:Record<string,unknown>) {
   return Object.fromEntries(keys.filter(k=>row[k]!==null && row[k]!==undefined && row[k]!=='')
     .map(k=>[k,row[k]]))
 }
+
+const EU_POLICY_TITLE = 'EU加盟国向け抹茶の提案制限（有機抹茶のみ）'
+const EU_CODES = new Set(['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'])
+const EU_NAMES = [
+ 'Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia','Czech Republic','Denmark',
+ 'Estonia','Finland','France','Germany','Greece','Hungary','Ireland','Italy','Latvia',
+ 'Lithuania','Luxembourg','Malta','Netherlands','Poland','Portugal','Romania','Slovakia',
+ 'Slovenia','Spain','Sweden',
+ 'オーストリア','ベルギー','ブルガリア','クロアチア','キプロス','チェコ',
+ 'デンマーク','エストニア','フィンランド','フランス','ドイツ','ギリシャ',
+ 'ハンガリー','アイルランド','イタリア','ラトビア','リトアニア','ルクセンブルク',
+ 'マルタ','オランダ','ポーランド','ポルトガル','ルーマニア','スロバキア',
+ 'スロベニア','スペイン','スウェーデン'
+]
+const EU_ALLOWED_PRODUCTS = new Set(['有機抹茶（一番茶）','有機抹茶（秋碾茶）'])
+function hasEuCountry(value:string) {
+ const lower=value.toLowerCase()
+ return EU_NAMES.some(name => /^[a-z ]+$/i.test(name)
+   ? new RegExp('(^|[^a-z])'+name+'($|[^a-z])','i').test(lower)
+   : lower.includes(name))
+}
+function euDestinationPossible(inquiry:Record<string,unknown>,messages:Record<string,unknown>[]) {
+ const country=text(inquiry.country,120)
+ if(EU_CODES.has(country.toUpperCase())||hasEuCountry(country))return true
+ const context=[
+  country,text(inquiry.received_address,350),text(inquiry.subject,240),
+  ...messages.filter(m=>m.direction==='inbound').slice(-5).map(m=>text(m.text,2200))
+ ].join('\n')
+ if(/\bEU\b|ＥＵ|European Union|欧州連合|EU加盟国|EU圏内|EU向け/i.test(context))return true
+ if(hasEuCountry(context))return true
+ // When only "Europe" is specified, clarify the destination before offering non-organic products.
+ return (/\bEurope\b|ヨーロッパ|欧州/i.test(context)
+   && !/\bUK\b|United Kingdom|英国|イギリス|\bNorway\b|ノルウェー|\bSwitzerland\b|スイス/i.test(context))
+}
+function euSafeFallback(inquiry:Record<string,unknown>,messages:Record<string,unknown>[],
+ products:Record<string,unknown>[],lang:string,required:string[]) {
+ const names=[...new Set(products.map(p=>text(p.product_name,100)).filter(Boolean))]
+ const subject='Re: '+text(inquiry.subject,190).replace(/^Re:\s*/i,'')
+ const reply=lang==='en'
+   ? 'Thank you for your inquiry.\n\nFor shipments to EU member countries, our current offer is limited to organic matcha.'
+      +(names.length?' The available products are '+names.join(' and ')+'.':'')
+      +'\n\nWe need to verify the destination country, residue compliance and import documents, stock, shipping cost and lead time before confirming an order. Please let us know your desired quantity and destination.\n\nKind regards,\nSales Team'
+   : 'お問い合わせいただき、誠にありがとうございます。\n\nEU加盟国向けには、当社取扱商品のうち有機抹茶のみをご提案しております。'
+      +(names.length?'対象商品は「'+names.join('」「')+'」です。':'')
+      +'\n\n輸出に必要な残留農薬基準への適合確認・関連書類・在庫・送料・納期を確認したうえで正式にご案内いたします。ご希望数量とお届け先の国をご教示ください。\n\nどうぞよろしくお願いいたします。\n営業担当'
+ const checks=lang==='en'
+  ? ['EU destination and lot-specific compliance / documentation','Stock, shipping and lead time']
+  : ['EU配送先とロット別残留農薬・輸入書類の確認','在庫・送料・納期の確認']
+ return {summary:safeSummary(inquiry,messages,lang),reply_subject:subject,
+    reply_body:reply,missing_fields:[...new Set([...required,...checks])]}
+}
+
 function missing(product:Record<string,unknown>|null,hasGeneral:boolean,language:string) {
   const items:string[]=[]
   const labels = language==='en'
@@ -150,6 +202,7 @@ async function generateAI(inquiry:Record<string,unknown>, messages:Record<string
     'Preserve the customer language when possible, but use requested response language.',
     'Summarize the actual customer request, identify missing details, then produce a polite human-review-only reply draft.',
     'Do not include external links, attachments or personal details not needed for replying.',
+    'If an approved EU organic-only policy appears in general knowledge, never recommend or quote non-organic matcha for an EU destination. This is the sellers internal sales policy, not an EU-wide legal prohibition. Confirm lot-specific residue compliance and organic import documentation before promising EU delivery.',
     'Reply ONLY as JSON with keys summary, reply_subject, reply_body, missing_fields. No Markdown fences.'
   ].join(' ')
   const input={language:lang==='en'?'English':'Japanese',inquiry:{subject:inquiry.subject,category:inquiry.category},
@@ -207,30 +260,57 @@ Deno.serve(async(req:Request)=>{
     const approved=await admin.from('crm_reply_knowledge').select('*').eq('approved',true)
       .or('valid_until.is.null,valid_until.gte.'+new Date().toISOString().slice(0,10)).limit(80)
     if(approved.error)throw approved.error
-    const general=(approved.data||[]).filter((r:any)=>r.kind==='general').slice(0,8).map((r:any)=>obj(r))
+    const generalAll=(approved.data||[]).filter((r:any)=>r.kind==='general').slice(0,8).map((r:any)=>obj(r))
+    const euRuleEnabled=generalAll.some(row=>row.title===EU_POLICY_TITLE)
+    const euRestricted=euRuleEnabled&&euDestinationPossible(inquiry,thread)
+    const euProducts=euRestricted
+      ? (approved.data||[]).filter((r:any)=>r.kind==='product'&&EU_ALLOWED_PRODUCTS.has(String(r.product_name||''))).map((r:any)=>obj(r))
+      : []
+    // For EU shipments the assistant receives only organic products, never the selected non-organic offer.
+    const extraEuFacts=euProducts.map(item=>({
+      notes:'EU向け提案可能な確認済み商品：'+String(item.product_name||'')
+        +'。登録価格（国内税込）：'+String(item.unit_price||'要確認')+' JPY / '+String(item.unit_size||'1kg')
+        +'。正式な輸出価格・適合・送料・納期は都度確認。'
+    }))
+    const general=euRestricted
+      ? [...generalAll,...extraEuFacts]
+      : generalAll.filter(row=>row.title!==EU_POLICY_TITLE)
     let selected:Record<string,unknown>|null=null
+    let blockedEuProduct=false
     if(body.knowledgeId){
       const item=(approved.data||[]).find((r:any)=>r.id===body.knowledgeId&&r.kind==='product')
       if(!item)throw new Error('選択された商品マスターは未承認または期限切れです')
-      selected=obj(item)
+      if(euRestricted&&!EU_ALLOWED_PRODUCTS.has(String(item.product_name||''))) {
+        blockedEuProduct=true
+      } else selected=obj(item)
     }
     const required=missing(selected,general.length>0,language)
-    let generated=fallback(inquiry,thread,selected,general,language,required)
+    if(euRestricted){
+      required.push(language==='en'?'Verify EU delivery and lot-specific compliance':'EU向け配送先とロット別適合確認')
+      if(blockedEuProduct)required.push(language==='en'?'Selected non-organic product not eligible for EU delivery':'選択された非有機抹茶はEU向け提案対象外')
+    }
+    let generated=euRestricted
+      ? euSafeFallback(inquiry,thread,euProducts,language,required)
+      : fallback(inquiry,thread,selected,general,language,required)
     let method='template'
     if(AI_KEY){
       try {
         generated=await generateAI(inquiry,thread,selected,general,language,required)
+        if(euRestricted && /MATCHA\s*HIGH|やぶきた|おくみどり|鹿児島抹茶|宇治抹茶\s*No\.?\s*3|No\s*[.,]?\s*[345]/i.test(generated.reply_body))
+          throw new Error('EU向けの返信案に提案対象外の商品が含まれています')
         method='ai'
       } catch(error){
-        // Missing credentials or invalid AI output must never cause fabricated facts.
-        console.warn('crm reply assistant fallback:', error instanceof Error?error.message:'unknown')
-        generated=fallback(inquiry,thread,selected,general,language,
-          [...required,language==='en'?'AI not available; template used':'AI処理失敗のため確認用テンプレートを使用'])
+        // On model failure, EU drafts remain organic-only.
+        console.warn('crm reply assistant fallback:',error instanceof Error?error.message:'unknown')
+        const checks=[...required,language==='en'?'AI not available; template used':'AI処理失敗のため確認用テンプレートを使用']
+        generated=euRestricted
+          ? euSafeFallback(inquiry,thread,euProducts,language,checks)
+          : fallback(inquiry,thread,selected,general,language,checks)
       }
     }
-    const snapshot={product:selected,general}
+    const snapshot={product:selected,general,eu_organic_only:euRestricted,eu_eligible_products:euProducts}
     const {data:draft,error:saveError}=await admin.from('crm_reply_drafts').insert({
-      inquiry_id:inquiry.id,knowledge_id:body.knowledgeId||null,
+      inquiry_id:inquiry.id,knowledge_id:selected?body.knowledgeId||null:null,
       summary:generated.summary,reply_subject:generated.reply_subject,
       reply_body:generated.reply_body,missing_fields:generated.missing_fields,
       knowledge_snapshot:snapshot,method,language,created_by:user.id
