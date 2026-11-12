@@ -2,6 +2,8 @@ import { Field } from '@astryxdesign/core/Field'
 import { Dialog, DialogHeader } from '../components/AppDialog'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Button } from '@astryxdesign/core/Button'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import { useEffect, useMemo, useState } from 'react'
 import { Building2, Cloud, ExternalLink, FilePlus2, FileText, Pencil, Plus, Printer, RefreshCw, Save, Trash2, UserRound, X } from 'lucide-react'
 import { deleteDocumentCustomer, deleteSalesDocument, loadCompanyDocumentSettings, loadDocumentCustomers, loadSalesDocuments, saveCompanyDocumentSettings, saveDocumentCustomer, saveSalesDocument, type CompanyDocumentSettings, type DocumentCustomer, type DocumentLanguage, type DocumentStatus, type DocumentType, type SalesDocument } from '../lib/documents'
@@ -19,6 +21,14 @@ type EditorForm={id:string;documentType:DocumentType;language:DocumentLanguage;d
 const newItem=():EditorItem=>({key:crypto.randomUUID(),productId:'',itemName:'',unitPrice:'0',quantity:'1',unit:'個',taxRate:'0.08',deliveryDate:today()})
 const blankCustomer:DocumentCustomer={id:'',customerCode:'',name:'',postalCode:'',address1:'',address2:'',department:'',contactName:'',honorific:'御中',email:'',phone:'',note:''}
 const blankCompany:CompanyDocumentSettings={companyName:'合同会社リバーサイド',companyNameEn:'Riverside LLC',registrationNo:'',postalCode:'',address1:'',address2:'',address1En:'',address2En:'',phone:'',bankName:'',bankBranch:'',bankAccountType:'普通',bankAccountNo:'',bankAccountName:'',bankNameEn:'',bankBranchEn:'',bankAccountTypeEn:'',bankAccountNameEn:'',note:'',noteEn:''}
+
+function toEditorForm(d: SalesDocument): EditorForm {
+ return {id:d.id,documentType:d.documentType,language:d.documentLanguage,documentNo:d.documentNo,status:d.status,issueDate:d.issueDate,dueDate:d.dueDate||addDays(d.issueDate,30),deliveryDate:d.deliveryDate||d.issueDate,customerId:d.customerId,customerName:d.customerName,customerPostalCode:d.customerPostalCode,customerAddress1:d.customerAddress1,customerAddress2:d.customerAddress2,customerDepartment:d.customerDepartment,customerContactName:d.customerContactName,customerHonorific:d.customerHonorific,priceKind:'WHOLESALE',note:d.note,items:d.items.map(i=>({key:i.id||crypto.randomUUID(),productId:i.productId,itemName:i.itemName,unitPrice:String(i.unitPriceYen),quantity:String(i.quantity),unit:i.unit,taxRate:String(i.taxRate),deliveryDate:i.deliveryDate||d.deliveryDate||d.issueDate}))}
+}
+
+function documentTaxGroups(items: EditorItem[]) {
+ const map=new Map<number,{base:number;tax:number}>();for(const i of items){const amount=Math.round(Math.max(0,Number(i.unitPrice)||0)*Math.max(0,Number(i.quantity)||0));const rate=Math.max(0,Number(i.taxRate)||0);const x=map.get(rate)||{base:0,tax:0};x.base+=amount;x.tax+=Math.floor(amount*rate);map.set(rate,x)}return [...map.entries()].filter(([,v])=>v.base>0).sort((a,b)=>a[0]-b[0])
+}
 
 export default function DocumentsPage(){
  const {allowed}=useAppPermissions()
@@ -57,14 +67,55 @@ export default function DocumentsPage(){
  const activeProducts=useMemo(()=>products.filter(p=>p.status==='ACTIVE'),[products])
  const filteredDocs=useMemo(()=>{const q=query.trim().normalize('NFKC').toLowerCase();return docs.filter(d=>!q||`${d.documentNo} ${d.customerName} ${d.documentType} ${d.status}`.normalize('NFKC').toLowerCase().includes(q))},[docs,query])
  const totals=useMemo(()=>calcTotals(form.items),[form.items])
- const taxGroups=useMemo(()=>{const map=new Map<number,{base:number;tax:number}>();for(const i of form.items){const amount=Math.round(Math.max(0,Number(i.unitPrice)||0)*Math.max(0,Number(i.quantity)||0));const rate=Math.max(0,Number(i.taxRate)||0);const x=map.get(rate)||{base:0,tax:0};x.base+=amount;x.tax+=Math.floor(amount*rate);map.set(rate,x)}return [...map.entries()].filter(([,v])=>v.base>0).sort((a,b)=>a[0]-b[0])},[form.items])
+ const taxGroups=useMemo(()=>documentTaxGroups(form.items),[form.items])
  function startNew(type:DocumentType){setForm(makeBlank(type));setTab('editor');setError('');setSuccess('')}
  function convertDocument(type:Extract<DocumentType,'INVOICE'|'DELIVERY_NOTE'>){
   const d=today()
   setForm(f=>({...f,id:'',documentType:type,documentNo:nextDocumentNo(type,d,docs),status:'DRAFT',issueDate:d,dueDate:addDays(d,30),deliveryDate:d,items:f.items.map(i=>({...i,key:crypto.randomUUID(),deliveryDate:d}))}))
   setError('');setSuccess(type==='INVOICE'?'見積内容を引き継いで請求書を作成します。':'見積内容を引き継いで納品書を作成します。')
  }
- function openDoc(d:SalesDocument){setForm({id:d.id,documentType:d.documentType,language:d.documentLanguage,documentNo:d.documentNo,status:d.status,issueDate:d.issueDate,dueDate:d.dueDate||addDays(d.issueDate,30),deliveryDate:d.deliveryDate||d.issueDate,customerId:d.customerId,customerName:d.customerName,customerPostalCode:d.customerPostalCode,customerAddress1:d.customerAddress1,customerAddress2:d.customerAddress2,customerDepartment:d.customerDepartment,customerContactName:d.customerContactName,customerHonorific:d.customerHonorific,priceKind:'WHOLESALE',note:d.note,items:d.items.map(i=>({key:i.id||crypto.randomUUID(),productId:i.productId,itemName:i.itemName,unitPrice:String(i.unitPriceYen),quantity:String(i.quantity),unit:i.unit,taxRate:String(i.taxRate),deliveryDate:i.deliveryDate||d.deliveryDate||d.issueDate}))});setTab('editor');setError('');setSuccess('')}
+ function openDoc(d:SalesDocument){setForm(toEditorForm(d));setTab('editor');setError('');setSuccess('')}
+
+ async function refreshArchivedPdf(d: SalesDocument) {
+  if (!canManage || !canStorageUpload || busy || d.status !== 'ISSUED') return
+  setBusy(true)
+  setError('')
+  setSuccess('')
+  const host = document.createElement('div')
+  host.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;pointer-events:none'
+  host.setAttribute('aria-hidden', 'true')
+  document.body.append(host)
+  const root = createRoot(host)
+  try {
+   const saved = toEditorForm(d)
+   const issuer: CompanyDocumentSettings = {
+    ...blankCompany,
+    companyName: d.sellerCompanyName, companyNameEn: d.sellerCompanyName,
+    registrationNo: d.sellerRegistrationNo, postalCode: d.sellerPostalCode,
+    address1: d.sellerAddress1, address2: d.sellerAddress2,
+    phone: d.sellerPhone, bankName: d.bankName, bankBranch: d.bankBranch,
+    bankAccountType: d.bankAccountType, bankAccountNo: d.bankAccountNo,
+    bankAccountName: d.bankAccountName,
+   }
+   flushSync(() => root.render(<DocumentPreview form={saved} company={issuer}
+    totals={{subtotal:d.subtotalYen,tax:d.taxYen,total:d.totalYen}} taxGroups={documentTaxGroups(saved.items)}/>))
+   const preview = host.querySelector<HTMLElement>('.document-preview-print')
+   if (!preview) throw new Error('帳票プレビューを取得できませんでした。')
+   const link = await saveDocumentPdfToOneDrive({
+    documentId:d.id, documentType:d.documentType, documentLanguage:d.documentLanguage,
+    documentNo:d.documentNo, customerName:d.customerName, previewElement:preview, isRevision:true,
+   })
+   setStorageLinks(previous => ({...previous,[d.id]:link}))
+   setSuccess('OneDriveに新しいPDFを保存しました。「OneDriveで開く」で確認できます。')
+  } catch (cause) {
+   setError(cause instanceof Error ? cause.message : 'OneDriveのPDFを更新できませんでした。')
+  } finally {
+   root.unmount()
+   host.remove()
+   setBusy(false)
+  }
+ }
+
  function chooseCustomer(id:string){const c=customers.find(x=>x.id===id);if(!c){setForm({...form,customerId:''});return}setForm({...form,customerId:c.id,customerName:c.name,customerPostalCode:c.postalCode,customerAddress1:c.address1,customerAddress2:c.address2,customerDepartment:c.department,customerContactName:c.contactName,customerHonorific:c.honorific})}
  function unitPrice(p:ProductMaster,kind:PriceKind){return kind==='WHOLESALE'?p.wholesalePriceYen:kind==='RETAIL'?p.retailPriceYen:p.otherPriceYen}
  function chooseProduct(index:number,id:string){const p=activeProducts.find(x=>x.id===id);setForm(f=>({...f,items:f.items.map((it,i)=>i!==index?it:p?{...it,productId:p.id,itemName:p.productName,unitPrice:String(unitPrice(p,f.priceKind)),unit:p.packageType||'個',taxRate:'0.08'}:{...it,productId:''})}))}
@@ -113,7 +164,7 @@ export default function DocumentsPage(){
   <div className="page-head no-print"><div><p className="eyebrow">SALES DOCUMENTS</p><h1>見積書・請求書・納品書</h1><p className="sub">見積から納品・請求まで、商品価格表と取引先マスタを使って一貫して作成します。</p></div><div className="head-actions">{canManage&&<><Button className="ui-astryx-action estimate-create-button" variant="secondary" label="見積書を作成" icon={<FilePlus2 size={16}/>} onClick={()=>startNew('ESTIMATE')}/><Button className="ui-astryx-action" variant="secondary" label="納品書を作成" icon={<FilePlus2 size={16}/>} onClick={()=>startNew('DELIVERY_NOTE')}/><Button className="ui-astryx-action" variant="primary" label="請求書を作成" icon={<FilePlus2 size={16}/>} onClick={()=>startNew('INVOICE')}/></>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="帳票を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
   <div className="document-tabs no-print"><Button className={tab==='list'?'active':''} variant="secondary" label="帳票一覧" icon={<FileText size={16}/>} aria-pressed={tab==='list'} onClick={()=>setTab('list')}/><Button className={tab==='editor'?'active':''} variant="secondary" label="作成・編集" icon={<Pencil size={16}/>} aria-pressed={tab==='editor'} onClick={()=>setTab('editor')}/><Button className={tab==='masters'?'active':''} variant="secondary" label="取引先・発行元" icon={<Building2 size={16}/>} aria-pressed={tab==='masters'} onClick={()=>setTab('masters')}/></div>
   {error&&<div className="notice error dashboard-notice no-print">{error}</div>}{success&&<div className="notice success dashboard-notice no-print">{success}</div>}
-  {tab==='list'&&<section className="panel no-print"><div className="toolbar"><TextInput containerClassName="astryx-search-field" label="帳票を検索" isLabelHidden type="search" value={query} onChange={setQuery} placeholder="帳票番号・取引先を検索" hasClear width="100%"/><span className="muted">{filteredDocs.length}件</span></div><div className="document-list">{filteredDocs.map(d=>{const link=storageLinks[d.id];const issuedMissing=canStorageView&&storageReady&&d.status==='ISSUED'&&!link;return <article key={d.id} className={`document-list-row ${link?'has-storage':issuedMissing?'storage-missing':''}`}><div className={`document-type-badge ${d.documentType.toLowerCase()}`}>{labelType(d.documentType)}<small>{d.documentLanguage==='EN'?'EN':'JP'}</small></div><div className="document-list-main"><b>{d.customerName}</b><span>{d.documentNo} ｜ {d.issueDate}</span>{canStorageView&&d.status==='ISSUED'&&<div className="document-storage-line">{link?<><span className="document-storage-badge saved"><Cloud size={12}/>OneDrive保存済み</span><span className="document-storage-date">{formatStorageDate(link.uploadedAt)}</span></>:storageReady?<span className="document-storage-badge missing"><Cloud size={12}/>OneDrive未保存</span>:<span className="document-storage-badge hidden"><Cloud size={12}/>OneDrive状態取得不可</span>}</div>}</div><div className="document-list-total">{yen.format(d.totalYen)}<small>{d.status==='DRAFT'?'下書き':d.status==='ISSUED'?'発行済':'取消'}</small></div><div className="document-list-actions">{link?.webUrl&&<a className="document-onedrive-open" href={link.webUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/>OneDriveで開く</a>}<button onClick={()=>openDoc(d)}><Pencil size={15}/>開く</button>{canManage&&<button className="danger-text" onClick={()=>void removeDoc(d)}><Trash2 size={15}/></button>}</div></article>})}{!loading&&!filteredDocs.length&&<p className="empty">帳票はまだありません。</p>}</div></section>}
+  {tab==='list'&&<section className="panel no-print"><div className="toolbar"><TextInput containerClassName="astryx-search-field" label="帳票を検索" isLabelHidden type="search" value={query} onChange={setQuery} placeholder="帳票番号・取引先を検索" hasClear width="100%"/><span className="muted">{filteredDocs.length}件</span></div><div className="document-list">{filteredDocs.map(d=>{const link=storageLinks[d.id];const issuedMissing=canStorageView&&storageReady&&d.status==='ISSUED'&&!link;return <article key={d.id} className={`document-list-row ${link?'has-storage':issuedMissing?'storage-missing':''}`}><div className={`document-type-badge ${d.documentType.toLowerCase()}`}>{labelType(d.documentType)}<small>{d.documentLanguage==='EN'?'EN':'JP'}</small></div><div className="document-list-main"><b>{d.customerName}</b><span>{d.documentNo} ｜ {d.issueDate}</span>{canStorageView&&d.status==='ISSUED'&&<div className="document-storage-line">{link?<><span className="document-storage-badge saved"><Cloud size={12}/>OneDrive保存済み</span><span className="document-storage-date">{formatStorageDate(link.uploadedAt)}</span></>:storageReady?<span className="document-storage-badge missing"><Cloud size={12}/>OneDrive未保存</span>:<span className="document-storage-badge hidden"><Cloud size={12}/>OneDrive状態取得不可</span>}</div>}</div><div className="document-list-total">{yen.format(d.totalYen)}<small>{d.status==='DRAFT'?'下書き':d.status==='ISSUED'?'発行済':'取消'}</small></div><div className="document-list-actions">{link?.webUrl&&<a className="document-onedrive-open" href={link.webUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/>OneDriveで開く</a>}{d.status==='ISSUED'&&canManage&&canStorageUpload&&<button type="button" className="document-pdf-refresh" disabled={busy||loading} onClick={()=>void refreshArchivedPdf(d)}><RefreshCw size={15}/>OneDriveのPDFを更新</button>}<button onClick={()=>openDoc(d)}><Pencil size={15}/>開く</button>{canManage&&<button className="danger-text" onClick={()=>void removeDoc(d)}><Trash2 size={15}/></button>}</div></article>})}{!loading&&!filteredDocs.length&&<p className="empty">帳票はまだありません。</p>}</div></section>}
   {tab==='editor'&&<div className="document-editor-layout"><section className="panel document-editor no-print"><div className="document-editor-head"><div><p className="eyebrow">DOCUMENT EDITOR</p><h2>{labelType(form.documentType)}を作成</h2></div><div className="document-editor-head-controls"><div className="document-language-toggle"><button type="button" className={form.language==='JA'?'active':''} onClick={()=>setForm({...form,language:'JA'})}>日本語</button><button type="button" className={form.language==='EN'?'active':''} onClick={()=>setForm({...form,language:'EN'})}>English</button></div><select value={form.documentType} disabled={!!form.id} onChange={e=>{const type=e.target.value as DocumentType;setForm({...form,documentType:type,documentNo:nextDocumentNo(type,form.issueDate,docs)})}}><option value="ESTIMATE">見積書</option><option value="INVOICE">請求書</option><option value="DELIVERY_NOTE">納品書</option></select></div></div>
     <div className={`form-grid ${form.documentType==='ESTIMATE'?'four':'three'}`}><Field className="astryx-document-field" label="帳票番号" inputID="astryx-document-no" isRequired><input id="astryx-document-no" required value={form.documentNo} onChange={e=>setForm({...form,documentNo:e.target.value})}/></Field><label>発行日<input type="date" value={form.issueDate} onChange={e=>setForm({...form,issueDate:e.target.value})}/></label>{form.documentType==='INVOICE'?<label>お支払期限<input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></label>:form.documentType==='ESTIMATE'?<><label>見積有効期限<input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></label><label>予定納期<input type="date" value={form.deliveryDate} onChange={e=>setForm({...form,deliveryDate:e.target.value})}/></label></>:<label>納品日<input type="date" value={form.deliveryDate} onChange={e=>setForm({...form,deliveryDate:e.target.value})}/></label>}</div>
     <div className="editor-section-title"><UserRound size={17}/><b>取引先</b></div><label>保存済み取引先<select value={form.customerId} onChange={e=>chooseCustomer(e.target.value)}><option value="">直接入力</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><div className="form-grid two"><Field className="astryx-document-field" label="取引先名" inputID="astryx-document-customer-name" isRequired><input id="astryx-document-customer-name" required value={form.customerName} onChange={e=>setForm({...form,customerName:e.target.value})}/></Field><label>敬称<select value={form.customerHonorific} onChange={e=>setForm({...form,customerHonorific:e.target.value})}><option>御中</option><option>様</option></select></label></div><div className="form-grid two"><label>郵便番号<input value={form.customerPostalCode} onChange={e=>setForm({...form,customerPostalCode:e.target.value})}/></label><label>住所<input value={form.customerAddress1} onChange={e=>setForm({...form,customerAddress1:e.target.value})}/></label></div><label>住所2<input value={form.customerAddress2} onChange={e=>setForm({...form,customerAddress2:e.target.value})}/></label><div className="form-grid two"><label>部署<input value={form.customerDepartment} onChange={e=>setForm({...form,customerDepartment:e.target.value})}/></label><label>担当者<input value={form.customerContactName} onChange={e=>setForm({...form,customerContactName:e.target.value})}/></label></div>

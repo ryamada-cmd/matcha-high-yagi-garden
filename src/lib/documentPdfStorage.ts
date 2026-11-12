@@ -198,7 +198,7 @@ export async function loadSalesDocumentStorageMap(limit = 500): Promise<Document
   const map: DocumentStorageMap = {}
   for (const file of files) {
     for (const link of file.external_file_links || []) {
-      if (link.entity_type !== 'sales_document' || !link.entity_id || map[link.entity_id]) continue
+      if (link.entity_type !== 'sales_document' || !link.entity_id || !file.web_url || (file.mime_type && file.mime_type !== 'application/pdf') || map[link.entity_id]) continue
       map[link.entity_id] = toStorageLink(file)
     }
   }
@@ -228,7 +228,7 @@ export async function saveDocumentPdfToOneDrive(input: {
   const typeLabel = input.documentLanguage==='EN' ? (input.documentType==='ESTIMATE'?'Estimate':input.documentType==='INVOICE'?'Invoice':'Delivery_Note') : (input.documentType === 'ESTIMATE' ? '見積書' : input.documentType === 'INVOICE' ? '請求書' : '納品書')
   const customer = safeFilePart(input.customerName, '取引先')
   const number = safeFilePart(input.documentNo, '番号未設定')
-  const revision = input.isRevision ? `_更新_${revisionStamp()}` : ''
+  const revision = `_PDFv2_${revisionStamp()}_${crypto.randomUUID().slice(0, 8)}`
   const fileName = `${typeLabel}_${number}_${customer}${revision}.pdf`
   const file = new File([blob], fileName, { type: 'application/pdf' })
   const result = await uploadExternalFile({
@@ -238,5 +238,7 @@ export async function saveDocumentPdfToOneDrive(input: {
     entityId: input.documentId,
     note: input.isRevision ? '帳票再発行時PDF自動保存（プレビュー同一レイアウト）' : '帳票発行時PDF自動保存（プレビュー同一レイアウト）',
   })
-  return toStorageLink(result.file)
+  const link = toStorageLink(result.file)
+  if (!link.webUrl) throw new Error('OneDriveの新しいPDFへのリンクを取得できませんでした。')
+  return link
 }
