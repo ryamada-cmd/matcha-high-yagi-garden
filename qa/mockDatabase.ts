@@ -26,6 +26,25 @@ export const supabase = {
   async rpc(name:string,payload:any) {
     if(name==='has_app_permission')return {data:params.get('viewOnly')!=='1'||payload.p_permission_key.endsWith('.view'),error:null}
     if(name==='search_pesticide_catalog')return {data:{official:[],guidelines:[],expired:[],counts:{official:0,guidelines:0,expired:0}},error:null}
+    if (params.get('screen') === 'fields' && name === 'save_field') {
+      await new Promise(resolve => setTimeout(resolve, 350))
+      if (params.has('saveError')) return {data:null,error:{message:'架空の圃場保存エラー'}}
+      const existing = rows.fields.find(row => row.id === payload.p_field_id)
+      const saved = {
+        ...payload.payload,
+        id: existing?.id ?? 'qa-new-field',
+        legacy_id: payload.payload.legacy_id || 'QA-NEW',
+      }
+      if (existing) Object.assign(existing, saved)
+      else rows.fields.push(saved)
+      return {data:saved,error:null}
+    }
+    if (params.get('screen') === 'fields' && name === 'delete_field') {
+      const index = rows.fields.findIndex(row => row.id === payload.p_field_id)
+      if (index < 0) throw new Error('Missing QA field')
+      const [deleted] = rows.fields.splice(index, 1)
+      return {data:{id:deleted.id,legacy_id:deleted.legacy_id,deleted:true},error:null}
+    }
     // Only specific form saves are allowed, recorded in memory for assertions.
     if(['admin_receive_production_lot','admin_save_fertilizer_plan','save_field','save_annual_plan'].includes(name)) {
       ;(window as any).__qa_operation={name,payload}

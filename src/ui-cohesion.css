@@ -52,7 +52,7 @@ main{position:relative;background:
 .panel-title p,.section-head p{margin:3px 0 0!important}
 
 /* Shared surfaces */
-.panel,.metric,.home-overview-card,.home-module-card{
+.panel,.metric,.home-module-card{
   border-color:var(--ui-border)!important;
   background:rgba(255,255,255,.98)!important;
   box-shadow:var(--ui-shadow)!important;
@@ -60,8 +60,8 @@ main{position:relative;background:
 .page [class$="-card"],.page [class*="-card "]{
   border-color:var(--ui-border);
 }
-.metric,.home-overview-card{overflow:hidden}
-.metric strong,.home-overview-card>strong{font-variant-numeric:tabular-nums}
+.metric{overflow:hidden}
+.metric strong{font-variant-numeric:tabular-nums}
 .metric.warning{background:#fffbf2!important;border-color:#eadcb8!important}
 .metric.warning strong{color:var(--ui-warning)!important}
 .metric.danger{background:#fff7f5!important;border-color:#edd2ce!important}
@@ -77,7 +77,7 @@ main{position:relative;background:
 .primary-button:hover:not(:disabled){box-shadow:0 4px 12px rgba(23,63,43,.12)!important}
 .secondary-button:hover:not(:disabled),.icon-button:hover:not(:disabled){box-shadow:0 3px 10px rgba(23,63,43,.05)!important}
 .page button:focus-visible,.page a:focus-visible,
-.page input:focus-visible,.page select:focus-visible,.page textarea:focus-visible{
+.page:where(:not(.astryx-fields)) :is(input,select,textarea):focus-visible{
   outline:0;
   box-shadow:0 0 0 3px rgba(70,113,89,.16)!important;
 }
@@ -149,12 +149,6 @@ main{position:relative;background:
 }
 
 /* Operational dashboard hierarchy */
-.home-dashboard .home-workboard{border-color:#d5e1d8!important}
-.home-workboard-title>a,.home-next-grid>a{transition:border-color .14s ease,background-color .14s ease,transform .08s ease}
-.home-workboard-title>a:hover,.home-next-grid>a:hover{border-color:#b6c8ba!important;background:#f6faf7!important}
-.home-work-column article{transition:border-color .14s ease,box-shadow .14s ease}
-.home-work-column article:hover{border-color:#cbd9ce!important;box-shadow:0 4px 12px rgba(21,52,34,.045)}
-.home-week-plans a:hover{border-color:#cbd9ce;background:#fbfdfb}
 
 /* Document / OCR / accounting surfaces */
 .document-ocr-panel,.vendor-document-upload,.expense-receipt-upload{

@@ -47,7 +47,8 @@ export default function HomeDashboardPage() {
   const [data, setData] = useState<HomeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [taskBusy,setTaskBusy]=useState('')
+  const [taskBusy, setTaskBusy] = useState('')
+  const [taskFeedback, setTaskFeedback] = useState<{ message: string; error?: boolean } | null>(null)
 
   const canSprays = allowed('sprays.view')
   const canCreateSprays = allowed('sprays.create')
@@ -166,12 +167,19 @@ export default function HomeDashboardPage() {
     return rows.filter(x=>x.date>=start&&x.date<=end).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8)
   },[data?.calendar])
 
-  async function completeTask(t:CalendarTask){
-    if(!canManageCalendar||taskBusy)return
-    setTaskBusy(t.id);setError('')
-    try{await setCalendarTaskStatus(t.id,'DONE');await refresh()}
-    catch(e:any){setError(e?.message||'タスクを完了できませんでした。')}
-    finally{setTaskBusy('')}
+  async function completeTask(t: CalendarTask) {
+    if (!canManageCalendar || taskBusy) return
+    setTaskBusy(t.id)
+    setTaskFeedback(null)
+    try {
+      await setCalendarTaskStatus(t.id, 'DONE')
+      await refresh()
+      setTaskFeedback({ message: `「${t.title}」を完了しました。` })
+    } catch (e: any) {
+      setTaskFeedback({ message: e?.message || 'タスクを完了できませんでした。', error: true })
+    } finally {
+      setTaskBusy('')
+    }
   }
 
   const topCards:OverviewCard[] = []
@@ -193,17 +201,18 @@ export default function HomeDashboardPage() {
   return <div className="page home-dashboard astryx-page astryx-home">
     <div className="page-head home-dashboard-head">
       <div><p className="eyebrow">GODAI-ME YAGI ICHIBEI</p><h1>茶園管理ダッシュボード</h1><p className="sub">あなたに許可された防除・施肥・収穫・製造・在庫・販売・設備の状況をまとめて確認します。</p></div>
-      <div className="head-actions"><Badge variant="success" label="茶園管理 接続済"/><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="画面を更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/></div>
+      <div className="head-actions"><Badge variant={loading || error ? 'neutral' : 'success'} label={loading ? '読み込み中' : error ? '読み込みエラー' : '接続済み'}/><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="画面を更新" aria-busy={loading} icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/></div>
     </div>
 
-    {error && <div className="notice error dashboard-notice">{error}</div>}
+    {error && <div className="notice error dashboard-notice" role="alert">{error}</div>}
 
     {topCards.length > 0 && <div className="home-overview-metrics">
-      {topCards.map(card => <Card className={`home-overview-card ${card.tone || ''}`} key={card.label}><span>{card.label}</span><strong>{loading && !data ? '…' : card.value}</strong><small>{card.note}</small></Card>)}
+      {topCards.map(card => <Card className={`garden-kpi home-overview-card ${card.tone || ''}`} key={card.label}><span>{card.label}</span><strong>{loading && !data ? '…' : card.value}</strong>{card.note && <small>{card.note}</small>}</Card>)}
     </div>}
 
     {canCalendar&&<section className="panel home-workboard">
       <div className="panel-title home-workboard-title"><div><h2>今日・今週のやること</h2><p>担当・期限付きの作業を、期限の近い順に確認</p></div><Link to="/calendar">作業カレンダー<ArrowRight size={15}/></Link></div>
+      {taskFeedback && <div className={`notice ${taskFeedback.error ? 'error' : 'success'}`} role={taskFeedback.error ? 'alert' : 'status'}>{taskFeedback.message}</div>}
       <div className="home-workboard-metrics">
         <Link to="/calendar" className={workSummary.overdue.length?'danger':''}><span>期限超過</span><strong>{workSummary.overdue.length}</strong><small>未完了</small></Link>
         <Link to="/calendar"><span>今日まで</span><strong>{workSummary.today.length}</strong><small>今日の作業</small></Link>
@@ -211,9 +220,9 @@ export default function HomeDashboardPage() {
         <Link to="/calendar" className={workSummary.unassigned?'warning':''}><span>担当未設定</span><strong>{workSummary.unassigned}</strong><small>割当が必要</small></Link>
       </div>
       <div className="home-work-columns">
-        <div className="home-work-column overdue"><div className="home-work-column-head"><b>期限超過</b><span>{workSummary.overdue.length}件</span></div>{workSummary.overdue.slice(0,5).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueDate+(t.dueTime?' '+t.dueTime.slice(0,5):'')}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={taskBusy===t.id} onClick={()=>void completeTask(t)}><Check size={15}/>完了</button>}</article>)}{!workSummary.overdue.length&&<p className="empty">期限超過はありません。</p>}</div>
-        <div className="home-work-column today"><div className="home-work-column-head"><b>今日やること</b><span>{workSummary.today.length}件</span></div>{workSummary.today.slice(0,6).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueTime?'今日 '+t.dueTime.slice(0,5):'今日'}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={taskBusy===t.id} onClick={()=>void completeTask(t)}><Check size={15}/>完了</button>}</article>)}{!workSummary.today.length&&<p className="empty">今日が期限の作業はありません。</p>}</div>
-        <div className="home-work-column week"><div className="home-work-column-head"><b>今週やること</b><span>{workSummary.week.length}件</span></div>{workSummary.week.slice(0,6).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueDate}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={taskBusy===t.id} onClick={()=>void completeTask(t)}><Check size={15}/>完了</button>}</article>)}{!workSummary.week.length&&<p className="empty">7日以内の作業はありません。</p>}</div>
+        <div className="home-work-column overdue"><div className="home-work-column-head"><b>期限超過</b><span>{workSummary.overdue.length}件</span></div>{workSummary.overdue.slice(0,5).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueDate+(t.dueTime?' '+t.dueTime.slice(0,5):'')}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={Boolean(taskBusy) || loading} aria-busy={taskBusy === t.id} aria-label={taskBusy === t.id ? '更新中' : '完了'} title={t.title} onClick={()=>void completeTask(t)}><Check size={15}/>{taskBusy === t.id ? '更新中…' : '完了'}</button>}</article>)}{!workSummary.overdue.length&&<p className="empty">期限超過はありません。</p>}</div>
+        <div className="home-work-column today"><div className="home-work-column-head"><b>今日やること</b><span>{workSummary.today.length}件</span></div>{workSummary.today.slice(0,6).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueTime?'今日 '+t.dueTime.slice(0,5):'今日'}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={Boolean(taskBusy) || loading} aria-busy={taskBusy === t.id} aria-label={taskBusy === t.id ? '更新中' : '完了'} title={t.title} onClick={()=>void completeTask(t)}><Check size={15}/>{taskBusy === t.id ? '更新中…' : '完了'}</button>}</article>)}{!workSummary.today.length&&<p className="empty">今日が期限の作業はありません。</p>}</div>
+        <div className="home-work-column week"><div className="home-work-column-head"><b>今週やること</b><span>{workSummary.week.length}件</span></div>{workSummary.week.slice(0,6).map(t=><article key={t.id}><Link to="/calendar"><time>{t.dueDate}</time><b>{t.title}</b><span><Users size={12}/>{t.assignees.map(a=>a.name).join('・')||'担当未設定'} / {taskCategoryLabel[t.category]||t.category}</span></Link>{canManageCalendar&&<button disabled={Boolean(taskBusy) || loading} aria-busy={taskBusy === t.id} aria-label={taskBusy === t.id ? '更新中' : '完了'} title={t.title} onClick={()=>void completeTask(t)}><Check size={15}/>{taskBusy === t.id ? '更新中…' : '完了'}</button>}</article>)}{!workSummary.week.length&&<p className="empty">7日以内の作業はありません。</p>}</div>
       </div>
       {weekPlans.length>0&&<div className="home-week-plans"><div className="home-work-column-head"><b>7日以内の年間計画</b><span>{weekPlans.length}件</span></div><div>{weekPlans.map((p,i)=><Link key={p.kind+'-'+p.date+'-'+i} to={p.href}><time>{p.date}</time><span>{p.kind}</span><b>{p.title}</b><small>{p.field}</small></Link>)}</div></div>}
     </section>}
