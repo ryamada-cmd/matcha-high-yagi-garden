@@ -38,9 +38,9 @@ export default function TeaInventoryPage(){
   return <div className="page harvest-page astryx-page astryx-tea-inventory">
     <div className="page-head">
       <div><p className="eyebrow">TEA INVENTORY</p><h1>茶在庫</h1><p className="sub">生葉投入から碾茶の葉・骨ロット、現在庫まで追跡します。</p></div>
-      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="茶在庫を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/>
+      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="茶在庫を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} aria-busy={loading} isDisabled={loading}/>
     </div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}
 
     <Card className="panel astryx-section">
       <div className="panel-title"><div><h2>表示条件</h2><p>年・茶期で在庫を絞り込みます。</p></div><Boxes size={19}/></div>

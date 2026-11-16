@@ -41,8 +41,8 @@ export default function FertilizerHistoryPage(){
   }
 
   return <div className="page fertilizer-page fertilizer-history-page astryx-page astryx-fertilizer-history">
-    <div className="page-head"><div><p className="eyebrow">FERTILIZATION HISTORY</p><h1>施肥履歴</h1><p className="sub">施肥実績を検索・編集・CSV出力し、圃場別の年間N/P/K投入量を確認します。</p></div><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="施肥履歴を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly isDisabled={loading} onClick={()=>void refresh()}/></div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}
+    <div className="page-head"><div><p className="eyebrow">FERTILIZATION HISTORY</p><h1>施肥履歴</h1><p className="sub">施肥実績を検索・編集・CSV出力し、圃場別の年間N/P/K投入量を確認します。</p></div><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="施肥履歴を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly aria-busy={loading} isDisabled={loading} onClick={()=>void refresh()}/></div>
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}
 
     <Card className="panel fertilizer-history-filter astryx-section">
       <div className="fertilizer-filter-grid">

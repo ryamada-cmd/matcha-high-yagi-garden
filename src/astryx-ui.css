@@ -42,7 +42,7 @@ html, body { background: #f5f7f3; }
   box-shadow: inset 3px 0 0 #b1dfaf !important;
 }
 .desktop-sidebar nav a.active::before { display: none; }
-.astryx-page:where(:not(.astryx-home,.astryx-fields)) .page-head { border-bottom: none; padding-bottom: 4px; margin-bottom: 22px !important; }
+.astryx-page:where(:not(.astryx-home,.astryx-fields)) .page-head { border-bottom: none; padding-bottom: 0; margin-bottom: 16px !important; }
 .astryx-page .page-head h1 { font-size: clamp(24px,2.3vw,32px) !important; color: var(--astryx-yagi-ink); letter-spacing:-.035em; }
 .astryx-page .eyebrow { letter-spacing:.18em !important; color:#4c7760 !important; }
 .astryx-page .sub { line-height:1.7 !important; color:#69796e !important; }
@@ -76,14 +76,15 @@ html, body { background: #f5f7f3; }
 .astryx-harvest .harvest-tabs button.active { background:#173f2b !important; color:#fff !important; border-color:#173f2b !important; }
 .astryx-harvest .harvest-history-list article,
 .astryx-harvest .processing-history-list article { border-radius:13px; }
-.astryx-page:where(:not(.astryx-fields)) :is(input,select,textarea):focus-visible { outline:2px solid #80ac84; outline-offset:1px; }
+
 @media(max-width:800px) {
-  .astryx-page .page-head { gap:12px !important; }
+  .astryx-page:where(:not(.astryx-home,.astryx-fields)) .page-head { gap:8px !important; margin-bottom:12px !important; }
   .astryx-page .metrics { gap:10px !important; }
   .astryx-page .metric { min-height:108px; padding:13px !important; border-radius:14px !important; }
   .astryx-page .metric strong { font-size:22px !important; }
   .astryx-page .panel { border-radius:14px !important; }
   .astryx-page .ui-astryx-action { min-height:44px; }
+  .astryx-page .ui-astryx-refresh { min-width:44px; }
 }
 @media(prefers-reduced-motion:reduce) {
  .astryx-page .metric { transition:none !important; }
@@ -384,7 +385,7 @@ html, body { background: #f5f7f3; }
   border:1px solid #d3e1d3; background:#fff;
 }
 .astryx-auth-page .astryx-auth-field input:focus-visible {
-  outline:2px solid #75a581; outline-offset:2px;
+  outline:2px solid #376c47; outline-offset:-2px; box-shadow:none;
 }
 .astryx-auth-page .astryx-auth-submit { width:100%; min-height:46px; }
 .astryx-auth-preview-note {
@@ -479,7 +480,7 @@ html, body { background: #f5f7f3; }
   padding:10px 13px; font-size:16px;
 }
 .astryx-master-dialog .astryx-master-field input:focus-visible {
-  outline:2px solid #82ae8b; outline-offset:1px;
+  outline:2px solid #376c47; outline-offset:-2px;
 }
 .astryx-master-dialog .form-grid .astryx-master-field { min-width:0; }
 
@@ -503,7 +504,7 @@ html, body { background: #f5f7f3; }
   box-sizing:border-box; font-size:16px; min-height:44px;
   padding:10px 13px; border:1px solid #d2e0d4; border-radius:10px; background:#fff;
 }
-.astryx-calendar-dialog .astryx-calendar-field input:focus-visible { outline:2px solid #79a983; outline-offset:2px; }
+.astryx-calendar-dialog .astryx-calendar-field input:focus-visible { outline:2px solid #376c47; outline-offset:-2px; }
 .astryx-document-customer-dialog .astryx-customer-dialog-body { display:grid; gap:12px; }
 .astryx-document-customer-dialog .form-grid { min-width:0; gap:12px; }
 .astryx-document-customer-dialog input { min-width:0; max-width:100%; }
@@ -532,7 +533,7 @@ html, body { background: #f5f7f3; }
 }
 .astryx-documents .astryx-document-field input:focus-visible,
 .astryx-document-customer-dialog .astryx-document-field input:focus-visible {
-  outline:2px solid #84af8b; outline-offset:2px;
+  outline:2px solid #376c47; outline-offset:-2px;
 }
 .astryx-document-customer-dialog .astryx-customer-dialog-body { display:grid; gap:12px; }
 .astryx-crm .crm-form>.astryx-crm-master-field { min-width:0; }
@@ -559,7 +560,7 @@ html, body { background: #f5f7f3; }
   min-width:0; min-height:44px; border:1px solid #d0dfd3;
   border-radius:10px; background:#fff; padding:9px 12px; font-size:16px;
 }
-.astryx-equipment-dialog .astryx-equipment-field input:focus-visible { outline:2px solid #82b18b; outline-offset:2px; }
+.astryx-equipment-dialog .astryx-equipment-field input:focus-visible { outline:2px solid #376c47; outline-offset:-2px; }
 .astryx-equipment-dialog .equipment-form-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
 .astryx-equipment .astryx-search-field,
 .astryx-daily-reports .astryx-search-field,
@@ -590,7 +591,7 @@ html, body { background: #f5f7f3; }
   min-height:44px; padding:9px 12px; font-size:16px;
 }
 .astryx-finance-field input:focus-visible,
-.astryx-operations-field :is(input,textarea):focus-visible { outline:2px solid #82b18b; outline-offset:2px; }
+.astryx-operations-field :is(input,textarea):focus-visible { outline:2px solid #376c47; outline-offset:-2px; }
 .astryx-daily-reports .daily-report-form .full-label.astryx-operations-field { display:grid; gap:8px; }
 @media(max-width:800px) {
  .astryx-vendor-payment-dialog { border-radius:14px !important; }
@@ -690,8 +691,8 @@ html, body { background: #f5f7f3; }
   transition:border-color .14s ease,box-shadow .14s ease;
 }
 .astryx-page .astryx-search-field:focus-within {
-  border-color:#7ba789 !important;
-  box-shadow:0 0 0 3px rgba(58,116,76,.13) !important;
+  border-color:#376c47 !important;
+  box-shadow:inset 0 0 0 1px #376c47 !important;
 }
 .astryx-page .astryx-search-field .astryx-text-input {
   box-sizing:border-box;
@@ -842,7 +843,10 @@ html, body { background: #f5f7f3; }
 }
 .app-dialog :is(form,.form-grid,label) { min-width:0; }
 .app-dialog button { flex-shrink:0; }
-.app-dialog :is(input,select,textarea):focus-visible { outline:2px solid #6a9c73; outline-offset:2px; }
+.app-dialog :is(input,select,textarea):focus-visible {
+  outline:2px solid #376c47;
+  outline-offset:-2px;
+}
 .app-dialog .astryx-text-input > input:focus-visible { outline:none !important; }
 .app-dialog .form-grid { gap:14px !important; }
 .page .astryx-field-label, .app-dialog .astryx-field-label {

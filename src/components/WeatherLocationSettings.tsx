@@ -52,7 +52,7 @@ export default function WeatherLocationSettings({ settings, onSaved, canManage =
   return <section className="panel settings-section weather-location-settings">
     <div className="panel-title"><div><h2>天気の表示地点</h2><p>{canManage?'ダッシュボードに表示する地点を地名から設定します。':'現在の設定地点を表示します。変更権限はありません。'}</p></div><MapPin size={20}/></div>
     <div className="weather-location-search">
-      <div className="search-box"><Search size={17}/><input disabled={!canManage} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(canManage&&e.key==='Enter'){e.preventDefault();void search()}}} placeholder="例：井手町 京都府 / 宇治市 / 京都市"/></div>
+      <div className="search-box"><Search size={17}/><input type="search" aria-label="天気の表示地点を検索" disabled={!canManage} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(canManage&&e.key==='Enter'){e.preventDefault();void search()}}} placeholder="例：井手町 京都府 / 宇治市 / 京都市"/></div>
       <button className="secondary-button" type="button" disabled={!canManage||searching} onClick={()=>void search()}>{searching?'検索中…':'地点を検索'}</button>
     </div>
     {error&&<div className="notice error">{error}</div>}

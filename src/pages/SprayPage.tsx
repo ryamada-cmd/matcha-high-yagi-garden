@@ -250,12 +250,12 @@ export default function SprayPage() {
     <div className="page spray-page astryx-page astryx-spray">
       <div className="page-head">
         <div><p className="eyebrow">SPRAY</p><h1>薬液調製・散布</h1><p className="sub">複数農薬の混用、希釈計算、圃場への面積比例全量配分を一括登録します。</p></div>
-        <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="散布データを更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/>
+        <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="散布データを更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} aria-busy={loading} isDisabled={loading}/>
       </div>
 
       {editingId && <div className="edit-banner"><div><b>{editingLegacy} を編集中</b><span>元の使用量を仮想的に在庫へ戻した状態で再計算し、保存時は差分だけ入出庫へ反映します。</span></div><button onClick={() => void cancelEdit()}><X size={16}/>編集をやめる</button></div>}
-      {error && <div className="notice error dashboard-notice">{error}</div>}
-      {success && <div className="notice success dashboard-notice">{success}</div>}
+      {error && <div className="notice error dashboard-notice" role="alert">{error}</div>}
+      {success && <div className="notice success dashboard-notice" role="status">{success}</div>}
 
       <div className="spray-layout">
         <div className="spray-main">

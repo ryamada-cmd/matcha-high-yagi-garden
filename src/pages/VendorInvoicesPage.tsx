@@ -146,8 +146,8 @@ export default function VendorInvoicesPage(){
   }
 
   return <div className="page vendor-invoices-page astryx-page astryx-vendor-invoices">
-    <div className="page-head"><div><p className="eyebrow">ACCOUNTS PAYABLE</p><h1>請求書・支払管理</h1><p className="sub">外部から届く請求書を明細単位で登録し、支払予定・支払実績・未払残高を管理します。</p></div><div className="head-actions">{canExport&&<Button className="ui-astryx-action" variant="secondary" label="CSVエクスポート" icon={<Download size={17}/>} onClick={exportCsv} isDisabled={!filtered.length}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="支払管理を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
+    <div className="page-head"><div><p className="eyebrow">ACCOUNTS PAYABLE</p><h1>請求書・支払管理</h1><p className="sub">外部から届く請求書を明細単位で登録し、支払予定・支払実績・未払残高を管理します。</p></div><div className="head-actions">{canExport&&<Button className="ui-astryx-action" variant="secondary" label="CSVエクスポート" icon={<Download size={17}/>} onClick={exportCsv} isDisabled={!filtered.length}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="支払管理を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} aria-busy={loading} isDisabled={loading}/></div></div>
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}{success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     <section className="metrics invoice-metrics">
       <Card className="metric astryx-kpi"><span>未払残高</span><strong>{yen.format(outstanding)}</strong><small>{invoices.filter(i=>i.paymentStatus==='UNPAID'||i.paymentStatus==='PARTIAL'||i.paymentStatus==='HOLD').length}件</small></Card>

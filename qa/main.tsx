@@ -81,6 +81,7 @@ import '../src/home-dashboard.css'
 import '../src/unified-ui.css'
 import '../src/ui-refresh.css'
 import '../src/ui-refresh-safety.css'
+import '../src/ui-refresh-safety.css'
 import '../src/ui-cohesion.css';
 import '../src/astryx-ui.css';
 import './fixture.css';

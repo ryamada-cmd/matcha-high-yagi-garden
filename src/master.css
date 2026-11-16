@@ -3,7 +3,7 @@
 
 @media screen {
   .astryx-fields .master-form-panel { gap: 12px; }
-  .astryx-fields .master-form-panel > .section-head {
+  .master-page .master-form-panel > .section-head {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
@@ -11,7 +11,8 @@
     margin: 0;
   }
   .astryx-fields :is(#field-form-title, .fields-notice) { scroll-margin-top: 80px; }
-  .astryx-fields .close-detail { min-width: 44px; }
+  .master-page .master-form-panel .close-detail { min-width: 44px; }
+  .astryx-spray-plans #annual-plan-form-title { scroll-margin-top: 80px; }
   /* The native control owns the focus stroke, including date and select. */
   .astryx-fields .master-form-panel label > :is(input:not([type=checkbox]):not([type=radio]),select,textarea):focus {
     outline: 2px solid #376c47;

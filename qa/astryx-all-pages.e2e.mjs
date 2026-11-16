@@ -39,6 +39,16 @@ for(const [engine,launcher,widths] of [['chromium',chromium,[320,390,1280]],['we
     assert.ok(geometry.scroll<=width+2,`${screen} ${width}px overflow: ${JSON.stringify(geometry)}`)
     assert.ok(!geometry.font.includes('Georgia')&&!geometry.font.includes('Playwrite'),`${screen} heading must use Japanese sans-serif`)
     assert.ok(geometry.inputs.every(x=>x.font>=16&&x.w>24),`${screen} legible input controls: ${JSON.stringify(geometry.inputs)}`)
+    for(const input of await page.locator('.search-box > input:visible').all()){
+     assert.ok(await input.getAttribute('aria-label'), 'Native search must have an accessible name')
+     const border=await input.evaluate(el=>{
+      const inner=getComputedStyle(el), outer=getComputedStyle(el.parentElement)
+      return {inner:inner.borderLeftWidth,outer:outer.borderLeftWidth,height:el.parentElement.offsetHeight}
+     })
+     assert.equal(border.inner,'0px',screen+' nested search input border')
+     assert.equal(border.outer,'1px',screen+' search wrapper border')
+     assert.ok(border.height>=44,screen+' search wrapping surface is too short')
+    }
     const tabs=page.locator('main [class*="-tabs"] button')
     const names=await tabs.allTextContents()
     for(let i=0;i<names.length;i++){
@@ -56,6 +66,24 @@ for(const [engine,launcher,widths] of [['chromium',chromium,[320,390,1280]],['we
     await page.screenshot({path:`qa/screenshots/FAIL-${engine}-${screen}-${width}.png`,fullPage:true})
     console.error('FAIL',engine,screen,width,error.message)
     results.push({engine,screen,width,status:'FAIL',error:error.message})
+   }finally{await context.close()}
+  }
+  // The annual spray plan is an inline form, so mobile validation must stay near Save.
+  {
+   const {page,context,verify}=await pageFor(browser,'plans',390,568)
+   try {
+    const opener=page.getByRole('button',{name:'計画追加',exact:true})
+    await opener.click()
+    const form=page.getByRole('region',{name:'年間計画を追加'})
+    const title=form.getByRole('heading')
+    await page.waitForFunction(()=>document.activeElement?.id==='annual-plan-form-title')
+    await form.getByRole('button',{name:'計画を追加',exact:true}).click()
+    await form.getByRole('alert').getByText('病害虫/目的を入力してください。').waitFor()
+    await form.getByRole('button',{name:'年間計画フォームを閉じる'}).click()
+    await title.waitFor({state:'hidden'})
+    assert.ok(await opener.evaluate(el=>document.activeElement===el),'Closing the form returns keyboard focus')
+    verify()
+    results.push({engine,screen:'plans-inline-validation',status:'PASS'})
    }finally{await context.close()}
   }
   // A failed save must remain inside the open dialog with values preserved.

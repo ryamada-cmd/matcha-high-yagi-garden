@@ -166,8 +166,8 @@ export default function CalendarPage(){
   const linkedTasks=planDetail?data.tasks.filter(t=>t.linkType===planDetail.kind&&t.linkId===planDetail.plan.id):[]
 
   return <div className="page calendar-page astryx-page astryx-calendar">
-    <div className="page-head"><div><p className="eyebrow">WORK CALENDAR</p><h1>作業カレンダー</h1><p className="sub">日々のやること・担当者・期限と、年間防除／施肥／収穫計画をひとつのカレンダーで確認します。</p></div><div className="head-actions">{canManage&&<><Button className="ui-astryx-action" variant="secondary" label="収穫計画" icon={<Sprout size={17}/>} onClick={()=>openHarvestNew()}/><Button className="ui-astryx-action" variant="primary" label="やること追加" icon={<Plus size={17}/>} onClick={()=>openNewTask()}/></>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="カレンダーを更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
+    <div className="page-head"><div><p className="eyebrow">WORK CALENDAR</p><h1>作業カレンダー</h1><p className="sub">日々のやること・担当者・期限と、年間防除／施肥／収穫計画をひとつのカレンダーで確認します。</p></div><div className="head-actions">{canManage&&<><Button className="ui-astryx-action" variant="secondary" label="収穫計画" icon={<Sprout size={17}/>} onClick={()=>openHarvestNew()}/><Button className="ui-astryx-action" variant="primary" label="やること追加" icon={<Plus size={17}/>} onClick={()=>openNewTask()}/></>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="カレンダーを更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} aria-busy={loading} isDisabled={loading}/></div></div>
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}{success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     <div className="calendar-metrics">
       <Card className={overdue?'danger':''}><CircleAlert size={18}/><div><span>期限超過</span><strong>{overdue}</strong></div></Card>
