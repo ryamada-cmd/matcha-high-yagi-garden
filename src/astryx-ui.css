@@ -902,9 +902,9 @@ html, body { background: #f5f7f3; }
     gap: 4px;
     min-width: 0;
     padding: 12px 16px;
-    border: 1px solid var(--astryx-yagi-border);
+    border: 1px solid var(--garden-kpi-border, var(--astryx-yagi-border));
     border-radius: 12px;
-    background: #fff;
+    background-color: var(--garden-kpi-surface, #fff);
     box-shadow: none;
   }
   .garden-kpi > span, .garden-kpi > small { color: #506258; }
@@ -917,8 +917,14 @@ html, body { background: #f5f7f3; }
     overflow-wrap: anywhere;
   }
   .garden-kpi > small { font-size: 12px; line-height: 1.4; }
-  .garden-kpi.warning { background: #fffbef; border-color: #dec792; }
-  .garden-kpi.danger { background: #fff5f3; border-color: #e1b9b4; }
+  .garden-kpi.warning {
+    --garden-kpi-surface: #fffbef;
+    --garden-kpi-border: #dec792;
+  }
+  .garden-kpi.danger {
+    --garden-kpi-surface: #fff5f3;
+    --garden-kpi-border: #e1b9b4;
+  }
   :is(.astryx-home, .astryx-fields) .ui-astryx-refresh { min-width: 44px; }
   :is(.astryx-home, .astryx-fields) .page-head { border-bottom: 0; padding-bottom: 0; }
   .astryx-fields .page-head { margin-bottom: 0; }

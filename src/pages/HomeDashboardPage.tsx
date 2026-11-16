@@ -207,7 +207,7 @@ export default function HomeDashboardPage() {
     {error && <div className="notice error dashboard-notice" role="alert">{error}</div>}
 
     {topCards.length > 0 && <div className="home-overview-metrics">
-      {topCards.map(card => <Card className={`garden-kpi home-overview-card ${card.tone || ''}`} key={card.label}><span>{card.label}</span><strong>{loading && !data ? '…' : card.value}</strong>{card.note && <small>{card.note}</small>}</Card>)}
+      {topCards.map(card => <Card variant="transparent" className={`garden-kpi home-overview-card ${card.tone || ''}`} key={card.label}><span>{card.label}</span><strong>{loading && !data ? '…' : card.value}</strong>{card.note && <small>{card.note}</small>}</Card>)}
     </div>}
 
     {canCalendar&&<section className="panel home-workboard">

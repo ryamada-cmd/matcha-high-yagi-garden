@@ -20,7 +20,7 @@ async function withScreen(browser, width, query, test) {
   const page = await context.newPage()
   page.on('pageerror', error => failures.push(error.message))
   try {
-    await page.goto(origin + '/qa/index.html?screen=' + query)
+    await page.goto(origin + '/qa/index.html?screen=' + query, { waitUntil: 'networkidle' })
     // This synthetic page reuses the production content and sidebar CSS.
     if (width > 800) await page.addStyleTag({ content: '.app-shell[data-qa] { display: grid !important; }' })
     await test(page)
@@ -48,7 +48,10 @@ for (const [engine, launcher, widths] of [['chromium', chromium, [320, 390, 1280
         await noOverflow(page)
         const warning = page.locator('.garden-kpi.warning')
         assert.equal(await warning.count(), 1)
-        assert.notEqual(await warning.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 255, 255)')
+        await page.waitForFunction(() => {
+          const card = document.querySelector('.garden-kpi.warning')
+          return card && getComputedStyle(card).backgroundColor === 'rgb(255, 251, 239)'
+        }, null, { timeout: 5000 })
         await screenshot(page, 'dashboard')
         await task.getByRole('button', { name: '完了' }).click()
         await task.getByRole('button', { name: '更新中' }).waitFor()
