@@ -94,16 +94,25 @@ main{min-width:0;background:var(--v3-bg)}
 .page input:not([type=checkbox]):not([type=radio]),.page select{min-height:var(--v3-control)!important;padding:8px 10px}
 .page textarea{min-height:82px;padding:9px 10px;line-height:1.55;resize:vertical}
 .page:where(:not(.astryx-fields)) :is(input:not([type=checkbox]):not([type=radio]),select,textarea){outline:none!important}
-.page:where(:not(.astryx-fields)) input:not([type=checkbox]):not([type=radio]):focus,.page:where(:not(.astryx-fields)) select:focus,.page:where(:not(.astryx-fields)) textarea:focus{border-color:var(--v3-green-mid)!important;box-shadow:var(--v3-focus)!important}
+.page:where(:not(.astryx-fields)) input:not([type=checkbox]):not([type=radio]):focus,.page:where(:not(.astryx-fields)) select:focus,.page:where(:not(.astryx-fields)) textarea:focus{border-color:var(--v3-green-mid)!important;box-shadow:inset 0 0 0 1px var(--v3-green-mid)!important}
 .page input::placeholder,.page textarea::placeholder{color:#a0aaa3!important}
 .page input:disabled,.page select:disabled,.page textarea:disabled{background:#f0f3f0!important;color:#8e9891!important}
 .page input[type=checkbox],.page input[type=radio]{accent-color:var(--v3-green)}
-.form-grid{gap:10px!important}
+.form-grid{gap:12px!important}
 .form-grid label,.full-label,.inventory-action-form label,.manufacturing-form label,.harvest-form label,.processing-form label,.daily-report-form label,.expense-claim-form label{font-size:12px!important;font-weight:750!important;gap:5px!important}
 .toolbar{gap:8px!important;align-items:center!important}
 .search-box{min-height:var(--v3-control)!important;border:1px solid var(--v3-border-strong)!important;border-radius:10px!important;background:#fff!important;box-shadow:none!important}
-.search-box:focus-within{border-color:var(--v3-green-mid)!important;box-shadow:var(--v3-focus)!important}
-.search-box input{border:0!important;background:transparent!important;box-shadow:none!important;min-height:auto!important}
+.search-box:focus-within{border-color:var(--v3-green-mid)!important;box-shadow:inset 0 0 0 1px var(--v3-green-mid)!important}
+/* Search components own the border on the wrapper, including focus. */
+.page .search-box > input:not([type=checkbox]):not([type=radio]) {
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+  min-height:44px!important;
+  min-width:0;
+  padding:4px 0;
+}
 
 /* Tabs */
 .page [class*="-tabs"]{gap:5px!important}
@@ -210,7 +219,7 @@ main{min-width:0;background:var(--v3-bg)}
 
   .page input:not([type=checkbox]):not([type=radio]),.page select{min-height:46px!important;font-size:16px!important}
   .page textarea{min-height:88px!important;font-size:16px!important}
-  .form-grid{gap:9px!important}
+  .form-grid{gap:12px!important}
   .primary-button,.secondary-button,.icon-button{min-height:44px!important}
   .icon-button{width:44px!important;height:44px!important}
 

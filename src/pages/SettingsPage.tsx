@@ -144,11 +144,11 @@ export default function SettingsPage() {
   return <div className="page settings-page astryx-page astryx-settings">
     <div className="page-head">
       <div><p className="eyebrow">ADMIN</p><h1>設定・監査</h1><p className="sub">警告基準、天気地点、ユーザー役割、機能別権限、操作履歴を管理します。</p></div>
-      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="設定・監査を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/>
+      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="設定・監査を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} aria-busy={loading} isDisabled={loading}/>
     </div>
 
-    {error&&<div className="notice error dashboard-notice">{error}</div>}
-    {success&&<div className="notice success dashboard-notice">{success}</div>}
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}
+    {success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     {data && <WeatherLocationSettings settings={data.settings} onSaved={refresh} canManage={canManageSettings}/>} 
 

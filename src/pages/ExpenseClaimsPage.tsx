@@ -144,8 +144,8 @@ export default function ExpenseClaimsPage(){
   }
 
   return <div className="page expense-claims-page astryx-page astryx-expenses">
-    <div className="page-head"><div><p className="eyebrow">EXPENSE REIMBURSEMENT</p><h1>経費精算</h1><p className="sub">領収書をOneDriveへ保存して経費を申請し、管理者が領収書と明細を確認して承認・差戻しできます。</p></div><div className="head-actions">{canExport&&<Button className="ui-astryx-action" variant="secondary" label="CSVエクスポート" icon={<Download size={17}/>} onClick={exportCsv}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="経費精算を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
+    <div className="page-head"><div><p className="eyebrow">EXPENSE REIMBURSEMENT</p><h1>経費精算</h1><p className="sub">領収書をOneDriveへ保存して経費を申請し、管理者が領収書と明細を確認して承認・差戻しできます。</p></div><div className="head-actions">{canExport&&<Button className="ui-astryx-action" variant="secondary" label="CSVエクスポート" icon={<Download size={17}/>} onClick={exportCsv}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="経費精算を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} aria-busy={loading} isDisabled={loading}/></div></div>
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}{success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     {canOwnManage&&<form className="panel expense-claim-form" onSubmit={submit}>
       <div className="panel-title"><div><h2>{form.id?'差戻し申請を修正':'経費を申請'}</h2><p>領収書を添付してから申請します。写真・画像・PDFの原本はOneDriveへ保存され、アプリには軽量な紐付け情報だけを保持します。</p></div>{form.id&&<span>再申請</span>}</div>

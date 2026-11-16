@@ -96,8 +96,8 @@ export default function DailyReportsPage(){
   function shiftMonth(delta:number){const[y,m]=month.split('-').map(Number);const d=new Date(y,m-1+delta,1);setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}
 
   return <div className="page daily-reports-page astryx-page astryx-daily-reports">
-    <div className="page-head"><div><p className="eyebrow">DAILY REPORT</p><h1>日報</h1><p className="sub">その日の作業・気づき・課題・次回対応を残し、月単位で振り返れます。</p></div><div className="head-actions">{canCreate&&<Button className="ui-astryx-action" variant="primary" label="新しい日報" icon={<Plus size={17}/>} onClick={resetForm}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="日報を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh(false)} isDisabled={loading}/></div></div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
+    <div className="page-head"><div><p className="eyebrow">DAILY REPORT</p><h1>日報</h1><p className="sub">その日の作業・気づき・課題・次回対応を残し、月単位で振り返れます。</p></div><div className="head-actions">{canCreate&&<Button className="ui-astryx-action" variant="primary" label="新しい日報" icon={<Plus size={17}/>} onClick={resetForm}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="日報を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh(false)} aria-busy={loading} isDisabled={loading}/></div></div>
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}{success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     {canCreate&&<form className="panel daily-report-form" onSubmit={submit}>
       <div className="panel-title"><div><h2>{form.id?'日報を編集':'日報を書く'}</h2><p>同じ担当者・同じ日付の日報は1件です。権限の範囲内で登録後も編集できます。</p></div>{form.id&&<span>編集中</span>}</div>

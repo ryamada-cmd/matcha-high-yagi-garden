@@ -142,9 +142,9 @@ export default function TeaProcurementPage(){
   return <div className="page tea-procurement-page astryx-page astryx-tea-procurement">
     <div className="page-head">
       <div><p className="eyebrow">TEA PROCUREMENT & BLENDING</p><h1>茶の調達・ブレンド</h1><p className="sub">外部から仕入れた抹茶・ほうじ茶・京番茶などをロット管理し、ブレンド有無を選んで小分け商品化・販売へつなげます。</p></div>
-      <div className="head-actions"><Link className="secondary-button" to="/product-packaging">商品化・小分け<ArrowRight size={15}/></Link><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="調達・ブレンドを更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div>
+      <div className="head-actions"><Link className="secondary-button" to="/product-packaging">商品化・小分け<ArrowRight size={15}/></Link><Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="調達・ブレンドを更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} aria-busy={loading} isDisabled={loading}/></div>
     </div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}{success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     <section className="tea-route-guide">
       <article><span>ブレンドなし</span><b>外部調達</b><ArrowRight size={16}/><b>小分け商品化</b><ArrowRight size={16}/><b>販売</b></article>
@@ -181,7 +181,7 @@ export default function TeaProcurementPage(){
     {tab==='blend'&&<section className="panel tea-blend-panel">
       <div className="panel-title"><div><h2>{blend.id?'ブレンド実績を編集':'茶をブレンド'}</h2><p>2ロット以上を配合し、新しいブレンド原料ロットを作ります。自社茶と調達茶の混合も可能です。</p></div>{blend.id&&<button className="secondary-button" type="button" onClick={resetBlend}>新規へ戻る</button>}</div>
       {!canProcessManage?<p className="empty">ブレンド実績は閲覧のみです。</p>:<form className="tea-blend-form" onSubmit={submitBlend}>
-        <div className="search-box tea-blend-search"><Search size={16}/><input value={blendQuery} onChange={e=>setBlendQuery(e.target.value)} placeholder="茶種・品目・産地・品種・仕入先・ロットで原料検索"/></div>
+        <div className="search-box tea-blend-search"><Search size={16}/><input type="search" aria-label="ブレンド用の茶葉を検索" value={blendQuery} onChange={e=>setBlendQuery(e.target.value)} placeholder="茶種・品目・産地・品種・仕入先・ロットで原料検索"/></div>
         <div className="tea-blend-source-grid">{selectableLots.map(l=>{const selected=inputs[l.id]!==undefined,available=l.balance+(oldInput.get(l.id)||0);return <article className={selected?'selected':''} key={l.id}><button type="button" onClick={()=>toggleInput(l)}><span>{sourceLabel(l.sourceType)}</span><b>{l.materialName}</b><small>{[l.teaType,l.origin,l.variety,l.grade].filter(Boolean).join(' / ')||l.legacyId}</small><strong>{num.format(available)} {l.unit}</strong></button>{selected&&<label>使用量<input type="number" inputMode="decimal" min="0.001" max={available} step="0.001" value={inputs[l.id]} onChange={e=>setInputs({...inputs,[l.id]:e.target.value})}/></label>}</article>})}{!selectableLots.length&&<p className="empty">ブレンドに使える重量在庫がありません。</p>}</div>
         <div className="tea-blend-input-summary"><span>選択 {inputRows.length}ロット</span><b>投入合計 {num.format(inputKg)}kg</b><button type="button" onClick={()=>setBlend({...blend,outputQty:String(Number(inputInOutputUnit.toFixed(3)))})}>投入重量を出来高に反映</button></div>
         <div className="form-grid three"><label>ブレンド日<input type="date" value={blend.date} onChange={e=>setBlend({...blend,date:e.target.value})}/></label><label>出来上がり茶種<input required list="blend-tea-type-list" value={blend.teaType} onChange={e=>setBlend({...blend,teaType:e.target.value})}/><datalist id="blend-tea-type-list">{teaTypes.map(t=><option key={t} value={t}/>)}</datalist></label><label>出来上がり品目<input required value={blend.outputMaterial} onChange={e=>setBlend({...blend,outputMaterial:e.target.value})} placeholder="例：抹茶ブレンド No.1"/></label></div>

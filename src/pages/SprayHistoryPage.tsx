@@ -101,12 +101,12 @@ export default function SprayHistoryPage() {
       <div><p className="eyebrow">SPRAY HISTORY</p><h1>散布履歴</h1><p className="sub">散布記録を日付・農薬・圃場・担当者・病害虫で検索し、CSV出力できます。</p></div>
       <div className="head-actions">
         <Button className="ui-astryx-action" variant="secondary" label="CSV出力" icon={<Download size={16}/>} isDisabled={!filtered.length} onClick={() => downloadSprayHistoryCsv(filtered)}/>
-        <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="散布履歴を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly isDisabled={loading} onClick={() => void refresh()}/>
+        <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="散布履歴を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly aria-busy={loading} isDisabled={loading} onClick={() => void refresh()}/>
       </div>
     </div>
 
-    {error&&<div className="notice error dashboard-notice">{error}</div>}
-    {success&&<div className="notice success dashboard-notice">{success}</div>}
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}
+    {success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     <div className="metrics history-metrics">
       <Card className="metric astryx-kpi"><span>該当記録</span><strong>{filtered.length}件</strong></Card>

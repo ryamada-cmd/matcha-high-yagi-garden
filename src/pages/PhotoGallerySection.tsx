@@ -256,8 +256,8 @@ export default function PhotoGallerySection() {
       <button className="icon-button" type="button" onClick={()=>void refresh()} disabled={loading||uploading} aria-label="写真を更新"><RefreshCw size={18} className={loading?'spin':''}/></button>
     </div>
 
-    {error&&<div className="notice error photo-gallery-notice">{error}</div>}
-    {success&&<div className="notice success photo-gallery-notice">{success}</div>}
+    {error&&<div className="notice error photo-gallery-notice" role="alert">{error}</div>}
+    {success&&<div className="notice success photo-gallery-notice" role="status">{success}</div>}
 
     {canUpload&&<div className="photo-upload-card">
       <div className="photo-upload-head"><div><b>写真を追加</b><span>スマホの写真ライブラリ・カメラからそのまま保存できます。</span></div><Upload size={20}/></div>

@@ -201,8 +201,8 @@ export default function StoragePage() {
       <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="OneDrive管理情報を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading||!!busy}/>
     </div>
 
-    {error&&<div className="notice error dashboard-notice">{error}</div>}
-    {success&&<div className="notice success dashboard-notice">{success}</div>}
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}
+    {success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
 
     <section className={`panel storage-status ${status?.enabled?'connected':'disconnected'}`}>
       <div className="storage-status-icon">{status?.enabled?<CheckCircle2 size={25}/>:<Cloud size={25}/>}</div>

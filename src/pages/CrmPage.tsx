@@ -240,7 +240,7 @@ export default function CrmPage() {
   }
   return <div className="page crm-page astryx-page astryx-crm">
     <header className="page-head"><div><p className="eyebrow">YAGI ICHIBEI / SALES CRM</p><h1>営業・問い合わせ管理</h1><p className="sub">国内外のお問い合わせを案件単位で集約し、商談から受注まで管理します。</p></div>
-      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="問い合わせ情報を更新" icon={<RefreshCw size={19}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/></header>
+      <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="問い合わせ情報を更新" icon={<RefreshCw size={19}/>} isIconOnly onClick={() => void refresh()} aria-busy={loading} isDisabled={loading}/></header>
     {error && <div role="alert" className="notice error">{error}</div>}
     {notice && <div role="status" className="notice success">{notice}</div>}
     <div className="crm-tabs" role="tablist">

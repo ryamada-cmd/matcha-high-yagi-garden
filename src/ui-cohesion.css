@@ -76,8 +76,7 @@ main{position:relative;background:
 }
 .primary-button:hover:not(:disabled){box-shadow:0 4px 12px rgba(23,63,43,.12)!important}
 .secondary-button:hover:not(:disabled),.icon-button:hover:not(:disabled){box-shadow:0 3px 10px rgba(23,63,43,.05)!important}
-.page button:focus-visible,.page a:focus-visible,
-.page:where(:not(.astryx-fields)) :is(input,select,textarea):focus-visible{
+.page button:focus-visible,.page a:focus-visible{
   outline:0;
   box-shadow:0 0 0 3px rgba(70,113,89,.16)!important;
 }

@@ -39,7 +39,7 @@ export default function DashboardPage() {
       <div className="head-actions"><span className="status">Supabase 接続済</span><button className="icon-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={18} className={loading ? 'spin' : ''}/></button></div>
     </div>
 
-    {error && <div className="notice error dashboard-notice">{error}</div>}
+    {error && <div className="notice error dashboard-notice" role="alert">{error}</div>}
 
     <div className="metrics operations-metrics">
       {cards.map(([label, value, note]) => <article className="metric" key={label}><span>{label}</span><strong>{loading && !data ? '…' : value}</strong><small>{note}</small></article>)}

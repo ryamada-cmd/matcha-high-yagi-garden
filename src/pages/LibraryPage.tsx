@@ -316,8 +316,8 @@ export default function LibraryPage() {
       </div>
     </div>
 
-    {error&&<div className="notice error dashboard-notice">{error}</div>}
-    {success&&<div className="notice success dashboard-notice">{success}</div>}
+    {error&&<div className="notice error dashboard-notice" role="alert">{error}</div>}
+    {success&&<div className="notice success dashboard-notice" role="status">{success}</div>}
     {!storageStatus?.enabled&&<div className="notice dashboard-notice">OneDriveが未接続です。既存資料の台帳は閲覧できますが、新規アップロードには「ファイル・OneDrive」画面から接続設定が必要です。</div>}
 
     <section className="metrics library-metrics">
@@ -346,7 +346,7 @@ export default function LibraryPage() {
     <section className="panel library-list-panel">
       <div className="panel-title"><div><h2>資料一覧</h2><p>既存の請求書・納品書・仕入請求書も同じライブラリから確認できます。</p></div><span className="audit-count">{visible.length}件</span></div>
       <div className="library-toolbar">
-        <div className="search-box library-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="資料名・取引先・タグ・内容・ファイル名で検索"/></div>
+        <div className="search-box library-search"><Search size={17}/><input type="search" aria-label="資料を検索" value={query} onChange={e=>setQuery(e.target.value)} placeholder="資料名・取引先・タグ・内容・ファイル名で検索"/></div>
         <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}><option value="">全資料種別</option>{documentTypes.map(x=><option key={x}>{x}</option>)}</select>
         <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="">全分類</option>{categories.map(x=><option key={x}>{x}</option>)}</select>
         <select value={yearFilter} onChange={e=>setYearFilter(e.target.value)}><option value="">全年度</option>{yearOptions.map(y=><option key={y} value={y}>{y}年</option>)}</select>

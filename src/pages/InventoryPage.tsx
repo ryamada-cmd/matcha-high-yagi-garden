@@ -165,12 +165,12 @@ export default function InventoryPage() {
         </div>
         <div className="head-actions">
           {canManage && <Button className="ui-astryx-action inventory-add-button" variant="primary" label="農薬を入庫" icon={<PackagePlus size={17}/>} onClick={()=>{setMode('receive');setError('');setSuccess('')}}/>}
-          <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="農薬在庫を更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} isDisabled={loading}/>
+          <Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="農薬在庫を更新" icon={<RefreshCw size={18} className={loading ? 'spin' : ''}/>} isIconOnly onClick={() => void refresh()} aria-busy={loading} isDisabled={loading}/>
         </div>
       </div>
 
-      {error && <div className="notice error dashboard-notice">{error}</div>}
-      {success && <div className="notice success dashboard-notice">{success}</div>}
+      {error && <div className="notice error dashboard-notice" role="alert">{error}</div>}
+      {success && <div className="notice success dashboard-notice" role="status">{success}</div>}
 
       <div className="metrics inventory-metrics">
         <Card className="metric astryx-kpi"><span>現在庫金額</span><strong>{yen.format(total)}</strong></Card>
