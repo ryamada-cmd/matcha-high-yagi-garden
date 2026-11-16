@@ -50,7 +50,7 @@ concurrency:
 
 jobs:
   synthetic-e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout tested source
@@ -91,6 +91,8 @@ jobs:
         run: node qa/astryx-admin-library.e2e.mjs
       - name: Test photo gallery, actual weather location and dashboard at mobile widths
         run: node qa/astryx-photo-weather-dashboard.e2e.mjs
+      - name: Verify dashboard and field UI across desktop and phone sizes
+        run: node qa/unslop-dashboard-fields.e2e.mjs
       - name: Test WebKit iPhone-like photo picker, HEIC selection and read-only UI
         run: node qa/astryx-webkit-photo.e2e.mjs
       - name: Start QA-only app authentication fixture

@@ -56,6 +56,9 @@ export async function loadCalendarData(){
  tasks,sprayPlans:[],fertilizerPlans:[],harvestPlans:[]})
 }
 export async function setCalendarTaskStatus(id:string,status:string){
+ const params = new URLSearchParams(window.location.search)
+ if (params.has('taskDelay')) await new Promise(resolve => setTimeout(resolve, 350))
+ if (params.has('taskError')) throw new Error('架空のタスク更新エラー')
  const row=tasks.find(x=>x.id===id)
  if(!row)throw new Error('Missing QA task')
  row.status=status

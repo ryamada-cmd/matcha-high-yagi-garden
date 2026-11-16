@@ -1,6 +1,6 @@
 import { Button } from '@astryxdesign/core/Button'
 import { Card } from '@astryxdesign/core/Card'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, MapPinned, Pencil, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
 import { deleteField, loadFields, saveField, type FieldInput, type FieldRecord } from '../lib/fields'
@@ -21,6 +21,11 @@ export default function FieldsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [formError, setFormError] = useState('')
+  const formTitle = useRef<HTMLHeadingElement>(null)
+  const formAlert = useRef<HTMLDivElement>(null)
+  const notice = useRef<HTMLDivElement>(null)
+  const formTrigger = useRef<HTMLElement | null>(null)
   const [success, setSuccess] = useState('')
 
   async function refresh() {
@@ -33,6 +38,12 @@ export default function FieldsPage() {
   }
   useEffect(() => { void refresh() }, [])
   useEffect(() => { if (!canManage) { setFormOpen(false); setEditingId(null); setForm(emptyForm()) } }, [canManage])
+
+  useEffect(() => {
+    if (formOpen) formTitle.current?.focus()
+  }, [formOpen, editingId])
+  useEffect(() => { if (formError) formAlert.current?.focus() }, [formError])
+  useEffect(() => { if (success) notice.current?.focus() }, [success])
 
   const active = fields.filter((f) => f.status === 'active')
   const totalM2 = active.reduce((s, f) => s + f.areaM2, 0)
@@ -49,26 +60,46 @@ export default function FieldsPage() {
 
   const previewStandard = Math.round((Number(form.areaM2) || 0) / 1000 * (Number(form.standardRate) || 0) * 100) / 100
 
-  function beginNew() { if(!canManage)return;setEditingId(null); setForm(emptyForm()); setFormOpen(true); setError(''); setSuccess('') }
-  function beginEdit(f: FieldRecord) {
-    if(!canManage)return
-    setEditingId(f.id)
-    setForm({ legacyId:f.legacyId,name:f.name,location:f.location,areaM2:f.areaM2,variety:f.variety,cultivationType:f.cultivationType,standardRate:f.standardRate,harvestDate:f.harvestDate,status:f.status,note:f.note })
-    setFormOpen(true); setError(''); setSuccess(''); window.scrollTo({top:0,behavior:'smooth'})
+  function openForm(id: string | null, input: FieldInput, trigger: HTMLElement) {
+    if (!canManage || saving) return
+    formTrigger.current = trigger
+    setEditingId(id)
+    setForm(input)
+    setFormOpen(true)
+    setError('')
+    setSuccess('')
+    setFormError('')
+    formTitle.current?.focus()
   }
-  function closeForm() { setFormOpen(false); setEditingId(null); setForm(emptyForm()) }
+  function beginEdit(f: FieldRecord, trigger: HTMLElement) {
+    openForm(f.id, {
+      legacyId: f.legacyId, name: f.name, location: f.location, areaM2: f.areaM2,
+      variety: f.variety, cultivationType: f.cultivationType, standardRate: f.standardRate,
+      harvestDate: f.harvestDate, status: f.status, note: f.note,
+    }, trigger)
+  }
+  function closeForm() {
+    setFormOpen(false)
+    setEditingId(null)
+    setForm(emptyForm())
+    setFormError('')
+  }
+  function cancelForm() {
+    closeForm()
+    formTrigger.current?.focus()
+  }
 
   async function submit() {
-    if (!canManage) return setError('圃場マスタを変更する権限がありません。')
-    if (!form.name.trim()) return setError('圃場名を入力してください。')
-    if (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0) return setError('面積(m²)を正しく入力してください。')
-    if (!Number.isFinite(Number(form.standardRate)) || Number(form.standardRate) <= 0) return setError('基準散布量を正しく入力してください。')
-    setSaving(true); setError(''); setSuccess('')
+    if (!canManage || saving) return
+    if (!form.name.trim()) return setFormError('圃場名を入力してください。')
+    if (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0) return setFormError('面積(m²)を正しく入力してください。')
+    if (!Number.isFinite(Number(form.standardRate)) || Number(form.standardRate) <= 0) return setFormError('基準散布量を正しく入力してください。')
+    setSaving(true); setFormError(''); setError(''); setSuccess('')
     try {
       const r = await saveField(editingId, { ...form, areaM2:Number(form.areaM2), standardRate:Number(form.standardRate) })
       setSuccess(`${r.legacy_id} ${r.name} を${editingId ? '更新' : '追加'}しました。`)
       closeForm(); await refresh()
-    } catch (e: any) { setError(e?.message || '圃場の保存に失敗しました。') }
+    } catch (e: any) { setFormError(e?.message || '圃場の保存に失敗しました。') }
     finally { setSaving(false) }
   }
 
@@ -86,13 +117,13 @@ export default function FieldsPage() {
   }
 
   return <div className="page master-page astryx-page astryx-fields">
-    <div className="page-head"><div><p className="eyebrow">FIELDS</p><h1>圃場管理</h1><p className="sub">面積を正本に、反・a・標準散布量を自動計算します。各圃場のカルテから防除・施肥履歴を一元確認できます。</p></div><div className="head-actions">{canManage&&<Button className="ui-astryx-action" variant="primary" label="圃場追加" icon={<Plus size={16}/>} onClick={beginNew}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="圃場を更新" icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
-    {error&&<div className="notice error dashboard-notice">{error}</div>}{success&&<div className="notice success dashboard-notice">{success}</div>}
+    <div className="page-head"><div><p className="eyebrow">FIELDS</p><h1>圃場管理</h1><p className="sub">面積を正本に、反・a・標準散布量を自動計算します。各圃場のカルテから防除・施肥履歴を一元確認できます。</p></div><div className="head-actions">{canManage&&<Button className="ui-astryx-action" variant="primary" label="圃場追加" icon={<Plus size={16}/>} onClick={e => openForm(null, emptyForm(), e.currentTarget)} isDisabled={saving}/>}<Button className="ui-astryx-action ui-astryx-refresh" variant="secondary" label="圃場を更新" aria-busy={loading} icon={<RefreshCw size={18} className={loading?'spin':''}/>} isIconOnly onClick={()=>void refresh()} isDisabled={loading}/></div></div>
+    {error&&<div className="notice error" role="alert">{error}</div>}{success&&<div className="notice success fields-notice" role="status" ref={notice} tabIndex={-1}>{success}</div>}
 
-    <div className="metrics field-metrics"><Card className="metric astryx-kpi"><span>有効圃場</span><strong>{active.length}圃場</strong></Card><Card className="metric astryx-kpi"><span>総面積</span><strong>{totalM2.toLocaleString()}㎡</strong></Card><Card className="metric astryx-kpi"><span>総面積（反）</span><strong>{(totalM2/1000).toFixed(3)}反</strong></Card><Card className="metric astryx-kpi"><span>標準散布量合計</span><strong>{Math.round(totalL*10)/10}L</strong></Card></div>
+    <div className="field-metrics"><Card className="garden-kpi"><span>有効圃場</span><strong>{active.length}圃場</strong></Card><Card className="garden-kpi"><span>総面積</span><strong>{totalM2.toLocaleString()}㎡</strong></Card><Card className="garden-kpi"><span>総面積（反）</span><strong>{(totalM2/1000).toFixed(3)}反</strong></Card><Card className="garden-kpi"><span>標準散布量合計</span><strong>{Math.round(totalL*10)/10}L</strong></Card></div>
 
-    {canManage&&formOpen&&<section className="panel master-form-panel">
-      <div className="section-head"><div><h2>{editingId?'圃場を編集':'圃場を追加'}</h2><p className="muted">標準散布量 = 面積(m²) ÷ 1000 × 基準散布量(L/反)</p></div><button className="close-detail" onClick={closeForm}><X size={16}/></button></div>
+    {canManage&&formOpen&&<section className="panel master-form-panel" aria-labelledby="field-form-title">
+      <div className="section-head"><div><h2 id="field-form-title" ref={formTitle} tabIndex={-1}>{editingId ? `圃場を編集 · ${fields.find(field => field.id === editingId)?.legacyId ?? ''}` : '圃場を追加'}</h2><p className="muted">標準散布量 = 面積(m²) ÷ 1000 × 基準散布量(L/反)</p></div><button className="close-detail" aria-label="圃場フォームを閉じる" onClick={cancelForm} disabled={saving}><X size={16}/></button></div>
       <div className="form-grid four master-form-grid">
         <label>圃場ID<input value={form.legacyId} onChange={e=>setForm({...form,legacyId:e.target.value.toUpperCase()})} placeholder="例：YAGI-N（空欄なら自動）"/></label>
         <label>圃場名<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="例：小屋前"/></label>
@@ -106,9 +137,13 @@ export default function FieldsPage() {
       </div>
       <div className="field-calc-preview"><div><span>面積(a)</span><b>{((Number(form.areaM2)||0)/100).toFixed(3)}a</b></div><div><span>面積(反)</span><b>{((Number(form.areaM2)||0)/1000).toFixed(4)}反</b></div><div><span>標準散布量</span><b>{previewStandard.toLocaleString()}L</b></div></div>
       <label className="full-label">備考<textarea rows={3} value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></label>
-      <div className="master-form-actions"><button className="primary-button" onClick={()=>void submit()} disabled={saving}><Save size={17}/>{saving?'保存中…':editingId?'変更を保存':'圃場を追加'}</button></div>
+      {formError && <div className="notice error fields-notice" role="alert" ref={formAlert} tabIndex={-1}>{formError}</div>}
+      <div className="master-form-actions">
+        <Button className="ui-astryx-action" variant="primary" onClick={() => void submit()} isDisabled={saving}
+          aria-busy={saving} icon={<Save size={17}/>} label={saving ? '保存中…' : editingId ? '変更を保存' : '圃場を追加'}/>
+      </div>
     </section>}
 
-    <div className="field-location-groups">{groups.map(([location, fs])=><section className="panel field-master-group" key={location}><div className="panel-title"><h2>{location}</h2><span>{fs.length}圃場</span></div><div className="field-master-grid">{fs.map(f=><article className={`field-master-card ${f.status==='inactive'?'inactive':''}`} key={f.id}><div className="field-card-head"><div className="field-code"><MapPinned size={17}/><b>{f.legacyId}</b></div><span className={`master-status ${f.status}`}>{f.status==='active'?'有効':'休止'}</span></div><h3>{f.name}</h3><div className="field-card-stats"><div><span>面積</span><b>{f.areaM2.toLocaleString()}㎡</b><small>{(f.areaM2/1000).toFixed(4)}反</small></div><div><span>標準散布量</span><b>{f.standardL.toLocaleString()}L</b><small>{f.standardRate}L/反</small></div></div><div className="field-card-meta"><span>品種：{f.variety||'未設定'}</span>{f.harvestDate&&<span>収穫予定：{f.harvestDate}</span>}</div>{f.note&&<p className="field-card-note">{f.note}</p>}<div className="card-actions"><Link className="field-dossier-link" to={`/fields/${f.id}`}><BookOpen size={15}/>カルテを見る</Link>{canManage&&<><button onClick={()=>beginEdit(f)}><Pencil size={15}/>編集</button><button className="danger-text-button" onClick={()=>void remove(f)}><Trash2 size={15}/>削除</button></>}</div></article>)}</div></section>)}</div>
+    <div className="field-location-groups">{groups.map(([location, fs])=><section className="panel field-master-group" key={location}><div className="panel-title"><h2>{location}</h2><span>{fs.length}圃場</span></div><div className="field-master-grid">{fs.map(f=><article className={`field-master-card ${f.status==='inactive'?'inactive':''}`} key={f.id}><div className="field-card-head"><div className="field-code"><MapPinned size={17}/><b>{f.legacyId}</b></div><span className={`master-status ${f.status}`}>{f.status==='active'?'有効':'休止'}</span></div><h3>{f.name}</h3><div className="field-card-stats"><div><span>面積</span><b>{f.areaM2.toLocaleString()}㎡</b><small>{(f.areaM2/1000).toFixed(4)}反</small></div><div><span>標準散布量</span><b>{f.standardL.toLocaleString()}L</b><small>{f.standardRate}L/反</small></div></div><div className="field-card-meta"><span>品種：{f.variety||'未設定'}</span>{f.harvestDate&&<span>収穫予定：{f.harvestDate}</span>}</div>{f.note&&<p className="field-card-note">{f.note}</p>}<div className="card-actions"><Link className="field-dossier-link" to={`/fields/${f.id}`}><BookOpen size={15}/>カルテを見る</Link>{canManage&&<><button onClick={e=>beginEdit(f,e.currentTarget)} disabled={saving}><Pencil size={15}/>編集</button><button className="danger-text-button" onClick={()=>void remove(f)}><Trash2 size={15}/>削除</button></>}</div></article>)}</div></section>)}</div>
   </div>
 }
