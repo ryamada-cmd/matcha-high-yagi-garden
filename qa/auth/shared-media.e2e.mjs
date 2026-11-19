@@ -27,7 +27,7 @@ for (const [name,engine,settings] of [
       if(route.request().method()==='OPTIONS') return route.fulfill({status:204,headers})
       if(url.pathname==='/original'){
         downloaded=true
-        return route.fulfill({status:200,body:'original bytes',headers:{...headers,'Content-Type':'text/plain'}})
+        return route.fulfill({status:200,body:'original bytes',headers:{...headers,'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="original.txt"'}})
       }
       assert.equal(route.request().method(),'PUT')
       assert.equal(route.request().headers().authorization,undefined)
@@ -67,7 +67,6 @@ for (const [name,engine,settings] of [
     await dialog.getByRole('button',{name:'投稿情報を編集'}).waitFor()
     assert.equal(await dialog.getByRole('button',{name:'原本を完全削除'}).count(),0)
     await dialog.getByRole('button',{name:'オリジナルをダウンロード'}).click()
-    await context.waitForEvent('page',{timeout:3000}).catch(()=>{})
     for(let i=0;!downloaded&&i<30;i++) await new Promise(resolve=>setTimeout(resolve,100))
     assert.equal(downloaded,true)
     await dialog.getByRole('button',{name:'閉じる'}).click()

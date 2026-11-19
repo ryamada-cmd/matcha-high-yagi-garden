@@ -43,14 +43,12 @@ function OriginalDownload({item}:{item:MediaItem}) {
   async function launch() {
     setBusy(true)
     setError('')
-    // Open the tab during the user's click so iOS does not block it after the server check.
-    const target=globalThis.open('about:blank','_blank')
-    if (target) target.opener=null
     try {
       const {url}=await mediaApi<{url:string}>('original',{id:item.id})
-      if (target) target.location.replace(url)
-      else globalThis.location.assign(url)
-    } catch(value) {target?.close();setError(errorMessage(value))}
+      // OneDrive sends an attachment. Start the download in the current tab so
+      // Safari does not have to attach a download to a newly opened window.
+      globalThis.location.assign(url)
+    } catch(value) {setError(errorMessage(value))}
     finally {setBusy(false)}
   }
   return <div className="shared-media-original"><button type="button" className="secondary-button" disabled={busy} onClick={()=>void launch()}><Download size={16}/>{busy?'取得中…':'オリジナルをダウンロード'}</button>
