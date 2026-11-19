@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Home, SprayCan, Boxes, MapPinned, CalendarDays, CalendarClock, ShieldCheck, LogOut, Database, History, Settings, Menu, X, ChevronRight, Leaf, Scissors, Factory, ShoppingCart, Package, PackageCheck, ClipboardList, ReceiptText, BookOpen, Tractor, FileCheck2, LockKeyhole, Tags, FileText, Cloud, Images, PackagePlus, Calculator, Archive, MessagesSquare } from 'lucide-react'
 import { supabase } from './lib/supabase'
+import { SHARED_MEDIA_ENABLED } from './lib/sharedMedia'
 import { AppPermissionProvider, useAppPermissions } from './lib/permissions'
 import { ScreenErrorBoundary } from './components/ScreenErrorBoundary'
 import HomeDashboardPage from './pages/HomeDashboardPage'
@@ -36,6 +37,7 @@ const CalendarPage = lazy(() => import('./pages/CalendarPage'))
 const ExpenseClaimsPage = lazy(() => import('./pages/ExpenseClaimsPage'))
 const VendorInvoicesPage = lazy(() => import('./pages/VendorInvoicesPage'))
 const EquipmentPage = lazy(() => import('./pages/EquipmentPage'))
+const SharedMediaPage = lazy(() => import('./pages/SharedMediaPage'))
 const StoragePage = lazy(() => import('./pages/StoragePage'))
 const LibraryPage = lazy(() => import('./pages/LibraryPage'))
 const ManualPage = lazy(() => import('./pages/ManualPage'))
@@ -114,6 +116,18 @@ function AppShell({ session }: { session: Session }) {
   const { role, allowed, loading: permissionLoading, error: permissionError, refresh: refreshPermissions } = useAppPermissions()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
+  const [mediaAllowed, setMediaAllowed] = useState<boolean|null>(null)
+
+  useEffect(() => {
+    if (!SHARED_MEDIA_ENABLED || permissionLoading) return
+    let active = true
+    const refresh = () => void supabase.rpc('media_can_access').then(({data}) => {
+      if (active) setMediaAllowed(data === true)
+    })
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => { active = false; window.removeEventListener('focus', refresh) }
+  }, [session.user.id, permissionLoading])
 
   useEffect(() => setMobileMenuOpen(false), [location.pathname, location.search])
   useEffect(() => {
@@ -128,13 +142,20 @@ function AppShell({ session }: { session: Session }) {
   const defenseVisible = ['sprays.view','pesticide_inventory.view','pesticides.view','spray_plans.view'].some(allowed)
   const fertilizerVisible = ['fertilizer_applications.view','fertilizer_inventory.view','fertilizers.view','fertilizer_plans.view'].some(allowed)
   const productionVisible = ['harvest_processing.view','production.view','products.view','packaging.view','sales.view','documents.view','costing.view'].some(allowed)
-  const commonVisible = ['calendar.view','daily_reports.view','expenses.view','vendor_invoices.view','fields.view','storage.view','manual.view','settings.view'].some(allowed)
+  const photoVisible = SHARED_MEDIA_ENABLED ? mediaAllowed === true : allowed('storage.view')
+  const commonVisible = photoVisible || ['calendar.view','daily_reports.view','expenses.view','vendor_invoices.view','fields.view','storage.view','manual.view','settings.view'].some(allowed)
   const menuRouteActive = ['/spray-history','/inventory','/pesticides','/plans','/fertilizer-history','/fertilizers','/fertilizer-inventory','/fertilizer-plans','/harvests','/tea-inventory','/tea-procurement','/costing','/production','/products','/price-list','/product-packaging','/sales','/documents','/crm','/equipment','/calendar','/daily-reports','/expenses','/vendor-invoices','/fields','/library','/storage','/manual','/settings'].some(p => location.pathname.startsWith(p))
   const photoGalleryActive = location.pathname === '/storage' && new URLSearchParams(location.search).get('view') === 'photos'
   const fileStorageActive = location.pathname === '/storage' && !photoGalleryActive
 
   if (permissionLoading) return <div className="boot-screen"><ShieldCheck size={36}/><span>権限を確認中…</span></div>
-  if (role === 'viewer') return <PendingApprovalScreen session={session}/>
+  if (role === 'viewer') {
+    if (SHARED_MEDIA_ENABLED && mediaAllowed === null) return <RouteFallback/>
+    if (!SHARED_MEDIA_ENABLED || !mediaAllowed) return <PendingApprovalScreen session={session}/>
+    return <main className="shared-media-standalone">
+      <ScreenErrorBoundary><Suspense fallback={<RouteFallback/>}><SharedMediaPage onSignOut={()=>void supabase.auth.signOut()}/></Suspense></ScreenErrorBoundary>
+    </main>
+  }
 
   return <div className="app-shell">
     <aside className="sidebar desktop-sidebar">
@@ -170,7 +191,9 @@ function AppShell({ session }: { session: Session }) {
           {allowed('expenses.view')&&<NavLink to="/expenses"><ReceiptText size={20}/>経費精算</NavLink>}
           {allowed('vendor_invoices.view')&&<NavLink to="/vendor-invoices"><FileCheck2 size={20}/>仕入請求書・支払</NavLink>}
           {allowed('fields.view')&&<NavLink to="/fields"><MapPinned size={20}/>圃場</NavLink>}
-          {allowed('storage.view')&&<><NavLink to="/library"><Archive size={20}/>資料ライブラリ</NavLink><NavLink to="/storage?view=photos" className={photoGalleryActive?'active':''}><Images size={20}/>写真ギャラリー</NavLink><NavLink to="/storage" className={fileStorageActive?'active':''}><Cloud size={20}/>ファイル・OneDrive</NavLink></>}
+          {allowed('storage.view')&&<NavLink to="/library"><Archive size={20}/>資料ライブラリ</NavLink>}
+          {photoVisible&&<NavLink to="/storage?view=photos" className={photoGalleryActive?'active':''}><Images size={20}/>{SHARED_MEDIA_ENABLED?'写真・動画ギャラリー':'写真ギャラリー'}</NavLink>}
+          {allowed('storage.view')&&<NavLink to="/storage" className={fileStorageActive?'active':''}><Cloud size={20}/>ファイル・OneDrive</NavLink>}
           {allowed('manual.view')&&<NavLink to="/manual"><BookOpen size={20}/>操作ガイド</NavLink>}
           {allowed('settings.view')&&<NavLink to="/settings"><Settings size={20}/>設定・監査</NavLink>}
         </>}
@@ -191,7 +214,7 @@ function AppShell({ session }: { session: Session }) {
       <Route path="/fertilizer-applications" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerApplicationPage/></PermissionRoute>}/><Route path="/fertilizer-history" element={<PermissionRoute permission="fertilizer_applications.view"><FertilizerHistoryPage/></PermissionRoute>}/><Route path="/fertilizer-inventory" element={<PermissionRoute permission="fertilizer_inventory.view"><FertilizerInventoryPage/></PermissionRoute>}/><Route path="/fertilizers" element={<PermissionRoute permission="fertilizers.view"><FertilizerMasterPage/></PermissionRoute>}/><Route path="/fertilizer-plans" element={<PermissionRoute permission="fertilizer_plans.view"><FertilizerPlansPage/></PermissionRoute>}/>
       <Route path="/harvests" element={<PermissionRoute permission="harvest_processing.view"><HarvestProcessingPage/></PermissionRoute>}/><Route path="/tea-inventory" element={<PermissionRoute permission="production.view"><TeaInventoryPage/></PermissionRoute>}/><Route path="/tea-procurement" element={<PermissionRoute permission="production.view"><TeaProcurementPage/></PermissionRoute>}/><Route path="/costing" element={<PermissionRoute permission="costing.view"><CostingPage/></PermissionRoute>}/><Route path="/production" element={<PermissionRoute permission="production.view"><ProductionPage/></PermissionRoute>}/><Route path="/products" element={<PermissionRoute permission="products.view"><ProductMasterPage/></PermissionRoute>}/><Route path="/price-list" element={<PermissionRoute permission="products.view"><PriceListPage/></PermissionRoute>}/><Route path="/product-packaging" element={<PermissionRoute permission="packaging.view"><ProductPackagingPage/></PermissionRoute>}/><Route path="/sales" element={<PermissionRoute permission="sales.view"><SalesPage/></PermissionRoute>}/><Route path="/documents" element={<PermissionRoute permission="documents.view"><DocumentsPage/></PermissionRoute>}/>
       <Route path="/crm" element={<PermissionRoute permission="crm.view"><CrmPage/></PermissionRoute>}/>
-      <Route path="/equipment" element={<PermissionRoute permission="equipment.view"><EquipmentPage/></PermissionRoute>}/><Route path="/calendar" element={<PermissionRoute permission="calendar.view"><CalendarPage/></PermissionRoute>}/><Route path="/daily-reports" element={<PermissionRoute permission="daily_reports.view"><DailyReportsPage/></PermissionRoute>}/><Route path="/expenses" element={<PermissionRoute permission="expenses.view"><ExpenseClaimsPage/></PermissionRoute>}/><Route path="/vendor-invoices" element={<PermissionRoute permission="vendor_invoices.view"><VendorInvoicesPage/></PermissionRoute>}/><Route path="/fields" element={<PermissionRoute permission="fields.view"><FieldsPage/></PermissionRoute>}/><Route path="/fields/:fieldId" element={<PermissionRoute permission="fields.view"><FieldDossierPage/></PermissionRoute>}/><Route path="/library" element={<PermissionRoute permission="storage.view"><LibraryPage/></PermissionRoute>}/><Route path="/storage" element={<PermissionRoute permission="storage.view"><StoragePage/></PermissionRoute>}/><Route path="/manual" element={<PermissionRoute permission="manual.view"><ManualPage/></PermissionRoute>}/><Route path="/settings" element={<PermissionRoute permission="settings.view"><SettingsPage/></PermissionRoute>}/>
+      <Route path="/equipment" element={<PermissionRoute permission="equipment.view"><EquipmentPage/></PermissionRoute>}/><Route path="/calendar" element={<PermissionRoute permission="calendar.view"><CalendarPage/></PermissionRoute>}/><Route path="/daily-reports" element={<PermissionRoute permission="daily_reports.view"><DailyReportsPage/></PermissionRoute>}/><Route path="/expenses" element={<PermissionRoute permission="expenses.view"><ExpenseClaimsPage/></PermissionRoute>}/><Route path="/vendor-invoices" element={<PermissionRoute permission="vendor_invoices.view"><VendorInvoicesPage/></PermissionRoute>}/><Route path="/fields" element={<PermissionRoute permission="fields.view"><FieldsPage/></PermissionRoute>}/><Route path="/fields/:fieldId" element={<PermissionRoute permission="fields.view"><FieldDossierPage/></PermissionRoute>}/><Route path="/library" element={<PermissionRoute permission="storage.view"><LibraryPage/></PermissionRoute>}/><Route path="/storage" element={SHARED_MEDIA_ENABLED && photoGalleryActive ? (mediaAllowed===null ? <RouteFallback/> : mediaAllowed ? <SharedMediaPage/> : <AccessDenied/>) : <PermissionRoute permission="storage.view"><StoragePage/></PermissionRoute>}/><Route path="/manual" element={<PermissionRoute permission="manual.view"><ManualPage/></PermissionRoute>}/><Route path="/settings" element={<PermissionRoute permission="settings.view"><SettingsPage/></PermissionRoute>}/>
     <Route path="*" element={<div className="page"><section className="panel"><h1>ページが見つかりません</h1><p>メニューから目的の機能を選び直してください。</p><Link className="secondary-button" to="/">ホームへ戻る</Link></section></div>}/>
     </Routes></Suspense></ScreenErrorBoundary></main>
 
@@ -211,7 +234,7 @@ function AppShell({ session }: { session: Session }) {
         {productionVisible&&<><div className="mobile-menu-label">収穫・製造・販売</div>{allowed('harvest_processing.view')&&<NavLink to="/harvests"><span><Scissors size={20}/>摘採・製茶</span><ChevronRight size={18}/></NavLink>}{allowed('production.view')&&<NavLink to="/tea-inventory"><span><Boxes size={20}/>茶在庫</span><ChevronRight size={18}/></NavLink>}{allowed('production.view')&&<><NavLink to="/tea-procurement"><span><PackagePlus size={20}/>調達・ブレンド</span><ChevronRight size={18}/></NavLink><NavLink to="/production"><span><Factory size={20}/>製造・製品在庫</span><ChevronRight size={18}/></NavLink></>}{allowed('costing.view')&&<NavLink to="/costing"><span><Calculator size={20}/>原価計算・年度配賦</span><ChevronRight size={18}/></NavLink>}{allowed('products.view')&&<><NavLink to="/products"><span><Package size={20}/>商品マスタ</span><ChevronRight size={18}/></NavLink><NavLink to="/price-list"><span><Tags size={20}/>商品価格表</span><ChevronRight size={18}/></NavLink></>}{allowed('packaging.view')&&<NavLink to="/product-packaging"><span><PackageCheck size={20}/>商品化・SKU在庫</span><ChevronRight size={18}/></NavLink>}{allowed('sales.view')&&<NavLink to="/sales"><span><ShoppingCart size={20}/>販売・出庫</span><ChevronRight size={18}/></NavLink>}{allowed('documents.view')&&<NavLink to="/documents"><span><FileText size={20}/>見積書・請求書・納品書</span><ChevronRight size={18}/></NavLink>}</>}
         {allowed('crm.view')&&<><div className="mobile-menu-label">営業</div><NavLink to="/crm"><span><MessagesSquare size={20}/>問い合わせ・商談</span><ChevronRight size={18}/></NavLink></>}
         {allowed('equipment.view')&&<><div className="mobile-menu-label">設備</div><NavLink to="/equipment"><span><Tractor size={20}/>機械設備管理</span><ChevronRight size={18}/></NavLink></>}
-        {commonVisible&&<><div className="mobile-menu-label">共通</div>{allowed('calendar.view')&&<NavLink to="/calendar"><span><CalendarClock size={20}/>作業カレンダー</span><ChevronRight size={18}/></NavLink>}{allowed('daily_reports.view')&&<NavLink to="/daily-reports"><span><ClipboardList size={20}/>日報</span><ChevronRight size={18}/></NavLink>}{allowed('expenses.view')&&<NavLink to="/expenses"><span><ReceiptText size={20}/>経費精算</span><ChevronRight size={18}/></NavLink>}{allowed('vendor_invoices.view')&&<NavLink to="/vendor-invoices"><span><FileCheck2 size={20}/>仕入請求書・支払</span><ChevronRight size={18}/></NavLink>}{allowed('fields.view')&&<NavLink to="/fields"><span><MapPinned size={20}/>圃場</span><ChevronRight size={18}/></NavLink>}{allowed('storage.view')&&<><NavLink to="/library"><span><Archive size={20}/>資料ライブラリ</span><ChevronRight size={18}/></NavLink><NavLink to="/storage?view=photos" className={photoGalleryActive?'active':''}><span><Images size={20}/>写真ギャラリー</span><ChevronRight size={18}/></NavLink><NavLink to="/storage" className={fileStorageActive?'active':''}><span><Cloud size={20}/>ファイル・OneDrive</span><ChevronRight size={18}/></NavLink></>}{allowed('manual.view')&&<NavLink to="/manual"><span><BookOpen size={20}/>操作ガイド</span><ChevronRight size={18}/></NavLink>}{allowed('settings.view')&&<><div className="mobile-menu-label">管理</div><NavLink to="/settings"><span><Settings size={20}/>設定・監査</span><ChevronRight size={18}/></NavLink></>}</>}
+        {commonVisible&&<><div className="mobile-menu-label">共通</div>{allowed('calendar.view')&&<NavLink to="/calendar"><span><CalendarClock size={20}/>作業カレンダー</span><ChevronRight size={18}/></NavLink>}{allowed('daily_reports.view')&&<NavLink to="/daily-reports"><span><ClipboardList size={20}/>日報</span><ChevronRight size={18}/></NavLink>}{allowed('expenses.view')&&<NavLink to="/expenses"><span><ReceiptText size={20}/>経費精算</span><ChevronRight size={18}/></NavLink>}{allowed('vendor_invoices.view')&&<NavLink to="/vendor-invoices"><span><FileCheck2 size={20}/>仕入請求書・支払</span><ChevronRight size={18}/></NavLink>}{allowed('fields.view')&&<NavLink to="/fields"><span><MapPinned size={20}/>圃場</span><ChevronRight size={18}/></NavLink>}{allowed('storage.view')&&<NavLink to="/library"><span><Archive size={20}/>資料ライブラリ</span><ChevronRight size={18}/></NavLink>}{photoVisible&&<NavLink to="/storage?view=photos" className={photoGalleryActive?'active':''}><span><Images size={20}/>{SHARED_MEDIA_ENABLED?'写真・動画ギャラリー':'写真ギャラリー'}</span><ChevronRight size={18}/></NavLink>}{allowed('storage.view')&&<NavLink to="/storage" className={fileStorageActive?'active':''}><span><Cloud size={20}/>ファイル・OneDrive</span><ChevronRight size={18}/></NavLink>}{allowed('manual.view')&&<NavLink to="/manual"><span><BookOpen size={20}/>操作ガイド</span><ChevronRight size={18}/></NavLink>}{allowed('settings.view')&&<><div className="mobile-menu-label">管理</div><NavLink to="/settings"><span><Settings size={20}/>設定・監査</span><ChevronRight size={18}/></NavLink></>}</>}
       </div>
       <button className="mobile-logout" type="button" onClick={() => void supabase.auth.signOut()}><LogOut size={18}/>ログアウト</button>
     </section></div>}

@@ -39,6 +39,9 @@ const expected={
  '/settings':'settings.view'
 }
 const matches=[...app.matchAll(/<Route\s+path="([^"]+)"\s+element=\{<PermissionRoute\s+permission="([^"]+)"><([A-Za-z_]\w*)\/><\/PermissionRoute>\}\/>/g)]
+const storageRoute=app.match(/<Route path="(\/storage)" element=\{SHARED_MEDIA_ENABLED && photoGalleryActive \? \(mediaAllowed===null \? <RouteFallback\/> : mediaAllowed \? <SharedMediaPage\/> : <AccessDenied\/>\) : <PermissionRoute permission="(storage\.view)"><(StoragePage)\/><\/PermissionRoute>\}\/>/)
+assert.ok(storageRoute,'The media route requires its own approval and ordinary storage retains its original guard')
+matches.push(storageRoute)
 const actualRoutes=[...app.matchAll(/<Route\s+path="/g)].length
 assert.equal(matches.length,33,'Exactly 33 routes must have an explicit PermissionRoute guard')
 assert.equal(actualRoutes,matches.length+1,'Only the not-found screen may be unguarded')
@@ -58,6 +61,6 @@ for(const [,url,permission,component] of matches){
  }
 }
 assert.equal(encountered.size,33)
-assert.ok(app.includes("if (role === 'viewer') return <PendingApprovalScreen session={session}/>"),
+assert.ok(app.includes("if (!SHARED_MEDIA_ENABLED || !mediaAllowed) return <PendingApprovalScreen session={session}/>"),
  'Unapproved viewer should remain restricted to the pending approval UI')
 console.log('PASS 33 guarded routes, expected permissions, valid page imports, pending-account gate')

@@ -8,6 +8,7 @@ const fakePage=path.join(root,'qa/auth/mockPage.tsx')
 // Production Vite config does NOT import or refer to this isolated test config.
 export default defineConfig({
  root,
+ cacheDir:path.join(root,'node_modules/.vite',process.env.VITE_SHARED_MEDIA_ENABLED==='1'?'shared-media-qa':'auth-qa'),
  optimizeDeps:{entries:['qa/auth/index.html']},
  plugins:[{
   name:'qa-auth-fail-closed',
@@ -17,8 +18,8 @@ export default defineConfig({
    const app=from.endsWith('/src/App.tsx')
    const permissions=from.endsWith('/src/lib/permissions.tsx')
    if(app&&source==='./lib/supabase')return fakeSupabase
-   if(permissions&&source==='./supabase')return fakeSupabase
-   if(app&&source.startsWith('./pages/'))return fakePage
+   if((permissions||from.endsWith('/src/lib/sharedMedia.ts'))&&source==='./supabase')return fakeSupabase
+   if(app&&source.startsWith('./pages/')&&source!=='./pages/SharedMediaPage')return fakePage
    return null
   }
  },react()],
