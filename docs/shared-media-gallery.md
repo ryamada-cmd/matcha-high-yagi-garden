@@ -39,8 +39,8 @@
 
 - 対象のOneDrive Businessと `https://yagi-garden-manager.vercel.app` の組み合わせでChromiumとWebKitから検証。PUTのCORS preflightは200、10MiB PUTは202、Graph GETは送信済み10MiB直後の残り範囲を返した。未完了の試験セッションはDELETE 204で終了。
 - 合成JPEG・PNG・HEIC・MP4・MOVでGraphの作成201、閲覧用署名URLのRange 206、原本の `Content-Disposition: attachment` とバイト一致を確認。
-- 100MBと1GBの合成ファイルで順次PUT、2回の分割転送後のGraph GETから再開、原本の全SHA-256一致、試験ファイルの削除204を確認。
-- 20GBの上限と100MB／1GB／5GB／20GBの分割計算は自動テストで検証。本番利用者での新規Edge Functionの通し試験、iPhone・Android実機での保存、Graphの実アカウントの429／507／5xx、管理者による物理完全削除はリリース前に確認する。
+- 100MB・1GB・5GBの合成ファイルで順次PUT、2回の分割転送後のGraph GETから再開、原本の全SHA-256一致、試験ファイルの削除204を確認。
+- 20GBは上限と分割計算を自動テストで確認し、実転送は未実施。新画面はChromiumデスクトップ・Android幅・WebKit iPhone幅で確認。本番利用者での新規Edge Functionの通し試験、iPhone・Android実機での保存、Graphの実アカウントの429／507／5xx、管理者による物理完全削除はリリース前に確認する。
 
 ## 参照
 
