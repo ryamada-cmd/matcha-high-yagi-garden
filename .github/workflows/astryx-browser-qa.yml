@@ -160,3 +160,4 @@ jobs:
         run: |
           cat /tmp/yagi-astryx-qa.log || true
           cat /tmp/yagi-auth-qa.log || true
+          cat /tmp/yagi-shared-media-qa.log || true

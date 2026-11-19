@@ -9,7 +9,10 @@ const fakePage=path.join(root,'qa/auth/mockPage.tsx')
 export default defineConfig({
  root,
  cacheDir:path.join(root,'node_modules/.vite',process.env.VITE_SHARED_MEDIA_ENABLED==='1'?'shared-media-qa':'auth-qa'),
- optimizeDeps:{entries:['qa/auth/index.html']},
+ optimizeDeps:{
+  entries:['qa/auth/index.html'],
+  include:['@noble/hashes/sha2.js','@noble/hashes/utils.js'],
+ },
  plugins:[{
   name:'qa-auth-fail-closed',
   enforce:'pre',
@@ -23,5 +26,5 @@ export default defineConfig({
    return null
   }
  },react()],
- server:{host:'127.0.0.1',port:5179,strictPort:true}
+ server:{host:'127.0.0.1',port:5179,strictPort:true,hmr:false}
 })
