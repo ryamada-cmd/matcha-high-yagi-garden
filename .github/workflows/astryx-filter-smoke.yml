@@ -35,7 +35,14 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install chromium
       - name: Install Japanese fonts for PDF rendering
-        run: sudo apt-get update -qq && sudo apt-get install -y fonts-noto-cjk
+        run: |
+          font_package="$(mktemp --suffix=.deb)"
+          trap 'rm -f "$font_package"' EXIT
+          curl --fail --silent --show-error --location --retry 2 --max-time 120 \
+            https://archive.ubuntu.com/ubuntu/pool/main/f/fonts-noto-cjk/fonts-noto-cjk_20230817+repack1-3_all.deb \
+            --output "$font_package"
+          printf '%s  %s\n' '7d64b985f6fe128c99eae5610d5c047338e572bdcfb2bb09736be01b824a7f6c' "$font_package" | sha256sum --check
+          sudo dpkg -i "$font_package"
       - name: Start local synthetic fixture
         run: |
           npx vite --config qa/vite.config.ts --host 127.0.0.1 --port 5178 >/tmp/yagi-filter-smoke.log 2>&1 &

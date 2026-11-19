@@ -29,6 +29,7 @@ jobs:
       - name: Build GitHub Pages staging
         run: npm run build
         env:
+          VITE_SHARED_MEDIA_ENABLED: ${{ vars.VITE_SHARED_MEDIA_ENABLED }}
           VITE_BASE_PATH: /matcha-high-yagi-garden/
 
       - name: Preserve staging build
@@ -37,6 +38,7 @@ jobs:
       - name: Build Vercel root mirror
         run: npm run build
         env:
+          VITE_SHARED_MEDIA_ENABLED: ${{ vars.VITE_SHARED_MEDIA_ENABLED }}
           VITE_BASE_PATH: /
 
       - name: Add Vercel mirror to Pages artifact

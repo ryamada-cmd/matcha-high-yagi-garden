@@ -18,6 +18,12 @@ on:
       - 'src/weather-dashboard.css'
       - 'src/home-dashboard.css'
       - 'src/astryx-ui.css'
+      - 'src/shared-media.css'
+      - 'src/lib/sharedMedia.ts'
+      - 'src/lib/mediaFingerprint.worker.ts'
+      - 'supabase/functions/shared-media/**'
+      - 'supabase/migrations/*shared_media_gallery.sql'
+      - 'scripts/shared-media.test.mjs'
       - 'src/harvest-processing.css'
       - 'src/spray-history.css'
       - 'src/fertilizer-history.css'
@@ -38,6 +44,12 @@ on:
       - 'scripts/check-astryx-route-coverage.mjs'
       - 'src/pages/**'
       - 'src/astryx-ui.css'
+      - 'src/shared-media.css'
+      - 'src/lib/sharedMedia.ts'
+      - 'src/lib/mediaFingerprint.worker.ts'
+      - 'supabase/functions/shared-media/**'
+      - 'supabase/migrations/*shared_media_gallery.sql'
+      - 'scripts/shared-media.test.mjs'
       - '.github/workflows/astryx-browser-qa.yml'
   workflow_dispatch:
 
@@ -52,6 +64,12 @@ jobs:
   synthetic-e2e:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble@sha256:f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a
+      options: --ipc=host
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout tested source
         uses: actions/checkout@v4
@@ -64,11 +82,10 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Verify all route guards and screen imports
         run: node scripts/check-astryx-route-coverage.mjs
-      - name: Install isolated Chromium and WebKit test runtimes
-        run: |
-          npm install --no-save --no-audit --no-fund playwright@1.56.1
-          npx playwright install --with-deps chromium webkit
+      - name: Install the Playwright client matching the browser image
+        run: npm install --no-save --no-audit --no-fund playwright@1.56.1
       - name: Start QA-only synthetic fixture
+        id: browser-fixture
         run: |
           npx vite --config qa/vite.config.ts --host 127.0.0.1 --port 5178 > /tmp/yagi-astryx-qa.log 2>&1 &
           echo $! > /tmp/yagi-astryx-qa.pid
@@ -109,12 +126,24 @@ jobs:
           exit 1
       - name: Test actual App and permission provider using fake Supabase sessions
         run: node qa/auth/auth-permissions.e2e.mjs
+      - name: Test shared media schema and Graph protocol
+        run: npm run test:media
+      - name: Test shared gallery on desktop and mobile browsers
+        run: |
+          VITE_SHARED_MEDIA_ENABLED=1 npx vite --config qa/auth/vite.config.ts --host 127.0.0.1 --port 5180 > /tmp/yagi-shared-media-qa.log 2>&1 &
+          for i in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5180/qa/auth/index.html >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          SHARED_MEDIA_QA_ORIGIN=http://127.0.0.1:5180 node qa/auth/shared-media.e2e.mjs
       - name: Test mobile AstryX modal vertical scrolling and bottom actions in Chromium/WebKit
         run: node qa/astryx-dialog-scroll.e2e.mjs
       - name: Verify single-border AstryX TextInput and aligned mobile filter controls
         run: node qa/astryx-filter-controls.e2e.mjs
       - name: Audit every operational screen and dialog at phone and desktop sizes
-        if: always()
+        if: ${{ !cancelled() && steps.browser-fixture.outcome == 'success' }}
         run: node qa/astryx-all-pages.e2e.mjs
       - name: Upload diagnostic screenshots
         if: always()
@@ -131,3 +160,4 @@ jobs:
         run: |
           cat /tmp/yagi-astryx-qa.log || true
           cat /tmp/yagi-auth-qa.log || true
+          cat /tmp/yagi-shared-media-qa.log || true

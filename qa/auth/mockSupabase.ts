@@ -3,6 +3,7 @@ type FakeSession={user:{id:string;email:string}}
 const params=new URLSearchParams(window.location.search)
 let sessionFailure=params.get('sessionError')==='1'
 let role=params.get('role')||'worker'
+const mediaApproval=params.get('mediaApproval')==='1'
 let remainingFailures=params.get('rpcError')==='1'?Infinity:params.get('rpcError')==='once'?1:0
 let session:FakeSession|null=params.get('anonymous')==='1'?null:{
  user:{id:'qa-synthetic-user',email:'qa-user@example.invalid'}
@@ -49,12 +50,36 @@ export const supabase={
    return{error:null}
   }
  },
+ functions:{
+  async invoke(name:string,{body}:{body:Record<string,any>}){
+   if(name!=='shared-media'||!mediaApproval) return {error:{context:new Response('{"error":"未承認"}',{status:403})}}
+   ;(window as any).__qa_media_calls=[...((window as any).__qa_media_calls||[]),body.action]
+   const id='00000000-0000-4000-8000-000000000100'
+   const item={id,kind:'photo',original_name:'一番茶.jpeg',mime_type:'image/jpeg',size_bytes:1234,category:'茶摘み',
+     album_id:null,taken_at:'2026-11-19',note:'',field_id:null,equipment_id:null,owner_id:'qa-synthetic-user',posted_at:'2026-11-19T00:00:00Z',legacy:true}
+   ;(window as any).__qa_media_requests=[...((window as any).__qa_media_requests||[]),{action:body.action,id:body.id}]
+   if(body.action==='status'&&(window as any).__qa_expire_upload){
+    ;(window as any).__qa_expire_upload=false
+    return {data:{id:body.id,state:'expired'},error:null}
+   }
+   const session={id:body.id,state:'open',uploadUrl:'https://qa-onedrive.invalid/upload',nextExpectedRanges:['0-']}
+   const actions:Record<string,unknown>={
+    options:{albums:[],fields:[],equipment:[],posters:[{id:'qa-synthetic-user',display_name:'検証用'}],isAdmin:role==='admin',userId:'qa-synthetic-user'},
+    list:{items:body.kind==='video'?[]:[item],hasMore:false},thumbnails:{thumbnails:{}},
+    begin:session,status:session,finalize:{id:body.id,state:'finalized',mediaId:id},
+    cancel:{id:body.id,state:'cancelled'},original:{url:'https://qa-onedrive.invalid/original'},
+    edit:{ok:true},album:{id},approvals:{approvals:[]}
+   }
+   return Object.hasOwn(actions,body.action) ? {data:actions[body.action],error:null} : {error:{message:'Unexpected media action'}}
+  }
+ },
  async rpc(name:string,input?:any){
   ;(window as any).__qa_rpc_calls=[...((window as any).__qa_rpc_calls||[]),name]
   if(name==='get_my_app_permissions'){
    if(remainingFailures>0){remainingFailures--;return{data:null,error:{message:'架空権限DB読込エラー'}}}
    return{data:{role,permissions:permissions()},error:null}
   }
+  if(name==='media_can_access')return{data:mediaApproval,error:null}
   if(name==='has_app_permission')return{data:permissions()[input?.p_permission_key]===true,error:null}
   return{data:null,error:{message:'Unexpected RPC in isolated QA: '+name}}
  }
