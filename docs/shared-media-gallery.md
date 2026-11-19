@@ -40,7 +40,10 @@
 - 対象のOneDrive Businessと `https://yagi-garden-manager.vercel.app` の組み合わせでChromiumとWebKitから検証。PUTのCORS preflightは200、10MiB PUTは202、Graph GETは送信済み10MiB直後の残り範囲を返した。未完了の試験セッションはDELETE 204で終了。
 - 合成JPEG・PNG・HEIC・MP4・MOVでGraphの作成201、閲覧用署名URLのRange 206、原本の `Content-Disposition: attachment` とバイト一致を確認。
 - 100MB・1GB・5GBの合成ファイルで順次PUT、2回の分割転送後のGraph GETから再開、原本の全SHA-256一致、試験ファイルの削除204を確認。
-- 20GBは上限と分割計算を自動テストで確認し、実転送は未実施。新画面はChromiumデスクトップ・Android幅・WebKit iPhone幅で確認。本番利用者での新規Edge Functionの通し試験、iPhone・Android実機での保存、Graphの実アカウントの429／507／5xx、管理者による物理完全削除はリリース前に確認する。
+- 20GB（20,000,000,000バイト）の合成原本を本番Vercelドメインから10MiBずつ直接PUTした。中断後にGraphが返す範囲から再開し、OneDriveから取得した20GBの全体SHA-256が送信前と一致した。試験原本はGraphの完全削除で終了した。
+- ローカルのPostgreSQL 17に関連マイグレーションを適用し、Supabase Auth・PostgREST・Denoの共有APIを、対象OneDriveの隔離した試験フォルダにつないだ。合成データでJWT検証、未承認の拒否、共有承認と業務権限の分離、分割転送、確定処理の冪等性、原本一致、他人の編集・削除拒否、承認取消、キャンセル、管理者による完全削除と削除後のGraph 404を確認した。
+- 新画面の操作試験はChromiumデスクトップ・Android幅・WebKit iPhone幅で成功。認証付きのWebKit試験では実OneDriveへの登録と原本ダウンロードのHTTP 200・添付ヘッダーを確認した。WebKit試験環境から保存完了イベントは取得できなかったため、iPhone・Android実機での端末保存は保留とした。
+- 429・507・5xxは模擬試験で検証した。公開されたクラウド検証DBでの通し試験と、本番利用者・実機での動作確認はリリース前に残る。
 
 ## 参照
 
